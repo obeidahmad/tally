@@ -1,0 +1,18 @@
+node_modules/
+dist/
+coverage/
+
+# Tally's database and anything else it stores
+data/
+*.db
+*.db-shm
+*.db-wal
+
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+
+# Per-machine Claude Code settings
+.claude/settings.local.json

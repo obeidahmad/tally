@@ -1,0 +1,121 @@
+/* Tally design tokens. Generated from tokens.json: keep the two in step. */
+:root {
+  color-scheme: light;
+  --bg: #f5f6f3;
+  --surface: #ffffff;
+  --surface-sunken: #eceee9;
+  --surface-hover: #f0f2ed;
+  --ink: #141a18;
+  --ink-muted: #56615d;
+  --line: #dfe3dd;
+  --line-strong: #868f8b;
+  --action: #141a18;
+  --on-action: #ffffff;
+  --focus: #1f5fd0;
+  --positive: #0b6b4f;
+  --positive-soft: #d9f2e8;
+  --warning: #7a5200;
+  --warning-soft: #fbecc4;
+  --negative: #b3261e;
+  --negative-soft: #fde0dc;
+  --glass: rgba(255,255,255,0.78);
+  --glass-thick: rgba(255,255,255,0.92);
+  --scrim: rgba(20,26,24,0.4);
+  --sec-1: #2a78d6;
+  --sec-2: #eb6834;
+  --sec-3: #1baf7a;
+  --sec-4: #eda100;
+  --sec-5: #e87ba4;
+  --sec-6: #008300;
+  --sec-7: #6250d6;
+  --sec-8: #e34948;
+  --shadow-raised: 0 12px 32px rgba(20,26,24,0.16);
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111413;
+    --surface: #1a1e1c;
+    --surface-sunken: #0c0e0d;
+    --surface-hover: #232826;
+    --ink: #eef1ee;
+    --ink-muted: #a7b0ac;
+    --line: #2a302d;
+    --line-strong: #6c7672;
+    --action: #eef1ee;
+    --on-action: #141a18;
+    --focus: #7fb0ff;
+    --positive: #5fd6ae;
+    --positive-soft: #12382d;
+    --warning: #f2c14a;
+    --warning-soft: #3d2f0a;
+    --negative: #ff9a8f;
+    --negative-soft: #45191a;
+    --glass: rgba(26,30,28,0.78);
+    --glass-thick: rgba(26,30,28,0.92);
+    --scrim: rgba(0,0,0,0.6);
+    --sec-1: #3987e5;
+    --sec-2: #d95926;
+    --sec-3: #199e70;
+    --sec-4: #c98500;
+    --sec-5: #d55181;
+    --sec-6: #008300;
+    --sec-7: #9085e9;
+    --sec-8: #e66767;
+    --shadow-raised: 0 12px 32px rgba(0,0,0,0.6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111413;
+  --surface: #1a1e1c;
+  --surface-sunken: #0c0e0d;
+  --surface-hover: #232826;
+  --ink: #eef1ee;
+  --ink-muted: #a7b0ac;
+  --line: #2a302d;
+  --line-strong: #6c7672;
+  --action: #eef1ee;
+  --on-action: #141a18;
+  --focus: #7fb0ff;
+  --positive: #5fd6ae;
+  --positive-soft: #12382d;
+  --warning: #f2c14a;
+  --warning-soft: #3d2f0a;
+  --negative: #ff9a8f;
+  --negative-soft: #45191a;
+  --glass: rgba(26,30,28,0.78);
+  --glass-thick: rgba(26,30,28,0.92);
+  --scrim: rgba(0,0,0,0.6);
+  --sec-1: #3987e5;
+  --sec-2: #d95926;
+  --sec-3: #199e70;
+  --sec-4: #c98500;
+  --sec-5: #d55181;
+  --sec-6: #008300;
+  --sec-7: #9085e9;
+  --sec-8: #e66767;
+  --shadow-raised: 0 12px 32px rgba(0,0,0,0.6);
+}
+.text-display { font-family: var(--font-display); font-size: 2rem; line-height: 2.25rem; font-weight: 700; letter-spacing: -0.01em; }
+.text-title { font-family: var(--font-sans); font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; }
+.text-heading { font-family: var(--font-sans); font-size: 1rem; line-height: 1.375rem; font-weight: 600; }
+.text-body { font-family: var(--font-sans); font-size: 0.9375rem; line-height: 1.375rem; font-weight: 400; }
+.text-caption { font-family: var(--font-sans); font-size: 0.8125rem; line-height: 1.125rem; font-weight: 400; }
+.text-label { font-family: var(--font-sans); font-size: 0.75rem; line-height: 1rem; font-weight: 600; letter-spacing: 0.04em; }
+.num { font-family: var(--font-sans); font-size: 0.9375rem; line-height: 1.375rem; font-weight: 500; }
+.num-lg { font-family: var(--font-sans); font-size: 1.625rem; line-height: 2rem; font-weight: 600; }
+.num-hero { font-family: var(--font-display); font-size: 2.75rem; line-height: 3rem; font-weight: 700; letter-spacing: -0.02em; }

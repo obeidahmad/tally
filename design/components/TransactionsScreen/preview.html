@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>TransactionsScreen</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<body>
+<div class="ty-shell">
+<aside class="ty-side">
+  <div class="ty-word">Tally</div>
+  <nav class="ty-nav" aria-label="Main"><a href="#">Budget</a><a href="#" aria-current="page">Transactions</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Settings</a></nav>
+  <div class="ty-side__foot ty-cap">Signed in as Sam<br>Base currency EUR</div>
+</aside>
+<main class="ty-main">
+<header class="ty-month__top"><h1 class="text-display">Transactions</h1><span class="ty-grow"></span><button class="ty-btn">Import a statement</button><button class="ty-btn ty-btn--primary">Add transaction</button></header>
+<div class="ty-month__top"><div class="ty-field" style="width:260px"><label class="ty-label" for="q">Search</label><input class="ty-input" id="q" placeholder="Payee or note"></div><div class="ty-field" style="width:200px"><label class="ty-label" for="fs">Subsection</label><select class="ty-input" id="fs"><option>All subsections</option></select></div><div class="ty-field" style="width:200px"><label class="ty-label" for="fp">Pocket</label><select class="ty-input" id="fp"><option>All pockets</option></select></div><div class="ty-field" style="width:160px"><label class="ty-label" for="fm">Month</label><select class="ty-input" id="fm"><option>October 2026</option></select></div></div>
+<section class="ty-section" aria-label="Transactions">
+<div class="ty-day ty-label">11 October</div>
+<div class="ty-trow">
+  <div class="ty-trow__who"><b>Alphamega</b><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Food · Revolut</span></div>
+  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Food</div>
+  <div class="ty-wide">Revolut</div>
+  <div class="ty-num ty-right">−48.20</div>
+</div>
+<div class="ty-trow">
+  <div class="ty-trow__who"><b>Netflix</b><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Subscriptions · Revolut</span></div>
+  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--2"></span>Subscriptions</div>
+  <div class="ty-wide">Revolut</div>
+  <div class="ty-num ty-right">−13.99</div>
+</div>
+<div class="ty-day ty-label">10 October</div>
+<div class="ty-trow">
+  <div class="ty-trow__who"><b>Daily income fund payout</b><span class="ty-cap">Income · entered by hand</span><span class="ty-cap ty-trow__meta">Fund income · Daily income fund</span></div>
+  <div class="ty-tag ty-wide"><span class="ty-dot"></span>Fund income</div>
+  <div class="ty-wide">Daily income fund</div>
+  <div class="ty-num ty-right ty-num--pos">+0.41</div>
+</div>
+<div class="ty-day ty-label">9 October</div>
+<div class="ty-trow">
+  <div class="ty-trow__who"><b>EAC electricity</b><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Utilities · Bank of Cyprus</span></div>
+  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Utilities</div>
+  <div class="ty-wide">Bank of Cyprus</div>
+  <div class="ty-num ty-right">−131.75</div>
+</div>
+<div class="ty-trow">
+  <div class="ty-trow__who"><b>Moved to Revolut USD</b><span class="ty-cap">Transfer · 85.00 EUR became 92.31 USD at 1.0860</span><span class="ty-cap ty-trow__meta">Parents · Bank of Cyprus</span></div>
+  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--3"></span>Parents</div>
+  <div class="ty-wide">Bank of Cyprus</div>
+  <div class="ty-num ty-right">−85.00</div>
+</div>
+<div class="ty-day ty-label">1 October</div>
+<div class="ty-trow">
+  <div class="ty-trow__who"><b>Paycheck</b><span class="ty-cap">Income · from your bank</span><span class="ty-cap ty-trow__meta">Paycheck · Bank of Cyprus</span></div>
+  <div class="ty-tag ty-wide"><span class="ty-dot"></span>Paycheck</div>
+  <div class="ty-wide">Bank of Cyprus</div>
+  <div class="ty-num ty-right ty-num--pos">+2,000.00</div>
+</div>
+<div class="ty-trow">
+  <div class="ty-trow__who"><b>Mortgage</b><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Mortgage · Bank of Cyprus</span></div>
+  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Mortgage</div>
+  <div class="ty-wide">Bank of Cyprus</div>
+  <div class="ty-num ty-right">−600.00</div>
+</div>
+</section>
+</main>
+<nav class="ty-tabs" aria-label="Main"><a href="#">Budget</a><a href="#" aria-current="page">Transactions</a><a href="#">Pockets</a><a href="#">More</a></nav>
+</div>
+</body>
+</html>

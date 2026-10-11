@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Field</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<body>
+<div class="ty-demo" style="align-items:flex-start">
+<div class="ty-field" style="width:220px"><label class="ty-label" for="f1">Subsection name</label><input class="ty-input" id="f1" value="Food"><span class="ty-cap">Shown in the Needs section.</span></div>
+<div class="ty-field" style="width:200px"><label class="ty-label" for="f2">Monthly budget</label><div class="ty-affix"><input class="ty-input ty-input--amount" id="f2" value="300.00" inputmode="decimal"><span class="ty-muted">EUR</span></div><span class="ty-cap">Or a share, such as 60%.</span></div>
+<div class="ty-field" style="width:200px"><label class="ty-label" for="f3">Rollover cap</label><div class="ty-affix"><input class="ty-input ty-input--amount ty-input--error" id="f3" value="100.00" inputmode="decimal" aria-describedby="e3"><span class="ty-muted">EUR</span></div><span class="ty-error" id="e3">The cap must be at least the monthly budget.</span></div>
+<div class="ty-field" style="width:220px"><label class="ty-label" for="f4">Paid from</label><select class="ty-input" id="f4"><option>Revolut (EUR)</option><option>Bank of Cyprus (EUR)</option><option>Cash (EUR)</option></select></div>
+</div>
+</body>
+</html>

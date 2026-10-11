@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>BudgetScreen</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<body>
+<div class="ty-shell">
+<aside class="ty-side">
+  <div class="ty-word">Tally</div>
+  <nav class="ty-nav" aria-label="Main"><a href="#" aria-current="page">Budget</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Settings</a></nav>
+  <div class="ty-side__foot ty-cap">Signed in as Sam<br>Base currency EUR</div>
+</aside>
+<main class="ty-main">
+<header class="ty-month">
+  <div class="ty-month__top">
+    <button class="ty-btn ty-btn--icon" aria-label="Previous month">‹</button>
+    <h1 class="text-display">October 2026</h1>
+    <button class="ty-btn ty-btn--icon" aria-label="Next month" disabled>›</button>
+    <span class="ty-pill ty-pill--positive">Open</span>
+    <span class="ty-grow"></span>
+    <button class="ty-btn">Close month</button>
+    <button class="ty-btn ty-btn--primary">Add transaction</button>
+  </div>
+  <div class="ty-stats"><div class="ty-stat"><span class="ty-label">Income</span><span class="num-lg">2,400.00</span></div><div class="ty-stat"><span class="ty-label">Budgeted</span><span class="num-lg">2,325.00</span></div><div class="ty-stat"><span class="ty-label">Spent so far</span><span class="num-lg">1,145.62</span></div><div class="ty-stat"><span class="ty-label">Rest so far</span><span class="num-lg">75.00</span></div></div>
+</header>
+<div class="ty-card ty-stack" style="gap:24px"><div class="ty-alloc">
+  <div class="ty-alloc__head"><b>Paycheck</b><span class="ty-num">2,000.00</span><span class="ty-cap">Zakat takes 50.00 first, the other 1,950.00 is split</span></div>
+  <div class="ty-alloc__bar" role="img" aria-label="Zakat 50.00, Needs 975.00, Wants 390.00, Savings 585.00"><span class="ty-seg--4" style="flex:50"></span><span class="ty-seg--1" style="flex:975"></span><span class="ty-seg--2" style="flex:390"></span><span class="ty-seg--3" style="flex:585"></span></div>
+  <ul class="ty-alloc__legend">
+    <li><span class="ty-dot ty-dot--4"></span>Zakat <span class="ty-num">50.00</span><span class="ty-cap">2.5% first</span></li>
+    <li><span class="ty-dot ty-dot--1"></span>Needs <span class="ty-num">975.00</span><span class="ty-cap">50%</span></li>
+    <li><span class="ty-dot ty-dot--2"></span>Wants <span class="ty-num">390.00</span><span class="ty-cap">20%</span></li>
+    <li><span class="ty-dot ty-dot--3"></span>Savings <span class="ty-num">585.00</span><span class="ty-cap">30%</span></li>
+  </ul>
+</div><div class="ty-alloc">
+  <div class="ty-alloc__head"><b>Leftover from September</b><span class="ty-num">400.00</span><span class="ty-cap">no Zakat on this income</span></div>
+  <div class="ty-alloc__bar" role="img" aria-label="Needs 200.00, Savings 200.00"><span class="ty-seg--1" style="flex:1"></span><span class="ty-seg--3" style="flex:1"></span></div>
+  <ul class="ty-alloc__legend">
+    <li><span class="ty-dot ty-dot--1"></span>Needs <span class="ty-num">200.00</span><span class="ty-cap">50%</span></li>
+    <li><span class="ty-dot ty-dot--3"></span>Savings <span class="ty-num">200.00</span><span class="ty-cap">50%</span></li>
+  </ul>
+</div></div>
+<div class="ty-stack">
+<section class="ty-section" aria-label="Zakat">
+<div class="ty-shead">
+  <div class="ty-shead__name"><span class="ty-dot ty-dot--4"></span><b>Zakat</b><span class="ty-pill">Rest 0.00</span><span class="ty-cap">50.00 received · 2.5% of Paycheck, taken first</span></div>
+  <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">50.00</span></div>
+  <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">0.00</span></div>
+  <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">50.00</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Zakat</span><span class="ty-cap">paid once a year</span></div>
+    <div class="ty-meter" role="img" aria-label="0.00 of 50.00 spent"><span style="width:0%"></span></div>
+    <div class="ty-cap ty-brow__sub">0.00 of 50.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">50.00</div>
+  <div class="ty-num ty-right ty-wide">0.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive">50.00</span></div>
+</div>
+</section>
+<section class="ty-section" aria-label="Needs">
+<div class="ty-shead">
+  <div class="ty-shead__name"><span class="ty-dot ty-dot--1"></span><b>Needs</b><span class="ty-pill">Rest 75.00</span><span class="ty-cap">1,175.00 received · 50% of Paycheck, 50% of Leftover</span></div>
+  <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">1,100.00</span></div>
+  <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">990.15</span></div>
+  <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">109.85</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Mortgage</span><span class="ty-cap"></span></div>
+    <div class="ty-meter" role="img" aria-label="600.00 of 600.00 spent"><span style="width:100%"></span></div>
+    <div class="ty-cap ty-brow__sub">600.00 of 600.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">600.00</div>
+  <div class="ty-num ty-right ty-wide">600.00</div>
+  <div class="ty-right"><span class="ty-pill">0.00 left</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Food</span><span class="ty-cap">rolls over up to 100.00</span></div>
+    <div class="ty-meter" role="img" aria-label="212.40 of 300.00 spent"><span style="width:71%"></span></div>
+    <div class="ty-cap ty-brow__sub">212.40 of 300.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">300.00</div>
+  <div class="ty-num ty-right ty-wide">212.40</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive">87.60</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Utilities</span><span class="ty-cap"></span></div>
+    <div class="ty-meter ty-meter--negative" role="img" aria-label="131.75 of 120.00 spent"><span style="width:100%"></span></div>
+    <div class="ty-cap ty-brow__sub">131.75 of 120.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">120.00</div>
+  <div class="ty-num ty-right ty-wide">131.75</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--negative">−11.75 over</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Transport</span><span class="ty-cap">rolls over up to 50.00</span></div>
+    <div class="ty-meter" role="img" aria-label="46.00 of 80.00 spent"><span style="width:57%"></span></div>
+    <div class="ty-cap ty-brow__sub">46.00 of 80.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">80.00</div>
+  <div class="ty-num ty-right ty-wide">46.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive">34.00</span></div>
+</div>
+</section>
+<section class="ty-section" aria-label="Wants">
+<div class="ty-shead">
+  <div class="ty-shead__name"><span class="ty-dot ty-dot--2"></span><b>Wants</b><span class="ty-pill">Rest 0.00</span><span class="ty-cap">390.00 received · 20% of Paycheck</span></div>
+  <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">390.00</span></div>
+  <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">155.47</span></div>
+  <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">234.53</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Eating out</span><span class="ty-cap"></span></div>
+    <div class="ty-meter" role="img" aria-label="96.50 of 150.00 spent"><span style="width:64%"></span></div>
+    <div class="ty-cap ty-brow__sub">96.50 of 150.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">150.00</div>
+  <div class="ty-num ty-right ty-wide">96.50</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive">53.50</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Subscriptions</span><span class="ty-cap"></span></div>
+    <div class="ty-meter ty-meter--warning" role="img" aria-label="38.97 of 40.00 spent"><span style="width:97%"></span></div>
+    <div class="ty-cap ty-brow__sub">38.97 of 40.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">40.00</div>
+  <div class="ty-num ty-right ty-wide">38.97</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--warning">1.03 left</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Hobbies</span><span class="ty-cap">60% of what is left</span></div>
+    <div class="ty-meter" role="img" aria-label="20.00 of 120.00 spent"><span style="width:17%"></span></div>
+    <div class="ty-cap ty-brow__sub">20.00 of 120.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">120.00</div>
+  <div class="ty-num ty-right ty-wide">20.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive">100.00</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Gifts</span><span class="ty-cap">40% of what is left</span></div>
+    <div class="ty-meter" role="img" aria-label="0.00 of 80.00 spent"><span style="width:0%"></span></div>
+    <div class="ty-cap ty-brow__sub">0.00 of 80.00 spent</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">80.00</div>
+  <div class="ty-num ty-right ty-wide">0.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive">80.00</span></div>
+</div>
+</section>
+<section class="ty-section" aria-label="Savings">
+<div class="ty-shead">
+  <div class="ty-shead__name"><span class="ty-dot ty-dot--3"></span><b>Savings</b><span class="ty-pill">Rest 0.00</span><span class="ty-cap">785.00 received · 30% of Paycheck, 50% of Leftover</span></div>
+  <div class="ty-shead__tot ty-wide"><span class="ty-label">This month</span><span class="ty-num">785.00</span></div>
+  <div class="ty-shead__tot ty-wide"><span class="ty-label">Saved</span><span class="ty-num">11,041.80</span></div>
+  <div class="ty-shead__tot"><span class="ty-label">Target</span><span class="ty-num"> </span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Car</span><span class="ty-cap">fills to 15,000.00</span></div>
+    <div class="ty-meter ty-meter--goal" role="img" aria-label="6,300.00 of 15,000.00 saved"><span style="width:42%"></span></div>
+    <div class="ty-cap ty-brow__sub">6,300.00 of 15,000.00 saved</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">300.00</div>
+  <div class="ty-num ty-right ty-wide">6,300.00</div>
+  <div class="ty-right"><span class="ty-pill">42% of 15,000</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Emergencies</span><span class="ty-cap">fills to 3,000.00</span></div>
+    <div class="ty-meter ty-meter--goal" role="img" aria-label="2,400.00 of 3,000.00 saved"><span style="width:80%"></span></div>
+    <div class="ty-cap ty-brow__sub">2,400.00 of 3,000.00 saved</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">200.00</div>
+  <div class="ty-num ty-right ty-wide">2,400.00</div>
+  <div class="ty-right"><span class="ty-pill">80% of 3,000</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Long-term investing</span><span class="ty-cap">paid 1,200.00 · worth 1,260.00</span></div>
+    <div class="ty-meter ty-meter--goal" role="img" aria-label="1,200.00 of 20,000.00 saved"><span style="width:6%"></span></div>
+    <div class="ty-cap ty-brow__sub">1,200.00 of 20,000.00 saved</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">200.00</div>
+  <div class="ty-num ty-right ty-wide">1,200.00</div>
+  <div class="ty-right"><span class="ty-pill">6% of 20,000</span></div>
+</div>
+<div class="ty-brow">
+  <div class="ty-brow__name">
+    <div class="ty-brow__title"><span>Parents</span><span class="ty-cap">held in USD · ≈ 1,141.80 EUR</span></div>
+    <div class="ty-meter ty-meter--goal" role="img" aria-label="1,141.80 of 2,000.00 saved"><span style="width:57%"></span></div>
+    <div class="ty-cap ty-brow__sub">1,141.80 of 2,000.00 saved</div>
+  </div>
+  <div class="ty-num ty-right ty-wide">85.00</div>
+  <div class="ty-num ty-right ty-wide">1,240.00<span class="ty-cur">USD</span></div>
+  <div class="ty-right"><span class="ty-pill">57% of 2,000</span></div>
+</div>
+</section>
+</div>
+</main>
+<nav class="ty-tabs" aria-label="Main"><a href="#" aria-current="page">Budget</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">More</a></nav>
+</div>
+</body>
+</html>
