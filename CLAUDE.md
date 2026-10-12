@@ -10,7 +10,8 @@ The team is the agent types in `.claude/agents/`:
 
 - `ui-dev` builds the UI part of a spec.
 - `backend-dev` builds the backend part of a spec.
-- `reviewer` checks their work against the spec.
+- `tester` writes browser tests from the spec without seeing the developers' code, then runs them against the built app. It is the only role that sees the app running.
+- `reviewer` checks their work against the spec, and the tester's screenshots against the design.
 
 `ROADMAP.md` holds the product's features, the rules agreed with the user, and the build order. Read it before writing a spec, and update it when the user changes or adds a feature.
 
@@ -18,7 +19,7 @@ For every design decision (a UI spec, a change to the design system, a question 
 
 The design system exists in two places. The `design/` folder is the copy the agents build from. The page the user reviews is https://claude.ai/artifact/U9rfYc98g8QVVAZ8xKNCgW. When the design changes, change both in the same piece of work so they never drift.
 
-The code is in two packages, `server/` (Express, SQLite) and `web/` (React, Vite), on GitHub at `obeidahmad/tally`. Start each spec's work on its own branch. The subagents do not commit or push; that happens only when the user asks.
+The code is in two packages, `server/` (Express, SQLite) and `web/` (React, Vite), with the browser tests in a third, `e2e/` (Playwright), on GitHub at `obeidahmad/tally`. Start each spec's work on its own branch. The subagents do not commit or push; that happens only when the user asks.
 
 The user has asked for this way of working, so spawning these agents is requested. Hand the spec to them as soon as it is written, without asking the user for approval. The full pipeline (spec sections, parallel handoff, review, fix rounds, final report) is in `.claude/skills/team/SKILL.md`; follow it for every piece of work, whether or not the user typed `/team`.
 

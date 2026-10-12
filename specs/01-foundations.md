@@ -33,7 +33,7 @@ Both workers build against this section exactly as written.
 
 ### Conventions
 
-- Every route is under `/api` and speaks JSON. Requests that change data must send `Content-Type: application/json`; the server rejects anything else on those routes with 400. Together with the cookie settings below this is the defence against cross-site requests. CORS stays off.
+- Every route is under `/api` and speaks JSON. Requests that change data (every POST, PATCH and DELETE, including ones with no body such as sign-out) must send `Content-Type: application/json`; the server rejects anything else on those routes with 400. Together with the cookie settings below this is the defence against cross-site requests. CORS stays off.
 - **Money** is an integer count of minor units (cents) in a field ending in `Minor`. Never a float, never a string. All amounts in this slice are in the signed-in person's base currency.
 - **Dates** are calendar dates, `YYYY-MM-DD`. **Months** are `YYYY-MM`. No times, no time zones.
 - **Ids** are integers.
@@ -98,7 +98,7 @@ type Transaction = { id: number; date: string; kind: 'expense' | 'income'; amoun
 | `GET /api/health` | | 200 `{ "ok": true }` | |
 | `GET /api/auth/state` | | 200 `{ "needsSetup": boolean, "user": User \| null }` | `needsSetup` is true while no account exists. |
 | `POST /api/auth/setup` | `{ username, displayName, password, baseCurrency }` | 201 `{ user }`, signed in | Only while no account exists; creates the owner. Afterwards 409 `conflict`. |
-| `POST /api/auth/login` | `{ username, password }` | 200 `{ user }`, signed in | 401 `invalid_credentials`. At most 10 attempts per 15 minutes per address, then 429. |
+| `POST /api/auth/login` | `{ username, password }` | 200 `{ user }`, signed in | 401 `invalid_credentials`. At most 10 failed attempts per 15 minutes per address, then 429. Successful sign-ins do not count. |
 | `POST /api/auth/logout` | | 204 | Ends this session. |
 | `POST /api/me/password` | `{ currentPassword, newPassword }` | 204 | Wrong current password is a `validation` error on `currentPassword`. Ends the person's other sessions. |
 
@@ -135,8 +135,8 @@ type Transaction = { id: number; date: string; kind: 'expense' | 'income'; amoun
 | Route | Body | Success | Notes |
 |---|---|---|---|
 | `GET /api/transactions?month=YYYY-MM` | | 200 `{ "transactions": Transaction[] }` | `month` is required. Optional `pocketId` and `subsectionId` filters. Newest date first, then highest id first. |
-| `POST /api/transactions` | `{ date, kind, amountMinor, pocketId, subsectionId, payee, note? }` | 201 `{ transaction }` | An expense needs a `subsectionId`; income needs `subsectionId: null`. Otherwise a `validation` error on `subsectionId`. |
-| `PATCH /api/transactions/:id` | any of the same fields | 200 `{ transaction }` | The result must still satisfy the same rules. |
+| `POST /api/transactions` | `{ date, kind, amountMinor, pocketId, subsectionId, payee, note? }` | 201 `{ transaction }` | An expense needs a `subsectionId`; income needs `subsectionId: null`, sent explicitly. Otherwise a `validation` error on `subsectionId`. |
+| `PATCH /api/transactions/:id` | any of the same fields | 200 `{ transaction }` | The patch is merged over the stored transaction and the result must satisfy the same rules, so changing `kind` to income also sends `subsectionId: null`. |
 | `DELETE /api/transactions/:id` | | 204 | |
 
 **Budget**
@@ -178,7 +178,7 @@ Owner: `backend-dev`. Paths: `server/**`, the root `package.json`, the root `REA
 2. **Isolation.** Every query is filtered by the signed-in person's id. Asking for another person's row by id answers 404, exactly as if it did not exist.
 3. **Passwords.** `crypto.scrypt` with a random 16-byte salt per person, N = 32768, r = 8, p = 1 (raise `maxmem` to fit), stored with its parameters so they can be raised later, compared with `crypto.timingSafeEqual`. On an unknown username still run one scrypt so the response time does not reveal whether the username exists.
 4. **Sessions.** A random 32-byte token in a cookie named `tally_session`: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when `TALLY_COOKIE_SECURE` is true, 30 days. Store only the SHA-256 of the token. Reject and delete expired sessions.
-5. **Hardening.** `helmet` with its defaults, the sign-in rate limit, the JSON content-type rule, `zod` validation on every body and query.
+5. **Hardening.** `helmet`, the sign-in rate limit, the JSON content-type rule, `zod` validation on every body and query. Tally is usually reached over plain HTTP on a home network, so change two of helmet's defaults: leave the `upgrade-insecure-requests` directive out of the content security policy, and send the `Strict-Transport-Security` header only when `TALLY_COOKIE_SECURE` is true.
 6. **Routes** as in the contract.
 7. **Serving the app.** If `web/dist` exists, serve it, and answer any other non-`/api` GET with its `index.html` so page reloads work. Express 5 does not accept a bare `*` route: use a final middleware.
 8. **Root `package.json`** with scripts only, no dependencies: `setup` (installs both packages), `build` (web, then server), `test` (both), `start`, `dev:server`, `dev:web`.
@@ -206,15 +206,17 @@ On load call `GET /api/auth/state`: go to `/setup` when `needsSetup`, to `/sign-
 
 ### Frame
 
-`AppShell`. Navigation shows only pages that exist: Budget, Transactions, Pockets, Settings. On phones the tab bar shows the same four (label the fourth "Settings", not "More"). The sidebar foot shows "Signed in as {displayName}", "Base currency {code}" and a quiet "Sign out" button; on phones "Sign out" is on the Settings page.
+`AppShell`. Navigation shows only pages that exist: Budget, Transactions, Pockets, Settings. On phones the tab bar shows the same four (label the fourth "Settings", not "More"). The sidebar foot shows "Signed in as {displayName}", "Base currency {code}" and a quiet "Sign out" button; on phones "Sign out" is on the Settings page. The frame fills the height of the window, so the sidebar reaches the bottom on short pages too.
+
+On phones every page starts with the translucent top bar (`ty-topbar`), as `design/components/AppShell/README.md` and the `BudgetPhone` preview show, and the desktop title row is not shown. The bar holds the page title and the page's primary action shortened to "Add", with the full name as its `aria-label`: Budget (previous and next month buttons around the month, "Add" for a transaction), Transactions ("Add"), Pockets ("Add"), Settings (title only). There is no Open pill in this slice.
 
 ### Budget page
 
 - `MonthHeader`: the month as the title, previous and next buttons (next is disabled on the current month), and the primary button "Add transaction". No Open pill and no "Close month" button in this slice. Stats in this order: Income, Budgeted, Spent so far.
-- One `SectionGroup` per section: the dot in the section's colour (slot 0 uses the plain grey dot), the name, and totals over the Budgeted, Spent and Available columns. No Rest pill and no "received" line in this slice. Two quiet buttons in the header: "Add subsection" and "Edit".
+- One `SectionGroup` per section: the dot in the section's colour (slot 0 uses the plain grey dot), the name, and totals over the Budgeted, Spent and Available columns. No Rest pill and no "received" line in this slice. A small quiet "Edit" button follows the name, and "Add subsection" is the section's last row, as `design/components/SectionGroup` shows.
 - One `BudgetRow` per subsection, with the meter and pill states exactly as `design/components/BudgetRow/README.md` and `Pill/README.md` give them: plain amount in the positive pill; "{amount} left" in the warning pill when more than 90% is used and something is left; "−{amount} over" in the negative pill when over; "0.00 left" in the neutral pill when exactly nothing is left. A subsection with a budget of 0 and nothing spent shows the neutral pill and an empty meter.
 - Selecting a row opens "Edit subsection" (name, monthly budget, and a Delete button kept apart from Save). "Edit" on a section opens the same for its name.
-- "Add section" sits under the last section.
+- "Add section" sits under the last section, as a plain button.
 - With no sections: one card with the line "No sections yet. A section is a group such as Needs or Savings." and the button "Add section".
 
 ### Transactions page
@@ -245,15 +247,25 @@ If there is no pocket yet, the dialog says "Add a pocket first" with a link to t
 
 ### Rules for every page
 
-- **Dialogs** are the native `<dialog>` element opened with `showModal()`, carrying the `ty-dialog` class, with `::backdrop` in the `scrim` token. Escape closes them and focus returns to what opened them. On phones the dialog sits at the bottom edge at full width.
+- **Dialogs** are the native `<dialog>` element opened with `showModal()`, carrying the `ty-dialog` class, with `::backdrop` in the `scrim` token. Escape closes them and focus returns to what opened them; if that control no longer exists (an empty-state button that disappeared after the save), focus moves to the page's main heading. On phones the dialog sits at the bottom edge at full width.
 - **Amounts.** One module formats and parses money, with tests. Format: two decimals, thousands separators, U+2212 for minus (`1,175.00`, `−48.20`). Parse: accept `12`, `12.5`, `12.50` and `1,234.56`; reject anything else, including zero, negatives and more than two decimals, with "Enter an amount above zero, with at most two decimals." under the field. Convert to minor units without floating-point error.
 - **Errors.** Show each `fields` message under its field in `ty-error` and mark the input with `ty-input--error`. Show any other error's `message` at the top of the form.
-- **After a change** the affected lists and totals refresh without a page reload.
-- **Undo.** Deleting a transaction, subsection, section or pocket does it at once and shows a toast with "Undo" for 6 seconds; Undo creates it again. The design folder has no toast yet, so build it in `app.css`: fixed at the bottom centre (above the tab bar on phones), `surface` fill, 1px `line` outline, `radius-md`, `shadow-raised`, body text and one quiet button, `role="status"`, one toast at a time. The same toast, without a button, confirms a save ("Saved").
+- **After a change** the affected lists and totals refresh without a page reload. Signing out does not trigger a refresh.
+- **Undo.** Deleting a transaction, subsection, section or pocket does it at once and shows the design's `Toast` (`ty-toast`) with "Undo" for 6 seconds; Undo creates it again. The same toast, without a button, confirms a save ("Saved") for 3 seconds.
 - **Loading** shows "Loading…" in `ty-cap` where the content will be. **Failure** shows one card with "Couldn't load this page. Check that Tally's server is running." and the button "Try again".
 - **Nothing is loaded from another host.** Fonts come from the two npm packages.
 - **No colour literals** in `web/src`. Every colour is a token.
 - Every input has a label, every control works from the keyboard, and the focus ring is the design's.
+
+## Browser tests
+
+Owner: `tester`. Paths: `e2e/**`.
+
+Added after the slice was built, when the team gained a tester, so the suite for this slice is written against an app that already exists.
+
+- A third independent package, `e2e/`, with `@playwright/test`. Its `test` script starts the built server on a spare port with a new temporary database and runs the suite. The root `package.json` gets one script, `test:e2e`, that builds the app and then runs it.
+- Cover acceptance criteria 12 to 18 and every flow in the UI section: first-run set-up, sign-in and sign-out, each page's empty state, adding, editing and deleting a section, a subsection, a pocket and a transaction, Undo after each delete, the four pill states and a zero budget, figures refreshing without a reload, the Transactions filters, changing a password, the owner adding a person, a second person seeing none of the first person's data, the delete conflicts shown in their dialogs, the failure state with "Try again", keyboard use of rows and dialogs, the phone layout, and dark mode.
+- The sign-in rate limit is not tested in the browser.
 
 ## Acceptance criteria
 
@@ -268,7 +280,7 @@ If there is no pocket yet, the dialog says "Add a pocket first" with a link to t
 9. An expense without a subsection, income with a subsection, and an amount that is zero, negative or not an integer each answer 400 `validation`.
 10. Deleting a pocket or a subsection that has transactions answers 409 `in_use`.
 11. A changing request without `Content-Type: application/json` answers 400.
-12. A first run shows the set-up page, then the app. All four pages are reachable from the sidebar on desktop and from the tab bar at phone width.
+12. A first run shows the set-up page, then the app. All four pages are reachable from the sidebar on desktop and from the tab bar at phone width, where each page also shows the top bar with its title and primary action.
 13. The Budget page shows Budgeted, Spent and Available for each subsection with the four pill states as specified.
 14. Adding, editing or deleting a transaction updates the Budget page and the pocket balance without a reload, and a delete offers Undo.
 15. Amount entry accepts and rejects the examples given, and amounts display in the specified format. The money module has tests.
