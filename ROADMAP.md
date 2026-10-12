@@ -27,6 +27,10 @@ Done as a first version, in `design/`. The logo is set aside for now.
 Built in three slices:
 
 1. **Foundations** (`specs/01-foundations.md`): accounts and sign-in, pockets, sections and subsections with a fixed monthly budget, hand-entered transactions, the month's budget.
+   Followed by `specs/02-first-income.md`, from the user's first try of the app: "Add income" on the Budget page, a pocket created inside the transaction dialog, and an emoji on every pocket.
+   Then `specs/03-add-buttons.md`: "Add income" moves next to "Add transaction", and the two are coloured buttons, green for income and orange for spending.
+   Then `specs/04-section-budget.md`: a section has its own budget, set as the sum of its subsections, a fixed amount or a percentage of income.
+   Then `specs/05-segmented-choices.md`: the budget choice and the transaction type become one-row segmented controls, and a new section starts on a percentage.
 2. **Income and month close:** income sources and split rules, tax-style sections, percentage budgets, rollover with caps, rest, closing a month, overspending carried forward, moving money between subsections.
 3. **Currencies and net worth:** pockets in other currencies, transfers and conversions, where each subsection's money sits, net worth over time.
 
@@ -39,11 +43,14 @@ Built in three slices:
 
 - A pocket is where money sits: cash, a bank account, a fund, a broker.
 - Each pocket has one currency.
+- Each pocket has an emoji the person picks, shown wherever its name is, so pockets are easy to tell apart.
+- A pocket can be created from the Pockets page or in place while adding a transaction.
 
 **Sections and subsections**
 
 - A section is a top-level group such as Needs, Wants or Savings.
-- Subsections (mortgage, food, car) draw their budget from their section.
+- A section's budget is set in one of three ways: the sum of its subsections' budgets, a fixed amount, or a percentage of the month's income. Fixed amounts are taken first and percentages apply to the income that remains, each rounded down to the cent. All percentage sections together take at most 100%. A new section starts on a percentage, because its budget is thought of before its subsections; the sum of subsections stays as a choice for people who budget from the bottom up.
+- Subsections (mortgage, food, car) draw their budget from their section. What they have not claimed is the section's rest; they may claim more than the section has, and the rest then shows below zero.
 - A subsection's budget is a fixed amount or a percentage. Fixed amounts are taken first, and percentages apply to what remains.
 - Each percentage share is rounded down to the cent, and the leftover cents join the section's rest. Example: 1,000.01 in the section, A fixed at 60, B 60%, C 40% gives B 564.00, C 376.00 and 0.01 to the rest.
 
@@ -114,5 +121,6 @@ Taken from the three apps, after the phases above:
 ## Open decisions
 
 - The open-source licence.
+- Whether a section's percentage is taken from all of the month's income or from what is left after fixed-amount sections. Spec 04 builds the second, to match the rule for subsections; the user has not confirmed it yet.
 - How a host reaches their server away from home (a private network tool or a rented server). Linking a bank needs an HTTPS address.
 - Whether Enable Banking covers the user's Revolut account. Its documentation describes Bank of Cyprus; Revolut is unconfirmed until an account is linked.

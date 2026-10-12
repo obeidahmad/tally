@@ -2,6 +2,11 @@ node_modules/
 dist/
 coverage/
 
+# Browser test output
+e2e/screenshots/
+test-results/
+playwright-report/
+
 # Tally's database and anything else it stores
 data/
 *.db

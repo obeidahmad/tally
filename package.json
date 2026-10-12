@@ -1,0 +1,14 @@
+{
+  "name": "tally",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "setup": "npm install --prefix server && npm install --prefix web",
+    "build": "npm run build --prefix web && npm run build --prefix server",
+    "test": "npm test --prefix server && npm test --prefix web",
+    "start": "npm start --prefix server",
+    "dev:server": "npm run dev --prefix server",
+    "dev:web": "npm run dev --prefix web",
+    "test:e2e": "npm run build && npm test --prefix e2e"
+  }
+}

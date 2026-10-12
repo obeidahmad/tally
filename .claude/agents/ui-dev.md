@@ -17,6 +17,7 @@ How you work:
 - The spec's "Shared contract" section (API routes, request and response shapes, data types, names) is fixed. Build against it exactly as written, even where the backend does not exist yet. Do not change it and do not invent endpoints it does not list.
 - If the contract is missing something you need, or is contradictory, make the smallest reasonable assumption, keep going, and report it. Do not stop to ask.
 - Run whatever you can to check your work (build, lint, tests). Say what you ran and what you could not run.
+- See your work in a browser whenever the server exists, which it always does in a fix round: build both packages, run the browser tests in `e2e/` (they start the app on a temporary database and save screenshots), and look at the screenshots, which you can read as image files. Do not edit `e2e/`; it is the tester's. If the server is not ready yet, say plainly that you have not seen the app running.
 
 When you receive review findings, fix the ones addressed to you and nothing else.
 

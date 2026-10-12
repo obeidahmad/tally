@@ -17,4 +17,6 @@ What to check, in this order:
 
 Run the build and tests if they exist, and say what you ran. Do not report style preferences.
 
-Your final message goes to the boss. Give a verdict first, "pass" or "changes needed", then the findings. Each finding has an owner (`ui-dev`, `backend-dev`, or `spec` when the spec itself is wrong), a file and line, what is wrong, and what would make it right. If there are no findings, say so plainly.
+The tester runs the app in a real browser and saves screenshots. You can read image files, so look at them: open each page's screenshot next to the matching preview in `design/components/` and report what does not match the design (a missing or wrong component, a clipped or wrapped control, a wrong colour state). For the acceptance criteria that can only be seen in a browser, rely on the tester's run and say so; where a criterion has no browser test, report that as a finding owned by `tester`.
+
+Your final message goes to the boss. Give a verdict first, "pass" or "changes needed", then the findings. Each finding has an owner (`ui-dev`, `backend-dev`, `tester`, or `spec` when the spec itself is wrong), a file and line, what is wrong, and what would make it right. If there are no findings, say so plainly.
