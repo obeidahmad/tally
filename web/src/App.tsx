@@ -4,29 +4,30 @@ import { api, setUnauthenticatedHandler, type User } from './api';
 import { AuthCtx, useAuth } from './auth';
 import BudgetPage from './pages/Budget';
 import { SetupPage, SignInPage } from './pages/Entry';
+import PipelinePage from './pages/Pipeline';
 import PocketsPage from './pages/Pockets';
 import SettingsPage from './pages/Settings';
 import TransactionsPage from './pages/Transactions';
 import { Load, ToastProvider } from './ui';
 
-const PAGES = [['/budget', 'Budget'], ['/transactions', 'Transactions'], ['/pockets', 'Pockets'], ['/settings', 'Settings']] as const;
+const PAGES = [['/budget', 'Budget'], ['/pipeline', 'Pipeline'], ['/transactions', 'Transactions'], ['/pockets', 'Pockets'], ['/settings', 'Settings']] as const;
 
 function Shell() {
   const { user, setUser } = useAuth();
   const signOut = async () => { await api('POST', '/auth/logout').catch(() => {}); setUser(null); };
-  const links = PAGES.map(([to, label]) => <NavLink key={to} to={to}>{label}</NavLink>);
+  const link = ([to, label]: readonly [string, string]) => <NavLink key={to} to={to}>{label}</NavLink>;
   return (
     <div className="ty-shell">
       <aside className="ty-side">
         <div className="ty-word">Tally</div>
-        <nav className="ty-nav" aria-label="Main">{links}</nav>
+        <nav className="ty-nav" aria-label="Main">{PAGES.map(link)}</nav>
         <div className="ty-side__foot ty-cap">
           Signed in as {user.displayName}<br />Base currency {user.baseCurrency}
           <div><button className="ty-btn ty-btn--quiet app-signout" onClick={signOut}>Sign out</button></div>
         </div>
       </aside>
       <main className="ty-main"><Outlet /></main>
-      <nav className="ty-tabs" aria-label="Main">{links}</nav>
+      <nav className="ty-tabs" aria-label="Main">{PAGES.filter(([to]) => to !== '/pipeline').map(link)}</nav>
     </div>
   );
 }
@@ -51,6 +52,7 @@ function Routing({ boot, setBoot }: { boot: Boot; setBoot: (b: Boot) => void }) 
       <Routes>
         <Route element={<Shell />}>
           <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/pockets" element={<PocketsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

@@ -15,3 +15,6 @@ export const monthTitle = (month: string) => `${MONTHS[Number(month.slice(5)) - 
 
 /** "2026-10-11" -> "11 October" */
 export const dayHeading = (date: string) => `${Number(date.slice(8))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
+
+/** "2026-10" -> "October" */
+export const monthName = (month: string) => MONTHS[Number(month.slice(5)) - 1];

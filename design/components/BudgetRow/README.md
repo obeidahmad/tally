@@ -5,5 +5,6 @@ One subsection inside a section. Provide its name, its budget, what was spent, a
 - Columns: Budgeted, Spent, Available. Available is a Pill whose state comes from the numbers.
 - The meter under the name shows spent against budget. It turns `warning` above 90% and `negative` when over.
 - A note after the name states the rule in words: "rolls over up to 100.00", "60% of what is left".
+- Money the subsection kept from last month shows as a note after the name, "+49.99 from September", and counts with its budget in the meter and in Available.
 - A savings goal is the same row with columns This month, Saved, Target. Its meter is ink and shows saved against the cap.
 - On phones the Budgeted and Spent columns are replaced by one line under the meter.

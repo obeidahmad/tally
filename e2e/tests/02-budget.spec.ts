@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, shot, row, pillOf, seedBudget, monthTitle, chip } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, row, pillOf, seedBudget, monthTitle } from '../support/fixtures';
 
 const POSITIVE_OR_WARNING_OR_NEGATIVE = /ty-pill--(positive|warning|negative)/;
 
@@ -25,7 +25,6 @@ test('adding a section from the empty state lists it and moves focus to the page
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add section' }).click();
   await dialog(page).getByLabel('Name').fill('Needs');
-  await dialog(page).getByRole('radio', { name: 'Subsections' }).check(); // a new section starts on Percentage (spec 05)
   await dialog(page).getByRole('button', { name: 'Add section' }).click();
   await expect(dialog(page)).toBeHidden();
   await expect(page.locator('.ty-section', { hasText: 'Needs' })).toBeVisible();
@@ -35,7 +34,6 @@ test('adding a section from the empty state lists it and moves focus to the page
 test('a section needs a name: the error shows under the field', async ({ page, me }) => {
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add section' }).click();
-  await dialog(page).getByRole('radio', { name: 'Subsections' }).check(); // so the name is the only invalid field
   await dialog(page).getByRole('button', { name: 'Add section' }).click();
   await expect(dialog(page).getByLabel('Name')).toHaveClass(/ty-input--error/);
   await expect(dialog(page).locator('.ty-error')).toBeVisible();
@@ -82,9 +80,11 @@ test('the four pill states, a zero budget, and the month figures', async ({ page
   await expect(stats).toContainText('2,000.00');
   await expect(stats).toContainText('1,060.00');
   await expect(stats).toContainText('983.12');
+  await expect(stats).toContainText('940.00'); // Left over: 2,000.00 income minus the 1,060.00 the steps send
   const order = (await stats.innerText()).replace(/\s+/g, ' ').toLowerCase();
   expect(order.indexOf('income')).toBeLessThan(order.indexOf('budgeted'));
   expect(order.indexOf('budgeted')).toBeLessThan(order.indexOf('spent so far'));
+  expect(order.indexOf('spent so far')).toBeLessThan(order.indexOf('left over'));
   await expect(page.getByText('Close month')).toHaveCount(0);
   await shot(page, 'budget-desktop-light');
 });
@@ -144,7 +144,9 @@ test('edit a subsection: rename and change the budget, figures update and Saved 
   await expect(toast(page)).toContainText('Saved');
   await expect(row(page, /Presents/)).toContainText('50.00');
   await expect(row(page, /Gifts/)).toHaveCount(0);
-  await expect(page.locator('.ty-stats').first()).toContainText('1,110.00');
+  // Budgeted is what the pipeline sends, so a subsection's budget no longer moves it.
+  await expect(page.locator('.ty-stats').first()).toContainText('1,060.00');
+  await expect(page.locator('.ty-stats').first()).not.toContainText('1,110.00');
 });
 
 test('edit a section: rename it', async ({ page, me }) => {
@@ -152,8 +154,8 @@ test('edit a section: rename it', async ({ page, me }) => {
   await page.goto('/budget');
   await page.locator('.ty-section', { hasText: 'Wants' }).getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(dialog(page).getByRole('heading', { name: /Edit section/ })).toBeVisible();
-  // Spec 04/05: a section made before the budget kinds opens on "Subsections" with no value field.
-  await expect(chip(dialog(page), 'Budget', 'Subsections')).toBeChecked();
+  // Spec 06: the section dialog has the Name only.
+  await expect(dialog(page).getByRole('group', { name: 'Budget' })).toHaveCount(0);
   await expect(dialog(page).getByLabel('Monthly budget')).toHaveCount(0);
   await shot(page, 'dialog-edit-section-desktop-light');
   await dialog(page).getByLabel('Name', { exact: true }).fill('Treats');
@@ -219,7 +221,6 @@ test('a new section takes the next colour slot, and Add section stays available'
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add section' }).click();
   await dialog(page).getByLabel('Name').fill('Savings');
-  await dialog(page).getByRole('radio', { name: 'Subsections' }).check(); // a new section starts on Percentage (spec 05)
   await dialog(page).getByRole('button', { name: 'Add section' }).click();
   const sec = page.locator('.ty-section', { hasText: 'Savings' });
   await expect(sec.locator('.ty-dot').first()).toHaveClass(/ty-dot--3/);

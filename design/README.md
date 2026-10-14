@@ -15,10 +15,10 @@ Tally is a self-hosted budgeting app for a household. Its screens should feel fa
 ## Content fundamentals
 
 - Write short, plain sentences in sentence case. Buttons are verbs that say what happens: "Add transaction", "Close month", "Import a statement".
-- Use the app's own nouns and never rename them: section, subsection, pocket, rest, rollover, cap, income, base currency. A section is a group such as Needs. A subsection is a line inside it such as Food. A pocket is where money sits.
+- Use the app's own nouns and never rename them: section, subsection, pocket, source, step, destination, left over, rest, rollover, cap, income, base currency. A section is a group such as Needs. A subsection is a line inside it such as Food. A pocket is where money sits. A destination is a section that a step sends money to.
 - Write amounts with two decimals and thousands separators and no currency symbol: `1,175.00`. Add the currency code only when the amount is not in the base currency: `1,240.00 USD`, with `≈ 1,141.80 EUR` under it.
 - Money out carries a minus sign (`−48.20`). Money in carries a plus sign.
-- State a rule in words next to the thing it governs: "rolls over up to 100.00", "50% of income after fixed sections", "2.5% of Paycheck, taken first", "60% of what is left".
+- State a rule in words next to the thing it governs: "rolls over up to 100.00", "1,950.00 left", "60% of what is left".
 - Say where a figure came from: "From your bank", "Entered by hand", "Synced 2 hours ago".
 - An error sits under its field and says what to do: "The cap must be at least the monthly budget."
 - Dates read "11 October" in lists and "October 2026" for a month.
@@ -53,9 +53,9 @@ Tally is a self-hosted budgeting app for a household. Its screens should feel fa
 
 ## Layout
 
-- **Desktop.** A 220px sidebar with the wordmark, Budget, Transactions, Pockets, Investments and Settings. The page starts with its title and its actions on one line, primary button rightmost.
+- **Desktop.** A 220px sidebar with the wordmark, Budget, Pipeline, Transactions, Pockets, Investments and Settings. The page starts with its title and its actions on one line, primary button rightmost.
 - **Phone (up to 640px).** One column with `space-4` gutters, a translucent top bar holding the page title and its primary action, and a bottom tab bar with Budget, Transactions, Pockets and More. Budget rows drop the Budgeted and Spent columns and say the same in one line under the meter, and a section header does the same under its name. Dialogs become bottom sheets.
-- **Budget page order.** MonthHeader, one AllocationBar per income source, then a SectionGroup per section with tax-style sections first.
+- **Budget page order.** MonthHeader, then a SectionGroup per section in the order they were created. How income reaches the sections is set on the Pipeline page.
 
 ## Iconography
 
@@ -65,4 +65,4 @@ Pocket marks are emoji drawn in Noto Emoji at weight 700 (`ty-emoji`): thick, ro
 
 ## Components
 
-`Button`, `Field`, `Pill`, `Amount`, `BudgetRow`, `SectionGroup`, `MonthHeader`, `AllocationBar`, `PocketCard`, `TransactionRow`, `Dialog`, `Toast`, `AppShell`. Also `Segmented`, `Chips`, `EmojiPicker`, `TransactionDialog` and `SectionDialog`. They are plain HTML with the classes in `components/bundle.css`; there is no script. Four screens show them composed: `BudgetScreen`, `BudgetPhone`, `TransactionsScreen`, `PocketsScreen`. The figures on the screens are examples.
+`Button`, `Field`, `Pill`, `Amount`, `BudgetRow`, `SectionGroup`, `MonthHeader`, `AllocationBar`, `PocketCard`, `TransactionRow`, `Dialog`, `Toast`, `AppShell`. Also `Segmented`, `Chips`, `EmojiPicker`, `TransactionDialog`, `SectionDialog` and `StepDialog`. They are plain HTML with the classes in `components/bundle.css`; there is no script. Four screens show them composed: `BudgetScreen`, `BudgetPhone`, `TransactionsScreen`, `PocketsScreen`. `PipelineScreen` is the Pipeline page. `PipelineNextMonth` is the Pipeline page once months close. The figures on the screens are examples.

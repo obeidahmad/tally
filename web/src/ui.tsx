@@ -24,12 +24,12 @@ export function Field({ label, error, hint, children }: {
   );
 }
 
-export function TextField({ label, value, onChange, error, type = 'text', autoComplete, hint }: {
-  label: string; value: string; onChange: (v: string) => void; error?: string; type?: string; autoComplete?: string; hint?: string;
+export function TextField({ label, value, onChange, error, type = 'text', autoComplete, hint, disabled }: {
+  label: string; value: string; onChange: (v: string) => void; error?: string; type?: string; autoComplete?: string; hint?: string; disabled?: boolean;
 }) {
   return (
     <Field label={label} error={error} hint={hint}>
-      {(p) => <input {...p} type={type} value={value} autoComplete={autoComplete} onChange={(e) => onChange(e.target.value)} />}
+      {(p) => <input {...p} type={type} value={value} autoComplete={autoComplete} disabled={disabled} onChange={(e) => onChange(e.target.value)} />}
     </Field>
   );
 }
@@ -100,12 +100,14 @@ export function SubsectionOptions({ sections }: { sections: Section[] }) {
   ))}</>;
 }
 
+export const StatePill = ({ closed }: { closed: boolean }) => (closed ? <span className="ty-pill">Closed</span> : <span className="ty-pill ty-pill--positive">Open</span>);
+
 export const FormError = ({ message }: { message: string }) => (message ? <div className="ty-error" role="alert">{message}</div> : null);
 
 /* ---------- Dialog ---------- */
 
 /** A native modal dialog. Mount it to open it; it calls onClose on Escape and when closed. */
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, sub, onClose, children }: { title: string; sub?: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -119,7 +121,9 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   }, []);
   return (
     <dialog ref={ref} className="ty-dialog" aria-labelledby={titleId} onClose={onClose}>
-      <h2 className="text-title" id={titleId}>{title}</h2>
+      {sub ? (
+        <div><h2 className="text-title" id={titleId}>{title}</h2><p className="ty-cap" style={{ margin: '0.25rem 0 0' }}>{sub}</p></div>
+      ) : <h2 className="text-title" id={titleId}>{title}</h2>}
       {children}
     </dialog>
   );

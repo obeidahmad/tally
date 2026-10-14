@@ -1,16 +1,17 @@
 import { test, expect, dialog, shot, seedBudget } from '../support/fixtures';
 
-const names = ['Budget', 'Transactions', 'Pockets', 'Settings'];
+const names = ['Budget', 'Transactions', 'Pockets', 'Settings']; // the phone tab bar
+const sidebar = ['Budget', 'Pipeline', 'Transactions', 'Pockets', 'Settings']; // spec 06 adds Pipeline after Budget
 
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test('all four pages are reachable from the sidebar, and only those four', async ({ page, me }) => {
+  test('all five pages are reachable from the sidebar, Pipeline right after Budget, and only those five', async ({ page, me }) => {
     await page.goto('/budget');
     const side = page.locator('.ty-side');
-    await expect(side.getByRole('link')).toHaveText(names);
+    await expect(side.getByRole('link')).toHaveText(sidebar);
     await expect(side.getByRole('link', { name: 'Budget' })).toHaveAttribute('aria-current', 'page');
-    for (const n of ['Transactions', 'Pockets', 'Settings', 'Budget']) {
+    for (const n of ['Pipeline', 'Transactions', 'Pockets', 'Settings', 'Budget']) {
       await side.getByRole('link', { name: n }).click();
       await expect(page).toHaveURL(new RegExp(`/${n.toLowerCase()}$`));
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
@@ -33,7 +34,7 @@ test.describe('desktop', () => {
 
   test('no sideways scroll on any page', async ({ page, me }) => {
     await seedBudget(me.seed);
-    for (const p of ['/budget', '/transactions', '/pockets', '/settings']) {
+    for (const p of ['/budget', '/pipeline', '/transactions', '/pockets', '/settings']) {
       await page.goto(p);
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), p).toBe(true);
@@ -155,7 +156,7 @@ test('nothing is requested from another host, and no request fails or logs a con
   });
   page.on('pageerror', (e) => problems.push(String(e)));
   await seedBudget(me.seed);
-  for (const p of ['/budget', '/transactions', '/pockets', '/settings']) {
+  for (const p of ['/budget', '/pipeline', '/transactions', '/pockets', '/settings']) {
     await page.goto(p);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     await page.waitForLoadState('networkidle');

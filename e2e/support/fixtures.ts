@@ -40,9 +40,7 @@ export function seed(page: Page) {
     return (await res.json())[key] as T;
   };
   return {
-    // `budget` is spec 04's budgetKind / budgetMinor / budgetBasisPoints; left out, the section is on "subsections".
-    section: (name: string, budget: { budgetKind?: 'subsections' | 'fixed' | 'percent'; budgetMinor?: number; budgetBasisPoints?: number } = {}) =>
-      ok<{ id: number }>(r.post('/api/sections', { data: { name, ...budget } }), 'section'),
+    section: (name: string) => ok<{ id: number }>(r.post('/api/sections', { data: { name } }), 'section'),
     subsection: (sectionId: number, name: string, budgetMinor: number) =>
       ok<{ id: number }>(r.post(`/api/sections/${sectionId}/subsections`, { data: { name, budgetMinor } }), 'subsection'),
     // `emoji` is left out of the request when not given, so the server's default for the kind applies.
@@ -50,13 +48,33 @@ export function seed(page: Page) {
       ok<{ id: number; emoji: string }>(r.post('/api/pockets', { data: { name, kind, openingBalanceMinor, ...(emoji ? { emoji } : {}) } }), 'pocket'),
     expense: (pocketId: number, subsectionId: number, amountMinor: number, payee: string, date = todayIso()) =>
       ok<{ id: number }>(r.post('/api/transactions', { data: { date, kind: 'expense', amountMinor, pocketId, subsectionId, payee } }), 'transaction'),
-    income: (pocketId: number, amountMinor: number, payee: string, date = todayIso()) =>
-      ok<{ id: number }>(r.post('/api/transactions', { data: { date, kind: 'income', amountMinor, pocketId, subsectionId: null, payee } }), 'transaction'),
+    // A source of the pipeline; without `boxId` it gets a box of its own.
+    source: (name: string, boxId?: number) =>
+      ok<{ id: number; boxId: number }>(r.post('/api/sources', { data: { name, ...(boxId ? { boxId } : {}) } }), 'source'),
+    // `source` is a source's name (made in a box of its own the first time it is used) or its id.
+    income: async (pocketId: number, amountMinor: number, source: string | number, date = todayIso()) => {
+      let sourceId = source;
+      if (typeof source === 'string') {
+        const list = (await (await r.get('/api/sources')).json()).sources as { id: number; name: string }[];
+        sourceId = list.find((x) => x.name.toLowerCase() === source.toLowerCase())?.id ?? (await ok<{ id: number }>(r.post('/api/sources', { data: { name: source } }), 'source')).id;
+      }
+      return ok<{ id: number }>(r.post('/api/transactions', { data: { date, kind: 'income', amountMinor, pocketId, subsectionId: null, sourceId } }), 'transaction');
+    },
+    // The steps of a box, each added last.
+    amountStep: (boxId: number, sectionId: number, amountMinor: number) =>
+      ok<{ id: number }>(r.post(`/api/boxes/${boxId}/steps`, { data: { kind: 'amount', sectionId, amountMinor } }), 'step'),
+    percentStep: (boxId: number, shares: { sectionId: number; basisPoints: number }[]) =>
+      ok<{ id: number }>(r.post(`/api/boxes/${boxId}/steps`, { data: { kind: 'percent', shares } }), 'step'),
+    sourcesApi: async () => (await (await r.get('/api/sources')).json()).sources as { id: number; name: string; boxId: number }[],
   };
 }
 export type Seed = ReturnType<typeof seed>;
 
-/** Needs (Food 300, Mortgage 600, Utilities 120) and Wants (Subscriptions 40, Gifts 0), one pocket, income 2,000. */
+/**
+ * Needs (Food 300, Mortgage 600, Utilities 120) and Wants (Subscriptions 40, Gifts 0), one pocket, income 2,000 from "Paycheck".
+ * The Paycheck box sends 1,020.00 to Needs and 40.00 to Wants, so each section receives what its subsections claim:
+ * Budgeted 1,060.00, Left over 940.00.
+ */
 export async function seedBudget(s: Seed) {
   const needs = await s.section('Needs');
   const food = await s.subsection(needs.id, 'Food', 30000);
@@ -70,8 +88,11 @@ export async function seedBudget(s: Seed) {
   await s.expense(pocket.id, mortgage.id, 60000, 'Bank mortgage');
   await s.expense(pocket.id, util.id, 13175, 'EAC electricity');
   await s.expense(pocket.id, subs.id, 3897, 'Netflix');
-  await s.income(pocket.id, 200000, 'Paycheck');
-  return { pocket, food, mortgage, util, subs };
+  const paycheck = await s.source('Paycheck');
+  await s.income(pocket.id, 200000, paycheck.id);
+  await s.amountStep(paycheck.boxId, needs.id, 102000);
+  await s.amountStep(paycheck.boxId, wants.id, 4000);
+  return { pocket, food, mortgage, util, subs, needs, wants, paycheck };
 }
 
 type Fixtures = { me: Person & { seed: Seed } };
@@ -139,3 +160,36 @@ export async function fillExpense(d: Locator, o: { amount: string; payee: string
 export const pocketsApi = async (page: Page) =>
   (await (await page.request.get('/api/pockets')).json()).pockets as
     { id: number; name: string; kind: string; emoji: string; openingBalanceMinor: number; balanceMinor: number }[];
+
+// ---- spec 06 helpers ----
+
+/** The spec's worked example: Paycheck 2,000.00 and Second job 600.00 share a box, Fund payout 12.40 has a box of its own. */
+export const WORKED = {
+  zakat: '65.00', family: '500.00', needs: '1,017.50', wants: '610.50', savings: '407.00', leftOver: '12.40', together: '2,600.00',
+  lefts: ['2,535.00 left', '2,035.00 left', '0.00 left'],
+} as const;
+
+/**
+ * The worked example, seeded through the API, with its three steps in the first box:
+ * 2.5% Zakat, 500.00 Family, then 50% Needs / 30% Wants / 20% Savings. Sections are made in that order (Zakat first).
+ */
+export async function seedPipeline(s: Seed) {
+  const zakat = await s.section('Zakat');
+  const family = await s.section('Family');
+  const needs = await s.section('Needs');
+  const wants = await s.section('Wants');
+  const savings = await s.section('Savings');
+  const pocket = await s.pocket('Revolut', 0);
+  const paycheck = await s.source('Paycheck');
+  const second = await s.source('Second job', paycheck.boxId);
+  const fund = await s.source('Fund payout');
+  await s.income(pocket.id, 200000, paycheck.id);
+  await s.income(pocket.id, 60000, second.id);
+  await s.income(pocket.id, 1240, fund.id);
+  const s1 = await s.percentStep(paycheck.boxId, [{ sectionId: zakat.id, basisPoints: 250 }]);
+  const s2 = await s.amountStep(paycheck.boxId, family.id, 50000);
+  const s3 = await s.percentStep(paycheck.boxId, [
+    { sectionId: needs.id, basisPoints: 5000 }, { sectionId: wants.id, basisPoints: 3000 }, { sectionId: savings.id, basisPoints: 2000 },
+  ]);
+  return { zakat, family, needs, wants, savings, pocket, paycheck, second, fund, steps: [s1, s2, s3] };
+}

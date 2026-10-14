@@ -49,29 +49,7 @@ export const pocket = z.object({
   emoji: z.enum(EMOJI, { error: 'Choose an emoji.' }).optional(),
   openingBalanceMinor: minor(-MAX, 'Enter a whole number of minor units.'),
 });
-const PCT = 'Enter a percentage above 0 and up to 100.';
-// The field that does not belong to the kind is stored as null, whatever was sent.
-export const section = z
-  .object({
-    name,
-    budgetKind: z.enum(['subsections', 'fixed', 'percent'], { error: 'Choose how the budget is set.' }).default('subsections'),
-    budgetMinor: z.unknown().optional(),
-    budgetBasisPoints: z.unknown().optional(),
-  })
-  .transform((b, ctx) => {
-    const fixed = b.budgetKind === 'fixed' ? minor(0, 'Enter a budget of zero or more.').safeParse(b.budgetMinor) : null;
-    const pct = b.budgetKind === 'percent'
-      ? z.number({ error: PCT }).int(PCT).min(1, PCT).max(10000, PCT).safeParse(b.budgetBasisPoints)
-      : null;
-    if (fixed && !fixed.success) ctx.addIssue({ code: 'custom', path: ['budgetMinor'], message: fixed.error.issues[0]!.message });
-    if (pct && !pct.success) ctx.addIssue({ code: 'custom', path: ['budgetBasisPoints'], message: PCT });
-    return {
-      name: b.name,
-      budgetKind: b.budgetKind,
-      budgetMinor: fixed?.success ? fixed.data : null,
-      budgetBasisPoints: pct?.success ? pct.data : null,
-    };
-  });
+export const section = z.object({ name });
 export const subsection = z.object({ name, budgetMinor: minor(0, 'Enter a budget of zero or more.') });
 
 const date = z
@@ -89,7 +67,8 @@ export const transaction = z
     amountMinor: minor(1, 'Enter an amount above zero, as a whole number of minor units.'),
     pocketId: z.number({ error: 'Choose a pocket.' }).int('Choose a pocket.'),
     subsectionId: z.number({ error: 'Choose a subsection.' }).int('Choose a subsection.').nullable(),
-    payee: text(1, 120, 'Enter a payee.'),
+    payee: z.string({ error: 'Enter a payee.' }).trim().max(120, 'Use 120 characters or fewer.').default(''),
+    sourceId: z.number({ error: 'Choose a source.' }).int('Choose a source.').nullable().default(null),
     note: z.string({ error: 'Enter a note.' }).max(500, 'Use 500 characters or fewer.').default(''),
   })
   .superRefine((t, ctx) => {
@@ -97,9 +76,56 @@ export const transaction = z
       ctx.addIssue({ code: 'custom', path: ['subsectionId'], message: 'Choose a subsection.' });
     if (t.kind === 'income' && t.subsectionId !== null)
       ctx.addIssue({ code: 'custom', path: ['subsectionId'], message: 'Income has no subsection.' });
-  });
+    if (t.kind === 'expense' && !t.payee)
+      ctx.addIssue({ code: 'custom', path: ['payee'], message: 'Enter a payee.' });
+    if (t.kind === 'expense' && t.sourceId !== null)
+      ctx.addIssue({ code: 'custom', path: ['sourceId'], message: 'An expense has no source.' });
+    if (t.kind === 'income' && t.sourceId === null)
+      ctx.addIssue({ code: 'custom', path: ['sourceId'], message: 'Choose a source.' });
+  })
+  .transform((t) => (t.kind === 'income' ? { ...t, payee: '' } : t));
+
+export const source = z.object({ name });
+const POS = 'Choose a position.';
+const position = z.number({ error: POS }).int(POS).optional();
+export const stepKind = z.object({ kind: z.enum(['amount', 'percent'], { error: 'Choose what the step takes.' }) });
+export const amountStep = z.object({
+  sectionId: z.number({ error: 'Choose a section.' }).int('Choose a section.'),
+  amountMinor: minor(1, 'Enter an amount above zero.'),
+  position,
+});
+// Shares are checked rule by rule so each failure gets its own sentence on `shares`.
+export const percentStep = z.object({
+  shares: z.unknown().superRefine((v, ctx) => {
+    const bad = (message: string) => ctx.addIssue({ code: 'custom', message });
+    if (!Array.isArray(v) || v.length < 1 || v.length > 8) return bad('Add at least one section.');
+    const rows = v.map((x) => (x && typeof x === 'object' ? (x as Record<string, unknown>) : {}));
+    const ids = rows.map((x) => x.sectionId);
+    if (!ids.every(Number.isInteger) || new Set(ids).size !== ids.length) return bad('Choose a different section in every row.');
+    const bp = rows.map((x) => x.basisPoints as number);
+    if (!bp.every((n) => Number.isInteger(n) && n >= 1 && n <= 10000))
+      return bad('Enter a percentage above 0 and up to 100 in every row.');
+    if (bp.reduce((a, n) => a + n, 0) > 10000) bad('The percentages of one step can add up to at most 100.');
+  }),
+  position,
+});
 
 export const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use a month like 2026-10.');
 const id = z.string().regex(/^\d+$/, 'Use a whole number.').transform(Number);
 export const monthQuery = z.object({ month });
 export const txQuery = z.object({ month, pocketId: id.optional(), subsectionId: id.optional() });
+
+// Rest rules are checked rule by rule so each failure gets its own sentence on `shares`.
+export const restRule = z.object({
+  shares: z.unknown().superRefine((v, ctx) => {
+    const bad = (message: string) => ctx.addIssue({ code: 'custom', message });
+    if (!Array.isArray(v) || v.length < 1 || v.length > 8) return bad('Add at least one destination.');
+    const rows = v.map((x) => (x && typeof x === 'object' ? (x as Record<string, unknown>) : {}));
+    const ids = rows.map((x) => x.sectionId);
+    if (!ids.every((x) => x === null || Number.isInteger(x)) || new Set(ids).size !== ids.length) return bad('Choose a different destination in every row.');
+    const bp = rows.map((x) => x.basisPoints as number);
+    if (!bp.every((n) => Number.isInteger(n) && n >= 1 && n <= 10000)) return bad('Enter a percentage above 0 and up to 100 in every row.');
+    if (bp.reduce((a, n) => a + n, 0) !== 10000) bad('The percentages must add up to 100.');
+  }),
+  overspent: z.enum(['income', 'section'], { error: 'Choose where an overspent rest goes.' }),
+});

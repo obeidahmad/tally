@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api, useLoad, type Pocket, type Section, type Transaction } from '../api';
+import { api, useLoad, type Pocket, type Section, type Source, type Transaction } from '../api';
 import { currentMonth, dayHeading, monthTitle, shiftMonth } from '../dates';
 import { TransactionDialog } from '../dialogs';
 import { formatMinor } from '../money';
@@ -23,12 +23,13 @@ export default function TransactionsPage() {
       const q = new URLSearchParams({ month });
       if (subsectionId) q.set('subsectionId', subsectionId);
       if (pocketId) q.set('pocketId', pocketId);
-      const [t, p, s] = await Promise.all([
+      const [t, p, s, src] = await Promise.all([
         api<{ transactions: Transaction[] }>('GET', `/transactions?${q}`),
         api<{ pockets: Pocket[] }>('GET', '/pockets'),
         api<{ sections: Section[] }>('GET', '/sections'),
+        api<{ sources: Source[] }>('GET', '/sources'),
       ]);
-      return { transactions: t.transactions, pockets: p.pockets, sections: s.sections };
+      return { transactions: t.transactions, pockets: p.pockets, sections: s.sections, sources: src.sources };
     },
     [month, subsectionId, pocketId],
   );
@@ -72,7 +73,8 @@ export default function TransactionsPage() {
         </Field>
       </div>
       <Load state={state}>
-        {({ transactions, pockets, sections }) => {
+        {({ transactions, pockets, sections, sources }) => {
+          const sourceName = new Map(sources.map((x) => [x.id, x.name]));
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
           const pocketById = new Map(pockets.map((p) => [p.id, p]));
           const days: [string, Transaction[]][] = [];
@@ -97,7 +99,7 @@ export default function TransactionsPage() {
                         return (
                           <div key={t.id} className="ty-trow app-pick" {...pick(() => setDialog({ tx: t }))}>
                             <div className="ty-trow__who">
-                              <b>{t.payee}</b>
+                              <b>{t.kind === 'income' ? sourceName.get(t.sourceId!) : t.payee}</b>
                               <span className="ty-cap">{t.kind === 'income' ? 'Income · entered by hand' : 'Entered by hand'}</span>
                               <span className="ty-cap ty-trow__meta">{t.kind === 'income' ? pocket : <>{where} · {pocket}</>}</span>
                             </div>
@@ -115,7 +117,7 @@ export default function TransactionsPage() {
                   ))}
                 </section>
               )}
-              {dialog && <TransactionDialog tx={dialog.tx} pockets={pockets} sections={sections} currency={user.baseCurrency} onClose={close} />}
+              {dialog && <TransactionDialog tx={dialog.tx} pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
             </>
           );
         }}

@@ -2,7 +2,7 @@
 
 Tally is an open-source budgeting app that people run on their own machine. One server holds several accounts, so one person can host it for their family: each person signs in and sees only their own budget. It runs in phone and desktop browsers.
 
-It borrows the strongest ideas of YNAB (every unit of money has a job), Monarch (net worth and investments) and Rocket Money (recurring bills), and adds its own model of sections, capped rollover, rest, and per-income split rules.
+It borrows the strongest ideas of YNAB (every unit of money has a job), Monarch (net worth and investments) and Rocket Money (recurring bills), and adds its own idea: a pipeline that each person arranges, which carries income into sections step by step and carries what is left into the next month.
 
 Phases are built in order. Each feature below states the behaviour agreed with the user.
 
@@ -11,6 +11,7 @@ Phases are built in order. Each feature below states the behaviour agreed with t
 - Two packages: `server/` (Node, TypeScript, Express, SQLite) and `web/` (React, TypeScript, Vite). In production the server serves the web app, so Tally is one process on one port.
 - Money is stored as whole minor units (cents), never as fractions.
 - Each piece of work has a spec in `specs/`.
+- `npm run serve` runs Tally in Node's watch mode, so it restarts by itself after every build (`specs/10-app-follows-builds.md`). Before it applies a migration to an existing database, the server saves a copy in the data folder's `backups/`.
 
 ## Phase 0: Design system
 
@@ -31,7 +32,13 @@ Built in three slices:
    Then `specs/03-add-buttons.md`: "Add income" moves next to "Add transaction", and the two are coloured buttons, green for income and orange for spending.
    Then `specs/04-section-budget.md`: a section has its own budget, set as the sum of its subsections, a fixed amount or a percentage of income.
    Then `specs/05-segmented-choices.md`: the budget choice and the transaction type become one-row segmented controls, and a new section starts on a percentage.
-2. **Income and month close:** income sources and split rules, tax-style sections, percentage budgets, rollover with caps, rest, closing a month, overspending carried forward, moving money between subsections.
+2. **The pipeline**, in this order:
+   - `specs/06-pipeline.md`: income sources, boxes that merge sources, ordered steps into sections, and what is left over, shown as boxes and wires on a Pipeline page.
+   - `specs/07-add-destination.md`: in the step dialog, the button that sends a step to one more section is named "+ Add destination" and looks like a button.
+   - `specs/08-add-income-source.md`: the Pipeline page's button and its dialog read "Add income source".
+   - `specs/09-closing-a-month.md`: rest rules, closing and reopening a month, subsections keeping what they did not spend, and overspending as a negative rest.
+   - Subsections in the pipeline: percentages and an order inside a section.
+   - Rollover caps and moving money between subsections.
 3. **Currencies and net worth:** pockets in other currencies, transfers and conversions, where each subsection's money sits, net worth over time.
 
 **Accounts**
@@ -49,15 +56,24 @@ Built in three slices:
 **Sections and subsections**
 
 - A section is a top-level group such as Needs, Wants or Savings.
-- A section's budget is set in one of three ways: the sum of its subsections' budgets, a fixed amount, or a percentage of the month's income. Fixed amounts are taken first and percentages apply to the income that remains, each rounded down to the cent. All percentage sections together take at most 100%. A new section starts on a percentage, because its budget is thought of before its subsections; the sum of subsections stays as a choice for people who budget from the bottom up.
+- A section holds only the money the pipeline has sent it. Budgeting from the bottom up, where a section totals its subsections, is set aside until there is a way to fit it into the pipeline.
 - Subsections (mortgage, food, car) draw their budget from their section. What they have not claimed is the section's rest; they may claim more than the section has, and the rest then shows below zero.
 - A subsection's budget is a fixed amount or a percentage. Fixed amounts are taken first, and percentages apply to what remains.
 - Each percentage share is rounded down to the cent, and the leftover cents join the section's rest. Example: 1,000.01 in the section, A fixed at 60, B 60%, C 40% gives B 564.00, C 376.00 and 0.01 to the rest.
 
-**Income and split rules**
+**The pipeline**
 
-- Each income source (paycheck, last month's leftover, investment payouts) has its own rule for how it is divided between sections. Example: paycheck 50% Needs, 20% Wants, 30% Savings; leftover 50% Needs, 50% Savings.
-- Tax-style sections take their share first, from the income sources the user chooses, before the rest of that income is split. Example: Zakat applies to the paycheck but not to last month's leftover.
+The pipeline is what makes Tally different: money moves through steps in an order the person sets. Example: 2.5% to Zakat, then 500.00 to Family, then what is left split 50-30-20 between Needs, Wants and Savings, then anything still left goes to next month.
+
+- Every income belongs to a source the person names (Paycheck, Second job). The name is typed once and picked afterwards.
+- A box holds one source, or several merged together, and their steps. A source feeds exactly one box. The steps act on the money of all the box's sources together.
+- A step takes from what reaches it: an amount for the month, taken once however many payments come in, or percentages shared between one or more sections. A percentage is of what reaches the step, rounded down to the cent. Each section a step sends money to is called a destination.
+- Two separate boxes are independent: if each sends 500.00 to Family, Family gets up to 1,000.00. Merging the sources is how to send 500.00 in total.
+- Income that no step takes is left over.
+- A rest rule says where a section's rest goes when the month closes. It is shares, never an amount: all of it, or a split such as 60% and 40%. It can go to next month's income, which arrives as its own source named "Last month's leftovers", or straight into a section next month, including the same one. A new section sends all of it to next month's income.
+- "Last month's leftovers" is a source like any other: it has a box and steps, and can be merged with other sources.
+- The page shows this as boxes and wires that the app arranges itself. Nobody drags anything. A dotted wire is money moving between months.
+- Not decided or not yet built: what is left of one box flowing into another box, and a phone layout for the pipeline.
 
 **Transactions**
 
@@ -67,22 +83,26 @@ Built in three slices:
 
 **Rollover**
 
-- A subsection keeps its unspent money into the next month, up to a cap the user sets.
+- A subsection keeps its unspent money into the next month, up to a cap the user sets. Until caps exist, it keeps all of it.
 - This doubles as a savings goal: a Car subsection capped at 15,000 fills month by month, and paying for the car is a transaction that brings it back to 0.
 
 **Rest**
 
-- The rest is what a section has left at month end: money no subsection claimed, plus anything above the caps.
+- The rest is what a section received, less what its subsections claim as budget, less what they overspent, plus anything above the caps.
 - The user decides where it goes: another section, next month's income, rollover inside the section, or a mix of these.
+- A rest below zero is overspending. It goes all to one place, chosen per section: next month's income, where it is merged with the other income, or the same section next month, whose money then makes up for it.
+- What is left over always goes to next month's income.
 
 **Month close**
 
 - A new month starts on its own. The previous month stays open and editable until the user closes it.
-- Saved preferences pre-fill where the rest goes, and the user can adjust before closing.
+- Closing is on the Budget page. From the first day of the next month, a notice reminds the user to close the month that ended. Months close in order, oldest first.
+- The rest rules decide where each rest goes. Closing shows every amount and where it goes, and only asks for confirmation; to send a rest elsewhere, the user changes the rule first.
+- A closed month cannot be edited. It can be reopened while the month after it is still open.
 
 **Overspending and moving money**
 
-- An overspent subsection goes negative and starts the next month in the red, unless the user covers it.
+- An overspent subsection's extra spending comes out of its section's rest, so the subsection starts the next month at zero.
 - Moving money between subsections or sections (for example out of Emergencies) is possible, but as a deliberate advanced action, not a quick one, so the app keeps nudging the user to respect the budget.
 
 **Currencies and net worth**
@@ -120,7 +140,5 @@ Taken from the three apps, after the phases above:
 
 ## Open decisions
 
-- The open-source licence.
-- Whether a section's percentage is taken from all of the month's income or from what is left after fixed-amount sections. Spec 04 builds the second, to match the rule for subsections; the user has not confirmed it yet.
-- How a host reaches their server away from home (a private network tool or a rented server). Linking a bank needs an HTTPS address.
+- The open-source licence.- How a host reaches their server away from home (a private network tool or a rented server). Linking a bank needs an HTTPS address.
 - Whether Enable Banking covers the user's Revolut account. Its documentation describes Bank of Cyprus; Revolut is unconfirmed until an account is linked.

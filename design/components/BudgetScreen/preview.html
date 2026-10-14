@@ -5,7 +5,7 @@
 <div class="ty-shell">
 <aside class="ty-side">
   <div class="ty-word">Tally</div>
-  <nav class="ty-nav" aria-label="Main"><a href="#" aria-current="page">Budget</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Settings</a></nav>
+  <nav class="ty-nav" aria-label="Main"><a href="#" aria-current="page">Budget</a><a href="#">Pipeline</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Settings</a></nav>
   <div class="ty-side__foot ty-cap">Signed in as Sam<br>Base currency EUR</div>
 </aside>
 <main class="ty-main">
@@ -16,34 +16,17 @@
     <button class="ty-btn ty-btn--icon" aria-label="Next month" disabled>›</button>
     <span class="ty-pill ty-pill--positive">Open</span>
     <span class="ty-grow"></span>
-    <button class="ty-btn">Close month</button>
     <button class="ty-btn ty-btn--income">Add income</button>
     <button class="ty-btn ty-btn--spend">Add transaction</button>
   </div>
-  <div class="ty-stats"><div class="ty-stat"><span class="ty-label">Income</span><span class="num-lg">2,400.00</span></div><div class="ty-stat"><span class="ty-label">Budgeted</span><span class="num-lg">2,400.00</span></div><div class="ty-stat"><span class="ty-label">Spent so far</span><span class="num-lg">1,145.62</span></div><div class="ty-stat"><span class="ty-label">Rest so far</span><span class="num-lg">75.00</span></div></div>
+  <div class="ty-inset"><span>September 2026 has ended. Close it to carry what is left into October.</span><div><button class="ty-btn ty-btn--sm">Close September</button></div></div>
+  <div class="ty-stats"><div class="ty-stat"><span class="ty-label">Income</span><span class="num-lg">2,400.00</span></div><div class="ty-stat"><span class="ty-label">Budgeted</span><span class="num-lg">2,400.00</span></div><div class="ty-stat"><span class="ty-label">Spent so far</span><span class="num-lg">1,145.62</span></div><div class="ty-stat"><span class="ty-label">Left over</span><span class="num-lg">0.00</span></div></div>
   <button class="ty-btn ty-btn--income ty-month__add">Add income</button>
 </header>
-<div class="ty-card ty-stack" style="gap:24px"><div class="ty-alloc">
-  <div class="ty-alloc__head"><b>Paycheck</b><span class="ty-num">2,000.00</span><span class="ty-cap">Zakat takes 50.00 first, the other 1,950.00 is split</span></div>
-  <div class="ty-alloc__bar" role="img" aria-label="Zakat 50.00, Needs 975.00, Wants 390.00, Savings 585.00"><span class="ty-seg--4" style="flex:50"></span><span class="ty-seg--1" style="flex:975"></span><span class="ty-seg--2" style="flex:390"></span><span class="ty-seg--3" style="flex:585"></span></div>
-  <ul class="ty-alloc__legend">
-    <li><span class="ty-dot ty-dot--4"></span>Zakat <span class="ty-num">50.00</span><span class="ty-cap">2.5% first</span></li>
-    <li><span class="ty-dot ty-dot--1"></span>Needs <span class="ty-num">975.00</span><span class="ty-cap">50%</span></li>
-    <li><span class="ty-dot ty-dot--2"></span>Wants <span class="ty-num">390.00</span><span class="ty-cap">20%</span></li>
-    <li><span class="ty-dot ty-dot--3"></span>Savings <span class="ty-num">585.00</span><span class="ty-cap">30%</span></li>
-  </ul>
-</div><div class="ty-alloc">
-  <div class="ty-alloc__head"><b>Leftover from September</b><span class="ty-num">400.00</span><span class="ty-cap">no Zakat on this income</span></div>
-  <div class="ty-alloc__bar" role="img" aria-label="Needs 200.00, Savings 200.00"><span class="ty-seg--1" style="flex:1"></span><span class="ty-seg--3" style="flex:1"></span></div>
-  <ul class="ty-alloc__legend">
-    <li><span class="ty-dot ty-dot--1"></span>Needs <span class="ty-num">200.00</span><span class="ty-cap">50%</span></li>
-    <li><span class="ty-dot ty-dot--3"></span>Savings <span class="ty-num">200.00</span><span class="ty-cap">50%</span></li>
-  </ul>
-</div></div>
 <div class="ty-stack">
 <section class="ty-section" aria-label="Zakat">
 <div class="ty-shead">
-  <div class="ty-shead__name"><span class="ty-dot ty-dot--4"></span><b>Zakat</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span><span class="ty-cap">2.5% of Paycheck, taken first</span><span class="ty-cap ty-shead__sub">0.00 of 50.00 spent</span></div>
+  <div class="ty-shead__name"><span class="ty-dot ty-dot--4"></span><b>Zakat</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span><span class="ty-cap ty-shead__sub">0.00 of 50.00 spent</span></div>
   <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">50.00</span></div>
   <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">0.00</span></div>
   <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">50.00</span></div>
@@ -62,7 +45,7 @@
 </section>
 <section class="ty-section" aria-label="Needs">
 <div class="ty-shead">
-  <div class="ty-shead__name"><span class="ty-dot ty-dot--1"></span><b>Needs</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 75.00</span><span class="ty-cap">50% of Paycheck, 50% of Leftover</span><span class="ty-cap ty-shead__sub">990.15 of 1,175.00 spent</span></div>
+  <div class="ty-shead__name"><span class="ty-dot ty-dot--1"></span><b>Needs</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 75.00</span><span class="ty-cap ty-shead__sub">990.15 of 1,175.00 spent</span></div>
   <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">1,175.00</span></div>
   <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">990.15</span></div>
   <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">184.85</span></div>
@@ -111,7 +94,7 @@
 </section>
 <section class="ty-section" aria-label="Wants">
 <div class="ty-shead">
-  <div class="ty-shead__name"><span class="ty-dot ty-dot--2"></span><b>Wants</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span><span class="ty-cap">20% of Paycheck</span><span class="ty-cap ty-shead__sub">155.47 of 390.00 spent</span></div>
+  <div class="ty-shead__name"><span class="ty-dot ty-dot--2"></span><b>Wants</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span><span class="ty-cap ty-shead__sub">155.47 of 390.00 spent</span></div>
   <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">390.00</span></div>
   <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">155.47</span></div>
   <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">234.53</span></div>
@@ -160,7 +143,7 @@
 </section>
 <section class="ty-section" aria-label="Savings">
 <div class="ty-shead">
-  <div class="ty-shead__name"><span class="ty-dot ty-dot--3"></span><b>Savings</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span><span class="ty-cap">30% of Paycheck, 50% of Leftover</span></div>
+  <div class="ty-shead__name"><span class="ty-dot ty-dot--3"></span><b>Savings</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span></div>
   <div class="ty-shead__tot ty-wide"><span class="ty-label">This month</span><span class="ty-num">785.00</span></div>
   <div class="ty-shead__tot ty-wide"><span class="ty-label">Saved</span><span class="ty-num">11,041.80</span></div>
   <div class="ty-shead__tot"><span class="ty-label">Target</span><span class="ty-num"> </span></div>

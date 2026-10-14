@@ -224,7 +224,9 @@ test('income has no subsection and shows with a plus sign', async ({ page, me })
   await chip(d, 'Type', 'Income').check();
   await expect(d.getByRole('heading', { name: 'Add income' })).toBeVisible();
   await d.getByLabel('Amount').fill('75');
-  await d.getByLabel('Payee').fill('Gift from Mum');
+  // No source yet, so the "+ Add source" panel is open (spec 06).
+  await expect(d.getByLabel('Payee')).toHaveCount(0);
+  await d.getByLabel('Source name').fill('Gift from Mum');
   await chip(d, 'Pocket', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();

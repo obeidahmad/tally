@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>StepDialog</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<body>
+<div class="ty-scrim">
+<div class="ty-dialog" role="dialog" aria-labelledby="pt">
+  <h2 class="text-title" id="pt">Edit step</h2>
+  <fieldset class="ty-fieldset"><legend class="ty-label">Takes</legend><div class="ty-segmented"><label><input type="radio" name="takes" checked>Percentage</label><label><input type="radio" name="takes">Amount</label></div></fieldset>
+  <div class="ty-field">
+    <div class="ty-shares"><span class="ty-label">Section</span><span class="ty-label">Percentage</span><span></span>
+      <select class="ty-input" aria-label="Section 1"><option>Needs</option></select><div class="ty-affix"><input class="ty-input ty-input--amount" aria-label="Percentage 1" value="50" inputmode="decimal"><span class="ty-muted">%</span></div><button class="ty-btn ty-btn--quiet ty-btn--sm" aria-label="Remove destination 1">Remove</button><select class="ty-input" aria-label="Section 2"><option>Wants</option></select><div class="ty-affix"><input class="ty-input ty-input--amount" aria-label="Percentage 2" value="30" inputmode="decimal"><span class="ty-muted">%</span></div><button class="ty-btn ty-btn--quiet ty-btn--sm" aria-label="Remove destination 2">Remove</button><select class="ty-input" aria-label="Section 3"><option>Savings</option></select><div class="ty-affix"><input class="ty-input ty-input--amount" aria-label="Percentage 3" value="20" inputmode="decimal"><span class="ty-muted">%</span></div><button class="ty-btn ty-btn--quiet ty-btn--sm" aria-label="Remove destination 3">Remove</button>
+    </div>
+    <div><button class="ty-btn ty-btn--sm">+ Add destination</button></div>
+    <span class="ty-cap">Each destination takes its percentage from what reaches this step. Together they can be at most 100%.</span>
+  </div>
+  <div class="ty-field"><label class="ty-label" for="pp">Position</label><select class="ty-input" id="pp"><option>3</option></select></div>
+  <div class="ty-dialog__foot"><button class="ty-btn ty-btn--danger" style="margin-right:auto">Delete</button><button class="ty-btn ty-btn--quiet">Cancel</button><button class="ty-btn ty-btn--primary">Save</button></div>
+</div></div>
+</body>
+</html>

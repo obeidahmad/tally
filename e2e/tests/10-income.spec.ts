@@ -36,7 +36,11 @@ for (const [size, viewport] of Object.entries(sizes)) {
       expect(await checkedEmoji(d)).toEqual([DEFAULT_EMOJI.bank]);
       await d.getByLabel('Pocket name').fill('Revolut');
       await d.getByLabel('Amount').fill('2000');
-      await d.getByLabel('Payee').fill('Paycheck');
+      // Spec 06: no source yet, so "+ Add source" is chosen and its panel is open; there is no Payee for an income.
+      await expect(group(d, 'Source')).toBeVisible();
+      await expect(chip(d, 'Source', '+ Add source')).toBeChecked();
+      await expect(d.getByLabel('Payee')).toHaveCount(0);
+      await d.getByLabel('Source name').fill('Paycheck');
       await shot(page, `dialog-first-income-${size}-light`);
       await d.getByRole('button', { name: 'Add income', exact: true }).click();
 
@@ -71,13 +75,13 @@ test('Escape on the Add income dialog returns focus to the Add income button', a
 });
 
 test('a pocket that cannot be created shows its errors in the panel, under "Pocket name", and nothing is saved', async ({ page, me }) => {
+  await me.seed.source('Paycheck'); // an income starts on the first source, so only the pocket is wrong
   await page.goto('/budget');
   for (const name of ['', 'x'.repeat(61)]) {
     await page.getByRole('button', { name: 'Add income', exact: true }).click();
     const d = dialog(page);
     await d.getByLabel('Pocket name').fill(name);
     await d.getByLabel('Amount').fill('5');
-    await d.getByLabel('Payee').fill('Refused');
     await d.getByRole('button', { name: 'Add income', exact: true }).click();
     await expect(d).toBeVisible();
     await expect(d.getByLabel('Pocket name')).toHaveClass(/ty-input--error/);
@@ -90,22 +94,26 @@ test('a pocket that cannot be created shows its errors in the panel, under "Pock
   await expect(stat(page).locator('.num-lg')).toHaveText('0.00');
 });
 
-test('if the pocket is created and the transaction then fails, the new pocket stays chosen, the panel closes and the errors show as usual', async ({ page, me }) => {
+test('if the pocket is created and the income then fails, the new pocket stays chosen, the panel closes and the error shows; saving again does not create it twice', async ({ page, me }) => {
+  const paycheck = await me.seed.source('Paycheck');
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
+  await expect(chip(d, 'Source', 'Paycheck')).toBeChecked();
   await d.getByLabel('Pocket name').fill('Wallet');
   await d.getByLabel('Amount').fill('50');
-  await d.getByLabel('Payee').fill('p'.repeat(121)); // longer than the 120 the server accepts
+  // The chosen source is deleted behind the dialog's back, so the server refuses the income on `sourceId` after the pocket exists.
+  expect((await page.request.delete(`/api/sources/${paycheck.id}`, { data: {} })).status()).toBe(204);
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeVisible();
-  await expect(d.getByLabel('Payee')).toHaveClass(/ty-input--error/);
+  await expect(d.getByText('Choose a source.')).toBeVisible();
   await expect(chip(d, 'Pocket', /Wallet/)).toBeChecked();
   await expect(d.getByLabel('Pocket name')).toBeHidden();
   expect((await pocketsApi(page)).map((p) => p.name)).toEqual(['Wallet']);
   await shot(page, 'dialog-pocket-created-transaction-failed-desktop-light');
-  // Correct the payee and save again: the pocket is used, not created a second time.
-  await d.getByLabel('Payee').fill('Paycheck');
+  // Choose a new source and save again: the pocket is used, not created a second time.
+  await chip(d, 'Source', '+ Add source').check();
+  await d.getByLabel('Source name').fill('Bonus');
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   const pockets = await pocketsApi(page);
@@ -234,7 +242,7 @@ test('"Money in" and "Money out" appear nowhere: not in any page, dialog, label 
       '\n' + [...document.querySelectorAll('option')].map((o) => o.textContent).join('\n'));
     expect(text, where).not.toMatch(bad);
   };
-  for (const p of ['/budget', '/transactions', '/pockets', '/settings']) {
+  for (const p of ['/budget', '/pipeline', '/transactions', '/pockets', '/settings']) {
     await page.goto(p);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     await seen(p);

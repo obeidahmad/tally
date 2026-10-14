@@ -6,7 +6,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "test": "vitest run",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "serve": "node --watch-path=dist --watch-path=migrations dist/index.js"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

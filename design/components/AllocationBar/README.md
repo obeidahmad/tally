@@ -1,6 +1,6 @@
 # AllocationBar
 
-Shows how one income source is split between sections. Provide the income's name and amount and each section's share.
+Not in use: the Pipeline page now shows how income is divided. This showed how one income source is split between sections.
 
 - One bar per income source, because each source has its own rule.
 - Segments use the section colours with a 2px gap. A tax-style section comes first and its legend entry says "first".

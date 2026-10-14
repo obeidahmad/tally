@@ -77,6 +77,49 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .ty-brow .ty-meter { max-width: 280px; }
 .ty-brow__sub, .ty-shead__sub { display: none; }
 .ty-section__add { padding: var(--space-2) var(--space-3); border-top: 1px solid var(--line); }
+.ty-pipe { position: relative; display: grid; grid-template-columns: minmax(17.5rem, 26.25rem) minmax(13.75rem, 20rem); column-gap: 4.5rem; justify-content: space-between; align-items: start; max-width: 900px; }
+.ty-pipe--next { grid-template-columns: minmax(17.5rem, 22.5rem) minmax(15rem, 18.125rem) minmax(11.25rem, 11.875rem); column-gap: 3rem; max-width: 996px; }
+.ty-pipe-frame { overflow-x: auto; }
+.ty-pipe__col { display: grid; gap: var(--space-4); align-content: start; min-width: 0; }
+.ty-pipe__stack { display: grid; gap: var(--space-4); }
+.ty-pipe__stack--sections { gap: var(--space-6); }
+.ty-pipe__step { cursor: pointer; transition: background-color 150ms ease-out; }
+.ty-pipe__step:hover { background: var(--surface-hover); }
+.ty-pipe__step:active { background: var(--surface-sunken); }
+.ty-pipe__step:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.ty-shares { display: grid; grid-template-columns: minmax(0, 1fr) 8.25rem auto; gap: var(--space-2) var(--space-3); align-items: center; }
+.ty-pipe__wires { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.ty-wire { fill: none; stroke: var(--ink-muted); stroke-width: 2; }
+.ty-wire--next { stroke-dasharray: 1 6; stroke-linecap: round; stroke-width: 3; }
+.ty-port { fill: var(--ink-muted); }
+.ty-wire--1 { stroke: var(--sec-1); } .ty-port--1 { fill: var(--sec-1); }
+.ty-wire--2 { stroke: var(--sec-2); } .ty-port--2 { fill: var(--sec-2); }
+.ty-wire--3 { stroke: var(--sec-3); } .ty-port--3 { fill: var(--sec-3); }
+.ty-wire--4 { stroke: var(--sec-4); } .ty-port--4 { fill: var(--sec-4); }
+.ty-wire--5 { stroke: var(--sec-5); } .ty-port--5 { fill: var(--sec-5); }
+.ty-wire--6 { stroke: var(--sec-6); } .ty-port--6 { fill: var(--sec-6); }
+.ty-wire--7 { stroke: var(--sec-7); } .ty-port--7 { fill: var(--sec-7); }
+.ty-wire--8 { stroke: var(--sec-8); } .ty-port--8 { fill: var(--sec-8); }
+.ty-node { box-sizing: border-box; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.ty-node__head { display: flex; align-items: center; gap: var(--space-2); height: 3rem; padding: 0 var(--space-4); background: var(--surface-sunken); }
+.ty-node__head b, .ty-node__line b { font-weight: 600; white-space: nowrap; }
+.ty-node__head .ty-cap { white-space: nowrap; }
+.ty-node__title { display: grid; min-width: 0; line-height: 1.25; }
+.ty-node__title b { overflow: hidden; text-overflow: ellipsis; }
+.ty-node__src { display: flex; align-items: center; gap: var(--space-2); height: 2rem; padding: 0 var(--space-4); background: var(--surface-sunken); }
+.ty-node__src b { font-weight: 600; white-space: nowrap; }
+.ty-node__head--sum { height: 2.5rem; border-top: 1px solid var(--line); }
+.ty-node--old { border-style: dashed; border-color: var(--line-strong); }
+.ty-node--next { display: grid; align-content: center; gap: 2px; height: 4rem; padding: 0 var(--space-4); border-style: dashed; border-color: var(--line-strong); background: transparent; }
+.ty-node__line { display: flex; align-items: center; gap: var(--space-2); }
+.ty-step { display: grid; grid-template-columns: 0.75rem 4.25rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); height: 2.25rem; padding: 0 var(--space-4); }
+.ty-step--rest { grid-template-columns: 2.125rem 2.875rem minmax(0, 1fr); }
+.ty-step--empty { grid-template-columns: minmax(0, 1fr); }
+.ty-step__n { color: var(--ink-muted); font-size: 0.8125rem; }
+.ty-step .ty-tag { white-space: nowrap; }
+.ty-step__rule { display: inline-flex; align-items: center; justify-content: center; height: 1.625rem; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ty-pipe__left { display: flex; align-items: center; height: 1.5rem; padding: 0 var(--space-4) 0 2.25rem; color: var(--ink-muted); font-size: 0.8125rem; }
+.ty-node__foot { display: flex; align-items: center; height: 2.75rem; padding: 0 var(--space-2); border-top: 1px solid var(--line); }
 .ty-right { justify-self: end; text-align: right; }
 
 /* Month header */
@@ -171,7 +214,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .ty-dialog { max-height: calc(100dvh - var(--space-6)); overflow-y: auto; }
 .ty-dialog:has(.ty-dialog__foot) { padding-bottom: 0; }
 .ty-dialog__foot { position: sticky; bottom: 0; z-index: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin: 0 calc(-1 * var(--space-5)); padding: var(--space-3) var(--space-5) var(--space-5); border-top: 1px solid var(--line); background: var(--surface); }
-.ty-restrow { display: grid; grid-template-columns: minmax(0, 1fr) 9.375rem; gap: var(--space-3); align-items: center; }
+.ty-restrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; }
 .ty-scrim { display: grid; place-items: center; min-height: 100%; padding: var(--space-4); background: var(--scrim); }
 .ty-sum { display: flex; justify-content: space-between; padding-top: var(--space-3); border-top: 1px solid var(--line); font-weight: 600; }
 

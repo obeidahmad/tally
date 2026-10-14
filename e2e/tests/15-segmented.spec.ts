@@ -1,16 +1,13 @@
 import { test, expect, dialog, shot, group, chip, seedBudget } from '../support/fixtures';
 import type { Page, Locator } from '@playwright/test';
 
-// Spec 05: the Segmented control in the section dialog (Budget) and the transaction dialog (Type).
+// Spec 05: the Segmented control in the transaction dialog (Type). Spec 06 removed the section dialog's Budget control.
 const sizes = {
   desktop: { width: 1280, height: 900 },
   phone: { width: 390, height: 844 },
   narrow: { width: 360, height: 740 },
 } as const;
 
-const PCT_ERROR = 'Enter a percentage above 0 and up to 100, with at most two decimals.';
-const HINT = "Of the month's income left after fixed-amount sections.";
-const SUB_LINE = "The total of its subsections' budgets.";
 
 // Token values from the spec's table, as the browser reports them.
 const TOKENS = {
@@ -19,24 +16,8 @@ const TOKENS = {
 } as const;
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 
-const nameField = (d: Locator) => d.getByLabel('Name', { exact: true });
-const pctField = (d: Locator) => d.getByLabel('Percentage', { exact: true }).and(d.locator('input:not([type=radio])'));
 const track = (d: Locator, legend: string) => group(d, legend).locator('.ty-segmented');
 const segments = (d: Locator, legend: string) => track(d, legend).locator('label');
-const sec = (page: Page, name: string): Locator =>
-  page.locator('.ty-section').filter({ has: page.locator('.ty-shead__name b', { hasText: new RegExp(`^${name}$`) }) });
-const pill = (s: Locator) => s.locator('.ty-shead .ty-pill');
-const rule = (s: Locator) => s.locator('.ty-shead__name .ty-cap:not(.ty-shead__sub)');
-const sectionsApi = async (page: Page) =>
-  (await (await page.request.get('/api/sections')).json()).sections as { name: string; budgetKind: string; budgetMinor: number | null; budgetBasisPoints: number | null }[];
-
-async function openAddSection(page: Page) {
-  await page.getByRole('button', { name: 'Add section' }).first().click();
-  const d = dialog(page);
-  await expect(d.getByRole('heading', { name: 'Add section' })).toBeVisible();
-  await page.waitForTimeout(300); // the dialog fade
-  return d;
-}
 async function openAddTransaction(page: Page) {
   await page.getByRole('button', { name: 'Add transaction' }).first().click();
   const d = dialog(page);
@@ -58,115 +39,6 @@ const textLeft = (l: Locator) =>
     return e.getBoundingClientRect().left;
   });
 const label = (d: Locator, text: string) => d.locator('.ty-label', { hasText: new RegExp(`^${text}$`) }).first();
-
-// ---- criterion 2 ----
-test('section dialog: "Budget" is one radio group of "Percentage", "Fixed amount", "Subsections", in that order, inside a ty-segmented, and the dialog has no ty-chip', async ({ page, me }) => {
-  await page.setViewportSize(sizes.desktop);
-  await page.goto('/budget');
-  const d = await openAddSection(page);
-  const g = group(d, 'Budget');
-  await expect(g).toBeVisible();
-  await expect(g.locator('.ty-segmented')).toHaveCount(1);
-  await expect(g.locator('.ty-segmented').getByRole('radio')).toHaveCount(3);
-  await expect(g.getByRole('radio')).toHaveCount(3);
-  await expect(segments(d, 'Budget')).toHaveText(['Percentage', 'Fixed amount', 'Subsections']);
-  expect(await g.getByRole('radio').evaluateAll((rs) => new Set(rs.map((r) => (r as HTMLInputElement).name)).size), 'one radio group').toBe(1);
-  await expect(d.locator('.ty-chip')).toHaveCount(0);
-  for (const old of ['Sum of subsections', 'Percentage of income']) await expect(page.getByText(old)).toHaveCount(0);
-});
-
-// ---- criterion 3 ----
-test('"Add section" opens on "Percentage" with an empty field and its hint; saving without a percentage shows the error and adds no section', async ({ page, me }) => {
-  await page.goto('/budget');
-  const d = await openAddSection(page);
-  await expect(chip(d, 'Budget', 'Percentage')).toBeChecked();
-  await expect(pctField(d)).toBeVisible();
-  await expect(pctField(d)).toHaveValue('');
-  await expect(d.getByText(HINT)).toBeVisible();
-  await nameField(d).fill('Needs');
-  await d.getByRole('button', { name: 'Add section', exact: true }).click();
-  await expect(d.getByText(PCT_ERROR)).toBeVisible();
-  await expect(pctField(d)).toHaveClass(/ty-input--error/);
-  await expect(d).toBeVisible();
-  expect(await sectionsApi(page)).toHaveLength(0);
-});
-
-// ---- criterion 4 ----
-test('"Fixed amount" shows "Monthly budget"; "Subsections" shows no field and the line "The total of its subsections\' budgets." in ty-cap', async ({ page, me }) => {
-  await page.goto('/budget');
-  const d = await openAddSection(page);
-  await expect(d.getByText(SUB_LINE)).toHaveCount(0);
-  await chip(d, 'Budget', 'Fixed amount').check();
-  await expect(d.getByLabel('Monthly budget', { exact: true })).toBeVisible();
-  await expect(pctField(d)).toHaveCount(0);
-  await expect(d.getByText(SUB_LINE)).toHaveCount(0);
-  await chip(d, 'Budget', 'Subsections').check();
-  await expect(d.getByLabel('Monthly budget')).toHaveCount(0);
-  await expect(pctField(d)).toHaveCount(0);
-  await expect(d.getByText(HINT)).toHaveCount(0);
-  await expect(d.getByText(SUB_LINE)).toBeVisible();
-  await expect(d.locator('.ty-cap', { hasText: SUB_LINE })).toHaveCount(1);
-  await expect(d.locator('input:not([type=radio])')).toHaveCount(1); // only Name
-  await chip(d, 'Budget', 'Percentage').check();
-  await expect(d.getByText(SUB_LINE)).toHaveCount(0);
-});
-
-// ---- criterion 5 ----
-test('a section saved on each choice shows on the Budget page as spec 04 says', async ({ page, me }) => {
-  await page.setViewportSize(sizes.desktop);
-  await me.seed.section('Home', { budgetKind: 'fixed', budgetMinor: 90000 }); // so "after fixed sections" has context
-  await page.goto('/budget');
-  for (const [name, kind, value] of [['Needs', 'Percentage', '50'], ['Rent', 'Fixed amount', '400'], ['Fun', 'Subsections', '']] as const) {
-    const d = await openAddSection(page);
-    await nameField(d).fill(name);
-    await chip(d, 'Budget', kind).check();
-    if (kind === 'Percentage') await pctField(d).fill(value);
-    if (kind === 'Fixed amount') await d.getByLabel('Monthly budget', { exact: true }).fill(value);
-    await d.getByRole('button', { name: 'Add section', exact: true }).click();
-    await expect(d).toBeHidden();
-    await expect(sec(page, name)).toBeVisible();
-  }
-  await expect(rule(sec(page, 'Needs'))).toHaveText('50% of income after fixed sections');
-  await expect(pill(sec(page, 'Needs'))).toHaveCount(1);
-  await expect(rule(sec(page, 'Rent'))).toHaveText('Fixed amount');
-  await expect(pill(sec(page, 'Rent'))).toHaveCount(1);
-  await expect(pill(sec(page, 'Fun'))).toHaveCount(0);
-  await expect(rule(sec(page, 'Fun'))).toHaveCount(0);
-  const made = await sectionsApi(page);
-  expect(made.find((s) => s.name === 'Needs')).toMatchObject({ budgetKind: 'percent', budgetBasisPoints: 5000, budgetMinor: null });
-  expect(made.find((s) => s.name === 'Rent')).toMatchObject({ budgetKind: 'fixed', budgetMinor: 40000, budgetBasisPoints: null });
-  expect(made.find((s) => s.name === 'Fun')).toMatchObject({ budgetKind: 'subsections', budgetMinor: null, budgetBasisPoints: null });
-});
-
-// ---- criterion 6 ----
-test('"Edit" opens on the section\'s own choice with its value filled in; a section from before spec 04 opens on "Subsections"', async ({ page, me }) => {
-  await page.setViewportSize(sizes.desktop);
-  await me.seed.section('Home', { budgetKind: 'fixed', budgetMinor: 90000 });
-  await me.seed.section('Zakat', { budgetKind: 'percent', budgetBasisPoints: 250 });
-  await me.seed.section('Old'); // no budget fields: the same as a section from before spec 04
-  await page.goto('/budget');
-  const d = dialog(page);
-  const edit = (n: string) => sec(page, n).getByRole('button', { name: 'Edit', exact: true }).click();
-
-  await edit('Home');
-  await expect(d.getByRole('heading', { name: 'Edit section' })).toBeVisible();
-  await expect(chip(d, 'Budget', 'Fixed amount')).toBeChecked();
-  await expect(d.getByLabel('Monthly budget', { exact: true })).toHaveValue('900.00');
-  await page.keyboard.press('Escape');
-  await expect(d).toBeHidden();
-
-  await edit('Zakat');
-  await expect(chip(d, 'Budget', 'Percentage')).toBeChecked();
-  await expect(pctField(d)).toHaveValue('2.5');
-  await page.keyboard.press('Escape');
-  await expect(d).toBeHidden();
-
-  await edit('Old');
-  await expect(chip(d, 'Budget', 'Subsections')).toBeChecked();
-  await expect(d.getByText(SUB_LINE)).toBeVisible();
-  await expect(pctField(d)).toHaveCount(0);
-  await expect(d.getByLabel('Monthly budget')).toHaveCount(0);
-});
 
 // ---- criterion 7 ----
 test('transaction dialog: "Type" is a ty-segmented of "Expense" and "Income"; title, button label and colour follow it; Pocket is still ty-chips', async ({ page, me }) => {
@@ -238,15 +110,6 @@ for (const [size, viewport] of Object.entries(sizes)) {
       }
     }
 
-    test(`${size}: the Budget segments of the section dialog fit on one line, on every choice`, async ({ page, me }) => {
-      await page.goto('/budget');
-      const d = await openAddSection(page);
-      for (const kind of ['Percentage', 'Fixed amount', 'Subsections'] as const) {
-        await chip(d, 'Budget', kind).check();
-        await checkTrack(page, d, 'Budget', nameField(d), `Budget on ${kind}`);
-      }
-    });
-
     for (const type of ['Expense', 'Income'] as const) {
       test(`${size}: the Type segments of the transaction dialog fit on one line, on ${type}`, async ({ page, me }) => {
         await seedBudget(me.seed);
@@ -284,16 +147,6 @@ for (const scheme of ['light', 'dark'] as const) {
 
   test.describe(`colours and keyboard (${scheme})`, () => {
     test.use({ colorScheme: scheme, viewport: sizes.desktop });
-
-    test(`section dialog: track, chosen and other segments use the tokens (${scheme})`, async ({ page, me }) => {
-      await page.goto('/budget');
-      const d = await openAddSection(page);
-      await checkColours(d, 'Budget', 0, 'Percentage');
-      await chip(d, 'Budget', 'Fixed amount').check();
-      await checkColours(d, 'Budget', 1, 'Fixed amount');
-      await chip(d, 'Budget', 'Subsections').check();
-      await checkColours(d, 'Budget', 2, 'Subsections');
-    });
 
     test(`transaction dialog: track, chosen and other segments use the tokens (${scheme})`, async ({ page, me }) => {
       await seedBudget(me.seed);
@@ -338,42 +191,24 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(d.getByRole('heading', { name: 'Add expense' })).toBeVisible(); // Tab does not change the choice
     });
 
-    test(`section dialog keyboard: arrow keys move the Budget choice, Tab leaves it, the chosen segment shows the focus ring (${scheme})`, async ({ page, me }) => {
-      await page.goto('/budget');
-      const d = await openAddSection(page);
-      await chip(d, 'Budget', 'Percentage').focus();
-      await page.keyboard.press('ArrowRight');
-      await expect(chip(d, 'Budget', 'Fixed amount')).toBeChecked();
-      expect(await focus(page)).toMatchObject({ radio: true, name: 'Fixed amount', legend: 'Budget', style: 'solid', width: '2px' });
-      await page.keyboard.press('ArrowRight');
-      await expect(chip(d, 'Budget', 'Subsections')).toBeChecked();
-      await page.keyboard.press('Tab');
-      const after = await focus(page);
-      expect(after.legend === 'Budget' && after.radio, 'Tab leaves the control').toBe(false);
-      await expect(chip(d, 'Budget', 'Subsections')).toBeChecked();
-    });
   });
 }
 
 // ---- criterion 11 ----
 for (const [size, viewport] of Object.entries(sizes)) {
-  test(`${size}: the "Budget", "Type", "Pocket" and "Emoji" legends start at the same left edge as the "Name" or "Date" label`, async ({ page, me }) => {
+  test(`${size}: the "Type", "Pocket" and "Emoji" legends start at the same left edge as the "Name" or "Date" label`, async ({ page, me }) => {
     await page.setViewportSize(viewport);
     await seedBudget(me.seed);
 
     await page.goto('/budget');
-    let d = await openAddSection(page);
-    const nameLeft = await textLeft(label(d, 'Name'));
-    expect(Math.abs((await textLeft(d.locator('legend', { hasText: /^Budget$/ }))) - nameLeft), 'Budget').toBeLessThanOrEqual(0.5);
-    await page.keyboard.press('Escape');
-    await expect(d).toBeHidden();
-
-    d = await openAddTransaction(page);
+    let d = await openAddTransaction(page);
     const dateLeft = await textLeft(label(d, 'Date'));
     for (const legend of ['Type', 'Pocket']) {
       const l = d.locator('legend', { hasText: new RegExp(`^${legend}$`) });
       expect(Math.abs((await textLeft(l)) - dateLeft), legend).toBeLessThanOrEqual(0.5);
     }
+    await chip(d, 'Type', 'Income').check();
+    expect(Math.abs((await textLeft(d.locator('legend', { hasText: /^Source$/ }))) - dateLeft), 'Source').toBeLessThanOrEqual(0.5);
     await page.keyboard.press('Escape');
     await expect(d).toBeHidden();
 
@@ -388,7 +223,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
   });
 }
 
-// ---- screenshots: the transaction dialog on Expense and on Income (the section dialog's are in 14-section-budget) ----
+// ---- screenshots: the transaction dialog on Expense and on Income ----
 for (const [size, viewport] of [['desktop', sizes.desktop], ['phone', sizes.phone]] as const) {
   for (const scheme of ['light', 'dark'] as const) {
     test(`screenshots ${size} ${scheme}: transaction dialog on Expense and on Income`, async ({ page, me }) => {

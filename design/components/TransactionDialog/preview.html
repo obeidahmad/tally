@@ -8,7 +8,7 @@
   <fieldset class="ty-fieldset"><legend class="ty-label">Type</legend><div class="ty-segmented"><label><input type="radio" name="type">Expense</label><label><input type="radio" name="type" checked>Income</label></div></fieldset>
   <div class="ty-field"><label class="ty-label" for="td">Date</label><input class="ty-input" id="td" type="date" value="2026-10-12"></div>
   <div class="ty-field"><label class="ty-label" for="ta">Amount</label><div class="ty-affix"><input class="ty-input ty-input--amount" id="ta" value="2000.00" inputmode="decimal"><span class="ty-muted">EUR</span></div></div>
-  <div class="ty-field"><label class="ty-label" for="tp">Payee</label><input class="ty-input" id="tp" value="Paycheck"></div>
+  <fieldset class="ty-fieldset"><legend class="ty-label">Source</legend><div class="ty-chips"><label class="ty-chip"><input type="radio" name="source" checked>Paycheck</label><label class="ty-chip"><input type="radio" name="source">Second job</label><label class="ty-chip ty-chip--add"><input type="radio" name="source">+ Add source</label></div></fieldset>
   <fieldset class="ty-fieldset"><legend class="ty-label">Pocket</legend><div class="ty-chips"><label class="ty-chip"><input type="radio" name="pocket"><span class="ty-emoji">🏦</span> Bank of Cyprus</label><label class="ty-chip"><input type="radio" name="pocket"><span class="ty-emoji">💵</span> Cash</label><label class="ty-chip ty-chip--add"><input type="radio" name="pocket" checked>+ Add pocket</label></div>
     <div class="ty-inset">
       <div class="ty-field"><label class="ty-label" for="pn">Pocket name</label><input class="ty-input" id="pn" value="Revolut"></div>

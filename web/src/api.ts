@@ -4,22 +4,43 @@ export type User = { id: number; username: string; displayName: string; isOwner:
 export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker';
 export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number };
 export type Subsection = { id: number; sectionId: number; name: string; budgetMinor: number; position: number };
-export type BudgetKind = 'subsections' | 'fixed' | 'percent';
-type OwnBudget = { budgetKind: BudgetKind; budgetMinor: number | null; budgetBasisPoints: number | null };
-export type Section = OwnBudget & { id: number; name: string; colorSlot: number; position: number; subsections: Subsection[] };
+export type Source = { id: number; name: string; boxId: number; isLeftovers: boolean };
+export type RestRule = { shares: { sectionId: number | null; basisPoints: number }[]; overspent: 'income' | 'section' };
+export type Section = { id: number; name: string; colorSlot: number; position: number; subsections: Subsection[]; rest: RestRule };
+export type Months = { lastClosed: string | null; toClose: string | null };
+export type CloseSummary = {
+  month: string; nextMonth: string;
+  rows: { fromSectionId: number | null; basisPoints: number; toSectionId: number | null; amountMinor: number }[];
+  keptMinor: number; incomeMinor: number;
+};
 export type Transaction = {
   id: number; date: string; kind: 'expense' | 'income'; amountMinor: number;
-  pocketId: number; subsectionId: number | null; payee: string; note: string; source: 'manual';
+  pocketId: number; subsectionId: number | null; sourceId: number | null; payee: string; note: string; source: 'manual';
 };
-export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number };
-export type BudgetSection = OwnBudget & {
+export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number };
+export type BudgetSection = {
   id: number; name: string; colorSlot: number; budgetedMinor: number; restMinor: number; spentMinor: number; availableMinor: number;
   subsections: BudgetSubsection[];
 };
 export type Budget = {
-  month: string; currency: string;
-  totals: { incomeMinor: number; budgetedMinor: number; spentMinor: number; availableMinor: number };
+  month: string; currency: string; closed: boolean;
+  totals: { incomeMinor: number; budgetedMinor: number; spentMinor: number; availableMinor: number; leftOverMinor: number };
   sections: BudgetSection[];
+};
+
+export type StepBody =
+  | { kind: 'amount'; sectionId: number; amountMinor: number }
+  | { kind: 'percent'; shares: { sectionId: number; basisPoints: number }[] };
+export type PipelineStep =
+  | { id: number; position: number; kind: 'amount'; sectionId: number; amountMinor: number; takenMinor: number; leftMinor: number }
+  | { id: number; position: number; kind: 'percent'; leftMinor: number; shares: { sectionId: number; basisPoints: number; takenMinor: number }[] };
+export type PipelineBox = {
+  id: number; incomeMinor: number; leftOverMinor: number;
+  sources: { id: number; name: string; incomeMinor: number; isLeftovers: boolean }[]; steps: PipelineStep[];
+};
+export type Pipeline = {
+  month: string; currency: string; closed: boolean; boxes: PipelineBox[];
+  sections: { id: number; name: string; colorSlot: number; receivedMinor: number; carriedMinor: number; rest: RestRule }[]; leftOverMinor: number;
 };
 
 /** The 32 pocket emoji in picker order: [character, name]. Built with fromCodePoint so no variation selector sneaks in. */
