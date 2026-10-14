@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useAutoSync } from '../bank';
 import { api, useLoad, type Pocket, type Section, type Source, type Transaction } from '../api';
 import { currentMonth, dayHeading, monthTitle, shiftMonth } from '../dates';
 import { TransactionDialog } from '../dialogs';
@@ -21,6 +22,7 @@ export default function TransactionsPage() {
   const [pocketId, setPocketId] = useState('');
   const [dialog, setDialog] = useState<{ tx?: Transaction; importing?: boolean } | null>(null);
   const close = () => setDialog(null);
+  useAutoSync();
 
   const state = useLoad(
     async () => {
@@ -104,7 +106,7 @@ export default function TransactionsPage() {
                       {list.map((t) => {
                         const sub = t.subsectionId === null ? undefined : subs.get(t.subsectionId);
                         const transfer = t.kind === 'transfer';
-                        const imported = t.source === 'import';
+                        const imported = t.source !== 'manual';
                         const unsorted = imported && (t.kind === 'income' ? t.sourceId === null : t.subsectionId === null);
                         const where = unsorted ? '' : sub?.name ?? (transfer ? '' : 'Income');
                         const p = pocketById.get(t.pocketId);

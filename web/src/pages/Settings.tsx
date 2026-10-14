@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { BankConnections } from '../bank';
 import { api, fieldError, useForm, useLoad, type Rule, type Section, type Source, type User } from '../api';
 import { useAuth } from '../auth';
 import { Field, Load, CurrencyField, FormError, Modal, SubsectionOptions, TextField, Topbar, useToast } from '../ui';
@@ -175,6 +177,14 @@ function People({ currency, then }: { currency: string; then: React.ReactNode })
 
 export default function SettingsPage() {
   const { user, setUser } = useAuth();
+  const toast = useToast();
+  const [params, setParams] = useSearchParams();
+  const bank = params.get('bank');
+  useEffect(() => {
+    if (!bank) return;
+    toast(bank === 'connected' ? 'Bank connected.' : 'The bank did not connect. Try again.');
+    setParams({}, { replace: true });
+  }, [bank]);
   const signOut = async () => { await api('POST', '/auth/logout').catch(() => {}); setUser(null); };
   return (
     <>
@@ -192,7 +202,7 @@ export default function SettingsPage() {
       </section>
       <ChangePassword />
       <div><button className="ty-btn app-phone-only" onClick={signOut}>Sign out</button></div>
-      {user.isOwner ? <People currency={user.baseCurrency} then={<Rules />} /> : <Rules />}
+      {user.isOwner ? <People currency={user.baseCurrency} then={<BankConnections then={<Rules />} />} /> : <BankConnections then={<Rules />} />}
     </>
   );
 }

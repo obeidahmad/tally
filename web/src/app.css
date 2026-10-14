@@ -46,3 +46,7 @@
 /* Import preview table and rules */
 .app-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); }
 .app-scroll .ty-table td, .app-scroll .ty-table th { white-space: nowrap; text-align: left; }
+
+.app-textarea { height: auto; padding: var(--space-3); resize: vertical; font-family: ui-monospace, monospace; }
+.app-bank + .app-bank { border-top: 1px solid var(--line); padding-top: var(--space-4); }
+.app-actions { display: flex; gap: var(--space-2); }

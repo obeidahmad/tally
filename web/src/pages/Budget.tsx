@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { EndingNotice, loadConnections } from '../bank';
 import { api, ApiError, useLoad, type Budget, type BudgetSection, type BudgetSubsection, type Months, type Pocket, type Section, type Source } from '../api';
 import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dates';
 import { CloseDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
@@ -56,14 +57,15 @@ export default function BudgetPage() {
 
   const state = useLoad(
     async () => {
-      const [budget, months, p, s, src] = await Promise.all([
+      const [budget, months, p, s, src, connections] = await Promise.all([
         api<Budget>('GET', `/budget?month=${month}`),
         api<Months>('GET', '/months'),
         api<{ pockets: Pocket[] }>('GET', '/pockets'),
         api<{ sections: Section[] }>('GET', '/sections'),
         api<{ sources: Source[] }>('GET', '/sources'),
+        loadConnections(),
       ]);
-      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources };
+      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources, connections };
     },
     [month],
   );
@@ -110,6 +112,7 @@ export default function BudgetPage() {
               <div><button className="ty-btn ty-btn--sm" onClick={() => setDialog({ t: 'close' })}>Close {monthName(state.data.months.toClose)}</button></div>
             </div>
           )}
+          {state.data.connections.map((c) => <EndingNotice key={c.id} connection={c} />)}
           {state.data.budget.unsortedCount > 0 && (
             <div className="ty-inset">
               <span>{state.data.budget.unsortedCount} imported {state.data.budget.unsortedCount === 1 ? 'transaction needs' : 'transactions need'} a subsection or source.</span>

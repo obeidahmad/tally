@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api, KIND_WORDS, useLoad, type NetWorth, type Pocket, type Section, type Source } from '../api';
+import { bankByPocket, countsLine, loadConnections, syncedLine, useAutoSync } from '../bank';
 import { PocketDialog, TransactionDialog } from '../dialogs';
 import { formatMinor } from '../money';
 import { useAuth } from '../auth';
@@ -19,14 +20,16 @@ export default function PocketsPage() {
   const { user } = useAuth();
   const [dialog, setDialog] = useState<{ pocket?: Pocket; transfer?: boolean } | null>(null);
   const close = () => setDialog(null);
+  useAutoSync();
   const state = useLoad(async () => {
-    const [p, n, s, src] = await Promise.all([
+    const [p, n, s, src, banks] = await Promise.all([
       api<{ pockets: Pocket[] }>('GET', '/pockets'),
       api<NetWorth>('GET', '/networth'),
       api<{ sections: Section[] }>('GET', '/sections'),
       api<{ sources: Source[] }>('GET', '/sources'),
+      loadConnections(),
     ]);
-    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources };
+    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources, banks: bankByPocket(banks) };
   }, []);
 
   useRescueFocus(state.data ? state.data.pockets.length === 0 : undefined);
@@ -49,7 +52,7 @@ export default function PocketsPage() {
         <button className="ty-btn ty-month__add" onClick={() => setDialog({ transfer: true })}>Transfer</button>
       </header>
       <Load state={state}>
-        {({ pockets, sections, sources }) => (
+        {({ pockets, sections, sources, banks }) => (
           <>
             {pockets.length === 0 ? (
               <EmptyCard text="No pockets yet. A pocket is where money sits: a bank account, cash, a fund." action="Add pocket" onAction={() => setDialog({})} />
@@ -62,10 +65,11 @@ export default function PocketsPage() {
                       <span className="ty-pill">{p.currency}</span>
                     </div>
                     <div>
-                      <div className={p.balanceMinor < 0 ? 'num-lg ty-num--neg' : 'num-lg'}>{formatMinor(p.balanceMinor)}<span className="ty-cur">{p.currency}</span></div>
+                      <div className={(p.syncedAt ? p.syncedBalanceMinor ?? p.balanceMinor : p.balanceMinor) < 0 ? 'num-lg ty-num--neg' : 'num-lg'}>{formatMinor(p.syncedAt ? p.syncedBalanceMinor ?? p.balanceMinor : p.balanceMinor)}<span className="ty-cur">{p.currency}</span></div>
                       <div className="ty-cap">{p.currency === user.baseCurrency ? ' ' : p.baseBalanceMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseBalanceMinor)} ${user.baseCurrency}`}</div>
                     </div>
-                    <div className="ty-cap">Entered by hand</div>
+                    <div className="ty-cap">{syncedLine(p, banks.get(p.id))}</div>
+                    {countsLine(p) && <div className="ty-cap">{countsLine(p)}</div>}
                   </article>
                 ))}
               </div>

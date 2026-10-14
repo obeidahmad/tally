@@ -5,16 +5,18 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { burnTime, currentSession, endSession, hashPassword, requireAuth, startSession, toUser, USER_COLS, verifyPassword } from './auth';
+import { bankCallback } from './banks';
 import { createRates, ECB_URL } from './rates';
 import { dataRouter } from './data';
 import type { Db } from './db';
 import { errorHandler, fieldError, HttpError, notFound, parse, requireJson } from './http';
 import * as s from './schemas';
 
-export type AppOptions = { db: Db; cookieSecure?: boolean; webDist?: string; ratesUrl?: string; now?: () => number };
+export type AppOptions = { db: Db; cookieSecure?: boolean; webDist?: string; ratesUrl?: string; bankUrl?: string; publicUrl?: string; now?: () => number };
 
-export function createApp({ db, cookieSecure = false, webDist = path.join(__dirname, '..', '..', 'web', 'dist'), ratesUrl = process.env.TALLY_RATES_URL ?? ECB_URL, now = Date.now }: AppOptions) {
+export function createApp({ db, cookieSecure = false, webDist = path.join(__dirname, '..', '..', 'web', 'dist'), ratesUrl = process.env.TALLY_RATES_URL ?? ECB_URL, bankUrl = process.env.TALLY_ENABLEBANKING_URL ?? 'https://api.enablebanking.com', publicUrl = process.env.TALLY_PUBLIC_URL, now = Date.now }: AppOptions) {
   const rates = createRates(db, ratesUrl, now);
+  const bank = { url: bankUrl.replace(/\/+$/, ''), publicUrl, now };
   const app = express();
   // Tally is normally reached over plain HTTP: no upgrade-insecure-requests, and HSTS only when HTTPS is declared.
   app.use(
@@ -78,6 +80,9 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.json({ user: userById(row.id) });
   });
 
+  // The bank sends the browser back here; the state, not a cookie, says whose it is.
+  api.get('/banks/callback', bankCallback(db, bank));
+
   // Everything below needs a session.
   api.use(requireAuth(db));
 
@@ -108,7 +113,7 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   });
 
   api.use('/imports', express.json({ limit: '25mb' }));
-  api.use(dataRouter(db, rates, now));
+  api.use(dataRouter(db, rates, now, bank));
   api.use(() => { throw notFound(); });
   app.use('/api', api);
 

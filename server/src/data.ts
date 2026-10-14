@@ -3,6 +3,7 @@ import type { Db } from './db';
 import type { Rates } from './rates';
 import { HttpError, fieldError, notFound, parse } from './http';
 import * as s from './schemas';
+import { bankRouter, type BankConfig } from './banks';
 import { guessMapping, readAmount, readCsv, readDate } from './csv';
 
 const POCKET = `SELECT p.id, p.name, p.kind, p.emoji, p.currency, p.opening_balance_minor AS openingBalanceMinor,
@@ -10,6 +11,7 @@ const POCKET = `SELECT p.id, p.name, p.kind, p.emoji, p.currency, p.opening_bala
       CASE WHEN t.pocket_id = p.id THEN (CASE t.kind WHEN 'income' THEN t.amount_minor ELSE -t.amount_minor END) ELSE 0 END
       + CASE WHEN t.to_pocket_id = p.id THEN t.to_amount_minor ELSE 0 END)
     FROM transactions t WHERE (t.pocket_id = p.id OR t.to_pocket_id = p.id) AND t.user_id = p.user_id), 0) AS balanceMinor,
+  p.synced_balance_minor AS syncedBalanceMinor, p.synced_at AS syncedAt,
   EXISTS (SELECT 1 FROM transactions x WHERE (x.pocket_id = p.id OR x.to_pocket_id = p.id) AND x.user_id = p.user_id) AS hasTransactions
   FROM pockets p`;
 const SUB = `SELECT id, section_id AS sectionId, name, budget_minor AS budgetMinor, position FROM subsections`;
@@ -17,7 +19,7 @@ const TX = `SELECT id, date, kind, amount_minor AS amountMinor, pocket_id AS poc
   base_amount_minor AS baseAmountMinor, to_pocket_id AS toPocketId, to_amount_minor AS toAmountMinor,
   payee, note, source FROM transactions`;
 
-const UNSORTED = `source = 'import' AND ((kind = 'expense' AND subsection_id IS NULL) OR (kind = 'income' AND source_id IS NULL))`;
+const UNSORTED = `source IN ('import', 'bank') AND ((kind = 'expense' AND subsection_id IS NULL) OR (kind = 'income' AND source_id IS NULL))`;
 
 type Rule = { shares: { sectionId: number | null; basisPoints: number }[]; overspent: 'income' | 'section' };
 const idOf = (req: Request): number => {
@@ -33,7 +35,7 @@ const localDay = (ms: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-export function dataRouter(db: Db, rates: Rates, now: () => number): Router {
+export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankConfig): Router {
   const r = Router();
   // Rates are read when stale before any route runs; a failed read keeps the old ones.
   r.use(async (_req, _res, next) => { await rates.ensure(); next(); });
@@ -106,6 +108,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number): Router {
     const b = parse(s.pocket, { ...cur, ...req.body });
     if (b.currency !== cur.currency) {
       currencyOf(req.user, b.currency);
+      if (one('SELECT 1 FROM bank_accounts WHERE pocket_id = ?', cur.id)) throw fieldError('currency', 'A pocket linked to a bank account keeps its currency.');
       if (hasTx(req.user.id, cur.id)) throw fieldError('currency', 'A pocket with transactions keeps its currency.');
     }
     db.prepare('UPDATE pockets SET name = ?, kind = ?, emoji = ?, currency = ?, opening_balance_minor = ? WHERE id = ? AND user_id = ?').run(
@@ -273,7 +276,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number): Router {
   r.patch('/transactions/:id', (req, res) => {
     const cur = txOf(req.user.id, idOf(req)) as any;
     lockedTx(req.user.id, cur);
-    const imported = cur.source === 'import';
+    const imported = cur.source === 'import' || cur.source === 'bank';
     if (imported)
       for (const k of ['date', 'kind', 'amountMinor', 'pocketId', 'toPocketId', 'toAmountMinor'])
         if (req.body && k in req.body && req.body[k] !== cur[k]) throw fieldError(k, 'An imported transaction keeps this.');
@@ -714,6 +717,8 @@ export function dataRouter(db: Db, rates: Rates, now: () => number): Router {
     })();
     res.status(201).json(out);
   });
+
+  r.use(bankRouter(db, bank, { isClosed, rulesOf, ruleFor, baseOf }));
 
   return r;
 }
