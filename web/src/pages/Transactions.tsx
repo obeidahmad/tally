@@ -11,6 +11,7 @@ import { pick } from '../pick';
 import { EmptyCard, Field, Load, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
 
 const MONTHS_BACK = 36;
+const ORIGIN: Record<Transaction['source'], string> = { manual: 'entered by hand', import: 'from a statement', bank: 'from your bank', broker: 'from Trading212' };
 const UNSORTED = 'unsorted'; // the Subsection filter's "Needs sorting" choice
 
 export default function TransactionsPage() {
@@ -132,7 +133,7 @@ export default function TransactionsPage() {
                           <div key={t.id} className="ty-trow app-pick" {...pick(() => setDialog({ tx: t }))}>
                             <div className="ty-trow__who">
                               <b>{transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? (t.sourceId === null ? t.payee : sourceName.get(t.sourceId)) : t.payee}</b>
-                              <span className="ty-cap">{transfer ? moved : `${t.kind === 'income' ? 'Income · ' : ''}${imported ? (t.kind === 'income' ? 'from a statement' : 'From a statement') : (t.kind === 'income' ? 'entered by hand' : 'Entered by hand')}`}</span>
+                              <span className="ty-cap">{transfer ? moved : `${t.kind === 'income' ? 'Income · ' : ''}${t.kind === 'income' ? ORIGIN[t.source] : ORIGIN[t.source][0].toUpperCase() + ORIGIN[t.source].slice(1)}`}</span>
                               <span className="ty-cap ty-trow__meta">{unsorted ? <><span className="ty-pill ty-pill--warning">Needs sorting</span> · {pocket}</> : t.kind === 'income' ? pocket : <>{where && `${where} · `}{pocket}</>}</span>
                             </div>
                             <div className="ty-tag ty-wide">

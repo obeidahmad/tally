@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 import { api, KIND_WORDS, useLoad, type Holding, type NetWorth, type Pocket, type Section, type Source, type Where } from '../api';
 import { bankByPocket, countsLine, loadConnections, syncedLine, useAutoSync } from '../bank';
+import { loadT212Pocket, useT212Sync } from '../trading212';
 import { PocketDialog, TransactionDialog } from '../dialogs';
 import { formatMinor } from '../money';
 import { useAuth } from '../auth';
@@ -69,8 +70,9 @@ export default function PocketsPage() {
   const [dialog, setDialog] = useState<{ pocket?: Pocket; transfer?: boolean } | null>(null);
   const close = () => setDialog(null);
   useAutoSync();
+  useT212Sync();
   const state = useLoad(async () => {
-    const [p, n, s, src, w, h, banks] = await Promise.all([
+    const [p, n, s, src, w, h, banks, t212] = await Promise.all([
       api<{ pockets: Pocket[] }>('GET', '/pockets'),
       api<NetWorth>('GET', '/networth'),
       api<{ sections: Section[] }>('GET', '/sections'),
@@ -78,8 +80,11 @@ export default function PocketsPage() {
       api<Where>('GET', '/where'),
       api<{ holdings: Holding[] }>('GET', '/holdings'),
       loadConnections(),
+      loadT212Pocket(),
     ]);
-    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources, where: w, held: h.holdings.filter((x) => !x.soldDate), banks: bankByPocket(banks) };
+    const names = bankByPocket(banks);
+    if (t212 !== null) names.set(t212, 'Trading212');
+    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources, where: w, held: h.holdings.filter((x) => !x.soldDate), banks: names };
   }, []);
 
   useRescueFocus(state.data ? state.data.pockets.length === 0 : undefined);
@@ -112,7 +117,8 @@ export default function PocketsPage() {
                 {pockets.map((p) => {
                   const paid = held.filter((x) => x.pocketId === p.id).reduce((t, x) => t + x.paidMinor, 0);
                   const converted = p.currency === user.baseCurrency ? '' : p.baseValueMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseValueMinor)} ${user.baseCurrency}`;
-                  const shown = p.syncedAt ? p.syncedBalanceMinor ?? p.valueMinor : p.valueMinor;
+                  const broker = banks.get(p.id) === 'Trading212'; // its figure is synced cash plus holdings, which the server already adds
+                  const shown = p.syncedAt && !broker ? p.syncedBalanceMinor ?? p.valueMinor : p.valueMinor;
                   const sub = [converted, held.some((x) => x.pocketId === p.id) && `paid ${formatMinor(paid)} ${p.currency}`].filter(Boolean).join(' · ') || ' ';
                   return (
                     <article key={p.id} className="ty-card ty-pocket app-pick" {...pick(() => setDialog({ pocket: p }))}>
@@ -125,7 +131,7 @@ export default function PocketsPage() {
                         <div className="ty-cap">{sub}</div>
                       </div>
                       <div className="ty-cap">{syncedLine(p, banks.get(p.id))}</div>
-                      {countsLine(p) && <div className="ty-cap">{countsLine(p)}</div>}
+                      {!broker && countsLine(p) && <div className="ty-cap">{countsLine(p)}</div>}
                     </article>
                   );
                 })}

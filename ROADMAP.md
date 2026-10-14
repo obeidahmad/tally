@@ -124,6 +124,7 @@ The pipeline is what makes Tally different: money moves through steps in an orde
 
 - `specs/15-statement-import-and-rules.md`: CSV statements and rules that sort transactions by payee.
 - **File import:** bank statement files (CSV) from any bank. This is the fallback that keeps working when a live connection does not.
+- `specs/16-trading212.md`: Trading212 through the person's own API key: holdings, cash and dividends.
 - **Trading212:** through the user's own API key. The official API is in beta and covers Invest and Stocks ISA accounts.
 - `specs/17-bank-connections.md`: banks through Enable Banking, with each person's own registration.
 - **Banks (Revolut, Bank of Cyprus):** through Enable Banking, which is free for a private individual reading their own accounts. Each person on the server uses their own registration.

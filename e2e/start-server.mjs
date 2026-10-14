@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startFakeEnableBanking } from './support/fake-enable-banking.mjs';
+import { startFakeTrading212 } from './support/fake-trading212.mjs';
 
 const dir = mkdtempSync(join(tmpdir(), 'tally-e2e-'));
 process.env.PORT = process.env.E2E_PORT ?? '3210';
@@ -16,5 +17,9 @@ for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => process.exit(0));
 const bankPort = Number(process.env.PORT) + 1;
 await startFakeEnableBanking(bankPort);
 process.env.TALLY_ENABLEBANKING_URL = `http://127.0.0.1:${bankPort}`;
+// Spec 16: a fake Trading212 two ports up.
+const t212Port = Number(process.env.PORT) + 2;
+await startFakeTrading212(t212Port);
+process.env.TALLY_T212_URL = `http://127.0.0.1:${t212Port}`;
 process.env.TALLY_PUBLIC_URL = `http://localhost:${process.env.PORT}`;
 await import('../server/dist/index.js');

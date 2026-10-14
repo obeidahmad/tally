@@ -5,6 +5,8 @@ import { today } from '../dates';
 import { Foot } from '../dialogs';
 import { formatMinor, minorToInput, parseAmount } from '../money';
 import { pick } from '../pick';
+import { loadT212Pocket, useT212Sync } from '../trading212';
+import { syncedLine } from '../bank';
 import { AmountField, Field, FormError, Load, Modal, PocketCurrencyField, SubsectionOptions, TextField, Topbar, useToast } from '../ui';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -31,7 +33,14 @@ function HoldingDialog({ holding, focusWorth, pockets, sections, base, onClose }
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { if (focusWorth) ref.current?.querySelector('input')?.focus(); }, []);
 
+  const broker = holding?.source === 'trading212';
   const save = f.on(async () => {
+    if (broker) { // only the name and subsection are ours to change
+      await api('PATCH', `/holdings/${holding.id}`, { name, subsectionId: Number(subId) });
+      onClose();
+      toast('Saved');
+      return;
+    }
     const paidMinor = parseAmount(paid, { allowZero: true });
     if (paidMinor === null) throw fieldError('paidMinor', ZERO_ERROR);
     const worthMinor = worth.trim() === '' && !holding ? undefined : parseAmount(worth, { allowZero: true });
@@ -73,12 +82,12 @@ function HoldingDialog({ holding, focusWorth, pockets, sections, base, onClose }
         <Field label="Subsection" error={f.errors.subsectionId}>
           {(p) => <select {...p} value={subId} onChange={(e) => setSubId(e.target.value)}><SubsectionOptions sections={sections} /></select>}
         </Field>
-        <AmountField label="Paid" value={paid} onChange={setPaid} error={f.errors.paidMinor} currency={pocket?.currency ?? base} />
+        <AmountField label="Paid" value={paid} onChange={setPaid} error={f.errors.paidMinor} currency={pocket?.currency ?? base} disabled={broker} hint={broker ? "This holding's figures come from Trading212." : undefined} />
         <div className="ty-stack" ref={ref}>
-          <AmountField label="Worth now" value={worth} onChange={setWorth} error={f.errors.worthMinor} currency={curr} hint={holding ? undefined : 'Leave empty to start at what was paid.'} />
+          <AmountField label="Worth now" value={worth} onChange={setWorth} error={f.errors.worthMinor} currency={curr} disabled={broker} hint={holding ? undefined : 'Leave empty to start at what was paid.'} />
         </div>
-        <PocketCurrencyField value={curr} onChange={(c) => { setCurr(c); setTouched(true); }} error={f.errors.worthCurrency} offered={offered} base={base} locked={false} />
-        <Foot busy={f.busy} onCancel={onClose} onDelete={holding && !holding.soldDate ? remove : undefined} label={holding ? 'Save' : 'Add holding'} />
+        <PocketCurrencyField value={curr} onChange={(c) => { setCurr(c); setTouched(true); }} error={f.errors.worthCurrency} offered={offered} base={base} locked={broker} />
+        <Foot busy={f.busy} onCancel={onClose} onDelete={holding && !holding.soldDate && !broker ? remove : undefined} label={holding ? 'Save' : 'Add holding'} />
       </form>
     </Modal>
   );
@@ -129,14 +138,16 @@ export default function InvestmentsPage() {
   const { user } = useAuth();
   const [dialog, setDialog] = useState<{ t: 'edit'; holding?: Holding; worth?: boolean } | { t: 'sell'; holding: Holding } | null>(null);
   const close = () => setDialog(null);
+  useT212Sync();
   const state = useLoad(async () => {
-    const [h, p, s, r] = await Promise.all([
+    const [h, p, s, r, t212] = await Promise.all([
       api<{ holdings: Holding[] }>('GET', '/holdings'),
       api<{ pockets: Pocket[] }>('GET', '/pockets'),
       api<{ sections: Section[] }>('GET', '/sections'),
       api<Rates>('GET', '/rates'),
+      loadT212Pocket(),
     ]);
-    return { holdings: h.holdings, pockets: p.pockets, sections: s.sections, rates: r };
+    return { holdings: h.holdings, pockets: p.pockets, sections: s.sections, rates: r, t212 };
   }, []);
 
   return (
@@ -148,7 +159,7 @@ export default function InvestmentsPage() {
         <button className="ty-btn ty-btn--primary" onClick={() => setDialog({ t: 'edit' })}>Add holding</button>
       </header>
       <Load state={state}>
-        {({ holdings, pockets, sections, rates }) => {
+        {({ holdings, pockets, sections, rates, t212 }) => {
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
           const perBase = (c: string) => (c === user.baseCurrency ? 1 : Number(rates.currencies.find((x) => x.currency === c)?.rate));
           const held = holdings.filter((h) => !h.soldDate);
@@ -171,10 +182,10 @@ export default function InvestmentsPage() {
                 <div className="app-hold__fig">
                   {h.soldDate ? <span className="ty-cap">sold {short(h.soldDate)}</span> : (<>
                     {shown !== null && <span className={shown > 0 ? 'ty-pill ty-pill--positive' : shown < 0 ? 'ty-pill ty-pill--negative' : 'ty-pill'}>{shown > 0 ? '+' : shown < 0 ? '−' : ''}{Math.abs(shown).toFixed(1)}%</span>}
-                    <span className="ty-cap">updated {short(h.worthDate)}</span>
+                    <span className="ty-cap">{h.source === 'trading212' ? 'from Trading212' : `updated ${short(h.worthDate)}`}</span>
                   </>)}
                 </div>
-                {!h.soldDate && (
+                {!h.soldDate && h.source !== 'trading212' && (
                   <div className="app-hold__act">
                     <button className="ty-btn ty-btn--quiet ty-btn--sm" onClick={() => setDialog({ t: 'edit', holding: h, worth: true })}>Update value</button>
                     <button className="ty-btn ty-btn--quiet ty-btn--sm" onClick={() => setDialog({ t: 'sell', holding: h })}>Sell</button>
@@ -186,6 +197,7 @@ export default function InvestmentsPage() {
           const card = (list: Holding[], p: Pocket) => (
             <section key={p.id} className="ty-card ty-stack" aria-label={p.name}>
               <b><span className="ty-emoji">{p.emoji}</span> {p.name}</b>
+              {p.id === t212 && p.syncedAt && <span className="ty-cap">{syncedLine(p, 'Trading212')}</span>}
               <div>{list.filter((h) => h.pocketId === p.id).map((h) => row(h, p))}</div>
             </section>
           );

@@ -4,6 +4,7 @@ import type { Rates } from './rates';
 import { HttpError, fieldError, notFound, parse } from './http';
 import * as s from './schemas';
 import { bankRouter, type BankConfig } from './banks';
+import { trading212, type BrokerConfig } from './trading212';
 import { guessMapping, readAmount, readCsv, readDate } from './csv';
 
 const POCKET = `SELECT p.id, p.name, p.kind, p.emoji, p.currency, p.opening_balance_minor AS openingBalanceMinor,
@@ -23,7 +24,7 @@ const TX = `SELECT id, date, kind, amount_minor AS amountMinor, pocket_id AS poc
   payee, note, source FROM transactions`;
 
 const HOLD = `SELECT id, name, pocket_id AS pocketId, subsection_id AS subsectionId, paid_minor AS paidMinor, worth_minor AS worthMinor,
-  worth_currency AS worthCurrency, worth_date AS worthDate, sold_date AS soldDate FROM holdings`;
+  worth_currency AS worthCurrency, worth_date AS worthDate, sold_date AS soldDate, source FROM holdings`;
 const UNSORTED = `source IN ('import', 'bank') AND ((kind = 'expense' AND subsection_id IS NULL) OR (kind = 'income' AND source_id IS NULL))`;
 
 type Rule = { shares: { sectionId: number | null; basisPoints: number }[]; overspent: 'income' | 'section' };
@@ -40,11 +41,13 @@ const localDay = (ms: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankConfig): Router {
+export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankConfig, broker: BrokerConfig): Router {
   const r = Router();
   // Rates are read when stale before any route runs; a failed read keeps the old ones.
   r.use(async (_req, _res, next) => { await rates.ensure(); next(); });
   const today = () => localDay(now());
+  // The Pockets and Investments pages start a Trading212 sync when the last one is over an hour old.
+  r.get(['/pockets', '/holdings'], (req, _res, next) => { t212.maybeSync(req.user); next(); });
   const one = (sql: string, ...args: unknown[]): any => db.prepare(sql).get(...args);
   const all = <T = any>(sql: string, ...args: unknown[]) => db.prepare(sql).all(...args) as T[];
   const must = (row: any): any => {
@@ -56,11 +59,12 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
     rates.convert(h.worthMinor, h.worthCurrency, currency, today()) ?? h.paidMinor;
   const withBase = (p: any, base: string) => {
     const held = all<any>(`${HOLD} WHERE pocket_id = ? AND sold_date IS NULL`, p.id);
-    const valueMinor = p.balanceMinor + held.reduce((a, h) => a + worthIn(h, p.currency), 0);
+    const valueMinor = (p.syncedBalanceMinor ?? p.balanceMinor) + held.reduce((a, h) => a + worthIn(h, p.currency), 0);
     return { ...p, hasTransactions: !!p.hasTransactions, valueMinor, baseValueMinor: rates.convert(valueMinor, p.currency, base, today()) };
   };
   const pocketOf = (user: { id: number; baseCurrency: string }, id: number) =>
     withBase(must(one(`${POCKET} WHERE p.id = ? AND p.user_id = ?`, id, user.id)), user.baseCurrency);
+  const t212 = trading212(db, rates, broker, { isClosed: (u, m) => isClosed(u, m), baseOf: (u, t) => baseOf(u, t), today });
   const hasTx = (uid: number, id: number) => !!one('SELECT 1 FROM transactions WHERE (pocket_id = ? OR to_pocket_id = ?) AND user_id = ?', id, id, uid);
   const hasHoldings = (uid: number, id: number) => !!one('SELECT 1 FROM holdings WHERE pocket_id = ? AND user_id = ?', id, uid);
   const currencyOf = (user: { baseCurrency: string }, c: unknown) => {
@@ -123,6 +127,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
       currencyOf(req.user, b.currency);
       if (hasTx(req.user.id, cur.id) || hasHoldings(req.user.id, cur.id)) throw fieldError('currency', 'A pocket with transactions keeps its currency.');
       if (one('SELECT 1 FROM bank_accounts WHERE pocket_id = ?', cur.id)) throw fieldError('currency', 'A pocket linked to a bank account keeps its currency.');
+      if (one('SELECT 1 FROM broker_connections WHERE pocket_id = ?', cur.id)) throw fieldError('currency', 'A pocket linked to Trading212 keeps its currency.');
     }
     db.prepare('UPDATE pockets SET name = ?, kind = ?, emoji = ?, currency = ?, opening_balance_minor = ? WHERE id = ? AND user_id = ?').run(
       b.name, b.kind, b.emoji, b.currency, b.openingBalanceMinor, cur.id, req.user.id,
@@ -842,6 +847,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   });
 
   // Holdings
+  const FROM_BROKER = "This holding's figures come from Trading212.";
   const holdingOf = (uid: number, id: number) => must(one(`${HOLD} WHERE id = ? AND user_id = ?`, id, uid));
   const unsold = <T extends { soldDate: string | null }>(h: T): T => {
     if (h.soldDate) throw new HttpError(409, 'sold', 'This holding is sold.');
@@ -871,6 +877,9 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
     const cur = unsold(holdingOf(req.user.id, idOf(req)));
     const body = req.body ?? {};
     // The pocket is fixed once the holding exists.
+    if (cur.source === 'trading212')
+      for (const f of ['paidMinor', 'worthMinor', 'worthCurrency'] as const)
+        if (body[f] !== undefined && body[f] !== cur[f]) throw fieldError(f, FROM_BROKER);
     const b = checkedHolding(req.user, { ...cur, ...body, pocketId: cur.pocketId });
     const worthDate = body.worthMinor !== undefined || body.worthCurrency !== undefined ? today() : cur.worthDate;
     db.prepare('UPDATE holdings SET name = ?, subsection_id = ?, paid_minor = ?, worth_minor = ?, worth_currency = ?, worth_date = ? WHERE id = ? AND user_id = ?')
@@ -880,6 +889,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   r.post('/holdings/:id/sell', (req, res) => {
     const uid = req.user.id;
     const cur = unsold(holdingOf(uid, idOf(req)));
+    if (cur.source === 'trading212') throw new HttpError(409, 'broker', FROM_BROKER);
     const b = parse(s.sale, req.body);
     if (isClosed(uid, b.date.slice(0, 7))) throw fieldError('date', 'This date is in a closed month.');
     const currency: string = one('SELECT currency FROM pockets WHERE id = ?', cur.pocketId).currency;
@@ -901,6 +911,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   });
   r.delete('/holdings/:id', (req, res) => {
     const cur = unsold(holdingOf(req.user.id, idOf(req)));
+    if (cur.source === 'trading212') throw new HttpError(409, 'broker', FROM_BROKER);
     db.prepare('DELETE FROM holdings WHERE id = ? AND user_id = ?').run(cur.id, req.user.id);
     res.status(204).end();
   });
@@ -1007,6 +1018,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   });
 
   r.use(bankRouter(db, bank, { isClosed, rulesOf, ruleFor, baseOf }));
+  r.use(t212.router);
 
   return r;
 }

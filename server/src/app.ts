@@ -13,9 +13,9 @@ import type { Db } from './db';
 import { errorHandler, fieldError, HttpError, notFound, parse, requireJson } from './http';
 import * as s from './schemas';
 
-export type AppOptions = { db: Db; cookieSecure?: boolean; webDist?: string; ratesUrl?: string; bankUrl?: string; publicUrl?: string; now?: () => number };
+export type AppOptions = { db: Db; cookieSecure?: boolean; webDist?: string; ratesUrl?: string; bankUrl?: string; publicUrl?: string; t212Url?: string; sleep?: (ms: number) => Promise<void>; now?: () => number };
 
-export function createApp({ db, cookieSecure = false, webDist = path.join(__dirname, '..', '..', 'web', 'dist'), ratesUrl = process.env.TALLY_RATES_URL ?? ECB_URL, bankUrl = process.env.TALLY_ENABLEBANKING_URL ?? 'https://api.enablebanking.com', publicUrl = process.env.TALLY_PUBLIC_URL, now = Date.now }: AppOptions) {
+export function createApp({ db, cookieSecure = false, webDist = path.join(__dirname, '..', '..', 'web', 'dist'), ratesUrl = process.env.TALLY_RATES_URL ?? ECB_URL, bankUrl = process.env.TALLY_ENABLEBANKING_URL ?? 'https://api.enablebanking.com', publicUrl = process.env.TALLY_PUBLIC_URL, t212Url = process.env.TALLY_T212_URL, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now }: AppOptions) {
   const rates = createRates(db, ratesUrl, now);
   const bank = { url: bankUrl.replace(/\/+$/, ''), publicUrl, now };
   const app = express();
@@ -121,7 +121,7 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   });
 
   api.use('/imports', express.json({ limit: '25mb' }));
-  api.use(dataRouter(db, rates, now, bank));
+  api.use(dataRouter(db, rates, now, bank, { url: t212Url, now, sleep }));
   api.use(recurringRouter(db, now));
   api.use(() => { throw notFound(); });
   app.use('/api', api);
