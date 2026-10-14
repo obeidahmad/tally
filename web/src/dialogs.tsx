@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, type BudgetSection, type CloseSummary, type End, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
+import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, useLoad, type Rates, type BudgetSection, type CloseSummary, type End, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
 import { monthName, monthTitle, shiftMonth, today } from './dates';
 import { AMOUNT_ERROR, formatMinor, minorToInput, parseAmount, parsePercent, percentText, PERCENT_ERROR } from './money';
-import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, SubsectionOptions, TextField, useToast } from './ui';
+import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, PocketCurrencyField, SubsectionOptions, TextField, useToast } from './ui';
 
 const BALANCE_ERROR = 'Enter an amount, with at most two decimals.';
 
@@ -36,13 +36,17 @@ function useEmoji(initial: string | undefined, kind: PocketKind) {
   return [picked ?? DEFAULT_EMOJI[kind], setPicked] as const;
 }
 
+const TRANSFER_ERROR = 'Enter the amount that arrived.';
+
 export function TransactionDialog({ tx, kind: startKind, pockets, sections, sources: allSources, currency, onClose }: {
-  tx?: Transaction; kind?: 'expense' | 'income'; pockets: Pocket[]; sections: Section[]; sources: Source[]; currency: string; onClose: () => void;
+  tx?: Transaction; kind?: Transaction['kind']; pockets: Pocket[]; sections: Section[]; sources: Source[]; currency: string; onClose: () => void;
 }) {
   const toast = useToast();
   const sources = allSources.filter((x) => !x.isLeftovers); // money carried from last month is not entered by hand
   const f = useForm();
-  const [kind, setKind] = useState<'expense' | 'income'>(tx?.kind ?? startKind ?? 'expense');
+  const [kind, setKind] = useState<Transaction['kind']>(tx?.kind ?? startKind ?? 'expense');
+  const [toId, setToId] = useState(tx?.toPocketId?.toString() ?? '');
+  const [received, setReceived] = useState(tx?.toAmountMinor ? minorToInput(tx.toAmountMinor) : '');
   const [date, setDate] = useState(tx?.date ?? today());
   const [amount, setAmount] = useState(tx ? minorToInput(tx.amountMinor) : '');
   const [payee, setPayee] = useState(tx?.payee ?? '');
@@ -58,10 +62,41 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
   const [note, setNote] = useState(tx?.note ?? '');
   const noSubsections = !sections.some((s) => s.subsections.length);
   const title = `${tx ? 'Edit' : 'Add'} ${kind}`;
+  const codeOf = (id: string) => pockets.find((p) => String(p.id) === id)?.currency ?? currency;
+  const fromCode = codeOf(pocketId);
+  const toCode = codeOf(toId);
+  const crossing = kind === 'transfer' && !!toId && toCode !== fromCode;
+  const rates = useLoad(
+    () => (kind === 'transfer' && /^\d{4}-\d\d-\d\d$/.test(date) ? api<Rates>('GET', `/rates?date=${date}`) : Promise.reject()),
+    [kind, date],
+  ).data;
+  const perBase = (code: string) => (code === currency ? 1 : Number(rates?.currencies.find((c) => c.currency === code)?.rate));
+  const reference = rates && perBase(toCode) / perBase(fromCode);
+  const sent = parseAmount(amount);
+  const got = parseAmount(received);
+  const rateHint = crossing
+    ? [
+        sent && got ? `Rate ${(got / sent).toFixed(4)}.` : '',
+        reference && Number.isFinite(reference) ? `Today's reference rate is ${reference.toFixed(4)}.` : '',
+      ].filter(Boolean).join(' ') || undefined
+    : undefined;
 
   const save = f.on(async () => {
     const amountMinor = parseAmount(amount); // checked before a pocket is created for nothing
     if (amountMinor === null) throw fieldError('amountMinor', AMOUNT_ERROR);
+    if (kind === 'transfer') {
+      const toAmountMinor = parseAmount(received);
+      if (crossing && toAmountMinor === null) throw fieldError('toAmountMinor', TRANSFER_ERROR);
+      const b = {
+        date, kind, amountMinor, note, pocketId: pocketId && pocketId !== 'new' ? Number(pocketId) : null, toPocketId: toId ? Number(toId) : null,
+        ...(crossing ? { toAmountMinor } : {}), subsectionId: subsectionId ? Number(subsectionId) : null,
+      };
+      if (tx) await api('PATCH', `/transactions/${tx.id}`, b);
+      else await api('POST', '/transactions', b);
+      onClose();
+      toast('Saved');
+      return;
+    }
     let source = sourceId && sourceId !== 'new' ? Number(sourceId) : null;
     if (kind === 'income' && sourceId === 'new') {
       try {
@@ -93,7 +128,8 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
 
   const remove = f.on(async () => {
     await api('DELETE', `/transactions/${tx!.id}`);
-    const { id: _id, source: _source, ...again } = tx!;
+    const { id: _id, source: _source, baseAmountMinor: _base, toPocketId, toAmountMinor, ...rest } = tx!;
+    const again = tx!.kind === 'transfer' ? { ...rest, toPocketId, toAmountMinor } : rest;
     onClose();
     toast('Transaction deleted', () => void api('POST', '/transactions', again).catch(() => {}));
   });
@@ -109,14 +145,54 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
           <div className="ty-segmented">
             <label><input type="radio" name="type" checked={kind === 'expense'} onChange={() => setKind('expense')} />Expense</label>
             <label><input type="radio" name="type" checked={kind === 'income'} onChange={() => setKind('income')} />Income</label>
+            <label><input type="radio" name="type" checked={kind === 'transfer'} onChange={() => setKind('transfer')} />Transfer</label>
           </div>
         </fieldset>
         {blocked ? (
           <Blocked text="Add a subsection first" to="/budget" link="Go to Budget" onClose={onClose} />
+        ) : kind === 'transfer' ? (
+          <>
+            <TextField label="Date" type="date" value={date} onChange={setDate} error={f.errors.date} />
+            <fieldset className="ty-fieldset">
+              <legend className="ty-label">From</legend>
+              <div className="ty-chips">
+                {pockets.map((x) => (
+                  <label key={x.id} className="ty-chip">
+                    <input type="radio" name="from" checked={pocketId === String(x.id)} onChange={() => { setPocketId(String(x.id)); if (toId === String(x.id)) setToId(''); }} />
+                    <span className="ty-emoji">{x.emoji}</span> {x.name}
+                  </label>
+                ))}
+              </div>
+              {f.errors.pocketId && <span className="ty-error">{f.errors.pocketId}</span>}
+            </fieldset>
+            <fieldset className="ty-fieldset">
+              <legend className="ty-label">To</legend>
+              <div className="ty-chips">
+                {pockets.filter((x) => String(x.id) !== pocketId).map((x) => (
+                  <label key={x.id} className="ty-chip">
+                    <input type="radio" name="to" checked={toId === String(x.id)} onChange={() => setToId(String(x.id))} />
+                    <span className="ty-emoji">{x.emoji}</span> {x.name}
+                  </label>
+                ))}
+              </div>
+              {f.errors.toPocketId && <span className="ty-error">{f.errors.toPocketId}</span>}
+            </fieldset>
+            <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={fromCode} />
+            {crossing && <AmountField label="Amount received" value={received} onChange={setReceived} error={f.errors.toAmountMinor} currency={toCode} hint={rateHint} />}
+            <Field label="Subsection (optional)" error={f.errors.subsectionId}>
+              {(p) => (
+                <select {...p} value={subsectionId} onChange={(e) => setSubsectionId(e.target.value)}>
+                  <option value="">None</option>
+                  <SubsectionOptions sections={sections} />
+                </select>
+              )}
+            </Field>
+            <TextField label="Note (optional)" value={note} onChange={setNote} error={f.errors.note} />
+          </>
         ) : (
           <>
             <TextField label="Date" type="date" value={date} onChange={setDate} error={f.errors.date} />
-            <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={currency} />
+            <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={fromCode} />
             {kind === 'expense' ? (
               <TextField label="Payee" value={payee} onChange={setPayee} error={f.errors.payee} />
             ) : (
@@ -181,7 +257,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
             <button type="button" className="ty-btn ty-btn--quiet" onClick={onClose}>Cancel</button>
           </div>
         ) : (
-          <Foot busy={f.busy} onCancel={onClose} onDelete={tx && remove} label={tx ? 'Save' : title} tone={tx ? 'primary' : kind === 'income' ? 'income' : 'spend'} />
+          <Foot busy={f.busy} onCancel={onClose} onDelete={tx && remove} label={tx ? 'Save' : title} tone={tx || kind === 'transfer' ? 'primary' : kind === 'income' ? 'income' : 'spend'} />
         )}
       </form>
     </Modal>
@@ -197,22 +273,25 @@ export function PocketDialog({ pocket, currency, onClose }: { pocket?: Pocket; c
   const [kind, setKind] = useState<PocketKind>(pocket?.kind ?? 'bank');
   const [emoji, setEmoji] = useEmoji(pocket?.emoji, kind);
   const [opening, setOpening] = useState(minorToInput(pocket?.openingBalanceMinor ?? 0));
+  const [curr, setCurr] = useState(pocket?.currency ?? currency);
+  const locked = !!pocket?.hasTransactions;
+  const offered = useLoad(() => api<Rates>('GET', '/rates'), []).data?.currencies.map((c) => c.currency) ?? [];
 
   const save = f.on(async () => {
     const openingBalanceMinor = parseAmount(opening, { allowZero: true, allowNegative: true });
     if (openingBalanceMinor === null) throw fieldError('openingBalanceMinor', BALANCE_ERROR);
     const b = { name, kind, emoji, openingBalanceMinor };
-    if (pocket) await api('PATCH', `/pockets/${pocket.id}`, b);
-    else await api('POST', '/pockets', b);
+    if (pocket) await api('PATCH', `/pockets/${pocket.id}`, curr === pocket.currency ? b : { ...b, currency: curr });
+    else await api('POST', '/pockets', { ...b, currency: curr });
     onClose();
     toast('Saved');
   });
 
   const remove = f.on(async () => {
     await api('DELETE', `/pockets/${pocket!.id}`);
-    const { name, kind, emoji, openingBalanceMinor } = pocket!;
+    const { name, kind, emoji, openingBalanceMinor, currency } = pocket!;
     onClose();
-    toast('Pocket deleted', () => void api('POST', '/pockets', { name, kind, emoji, openingBalanceMinor }).catch(() => {}));
+    toast('Pocket deleted', () => void api('POST', '/pockets', { name, kind, emoji, openingBalanceMinor, currency }).catch(() => {}));
   });
 
   return (
@@ -222,7 +301,8 @@ export function PocketDialog({ pocket, currency, onClose }: { pocket?: Pocket; c
         <TextField label="Name" value={name} onChange={setName} error={f.errors.name} />
         <EmojiPicker value={emoji} onChange={setEmoji} error={f.errors.emoji} />
         <KindField value={kind} onChange={setKind} error={f.errors.kind} />
-        <AmountField label="Opening balance" value={opening} onChange={setOpening} error={f.errors.openingBalanceMinor} currency={currency} />
+        <PocketCurrencyField value={curr} onChange={setCurr} error={f.errors.currency} offered={offered} base={currency} locked={locked} />
+        <AmountField label="Opening balance" value={opening} onChange={setOpening} error={f.errors.openingBalanceMinor} currency={curr} />
         <Foot busy={f.busy} onCancel={onClose} onDelete={pocket && remove} label={pocket ? 'Save' : 'Add pocket'} />
       </form>
     </Modal>

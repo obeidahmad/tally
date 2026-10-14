@@ -264,3 +264,18 @@ for (const scheme of ['light', 'dark'] as const) {
     });
   }
 }
+
+// Reviewer's point: a section mixing goals and a spending subsection uses the Budgeted, Spent and Available columns, not the goal layout.
+test('in Savings (goals and a spending subsection) a goal row shows its "fills to" note under Budgeted, Spent and Available', async ({ page, me }) => {
+  await seedSavings(page, me.seed);
+  await page.goto('/budget');
+  const sec = bsection(page, 'Savings');
+  const tots = sec.locator('.ty-shead__tot .ty-label');
+  await expect(tots).toHaveText(['Budgeted', 'Spent', 'Available']);
+  await expect(sec).not.toContainText('This month');
+  await expect(sec).not.toContainText('Saved');
+  await expect(sec).not.toContainText('Target');
+  await expect(note(row(page, /Emergencies/))).toHaveText('fills to 3,000.00');
+  await expect(note(row(page, /Car/))).toHaveText('fills to 15,000.00');
+  await expect(row(page, /Emergencies/).locator('.ty-meter')).not.toHaveClass(/ty-meter--goal/);
+});

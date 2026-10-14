@@ -40,6 +40,8 @@ Built in three slices:
    - `specs/11-subsection-budgets.md`: subsection budgets as an amount or a percentage, their order, rollover caps and savings goals.
    - `specs/13-moving-money.md`: moving money between subsections and sections, always with a reason.
 3. **Currencies and net worth:** pockets in other currencies, transfers and conversions, where each subsection's money sits, net worth over time.
+   - `specs/12-currencies-and-transfers.md`: pockets in any currency at the ECB's reference rates, transfers with conversions, net worth.
+   - `specs/14-where-money-sits-and-investments.md`: where each subsection's money sits, and holdings (phase 2).
 
 **Accounts**
 

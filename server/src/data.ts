@@ -1,16 +1,21 @@
 import { Router, type Request } from 'express';
 import type { Db } from './db';
+import type { Rates } from './rates';
 import { HttpError, fieldError, notFound, parse } from './http';
 import * as s from './schemas';
 
 const POCKET = `SELECT p.id, p.name, p.kind, p.emoji, p.currency, p.opening_balance_minor AS openingBalanceMinor,
-  p.opening_balance_minor + COALESCE((SELECT SUM(CASE t.kind WHEN 'income' THEN t.amount_minor ELSE -t.amount_minor END)
-    FROM transactions t WHERE t.pocket_id = p.id AND t.user_id = p.user_id), 0) AS balanceMinor
+  p.opening_balance_minor + COALESCE((SELECT SUM(
+      CASE WHEN t.pocket_id = p.id THEN (CASE t.kind WHEN 'income' THEN t.amount_minor ELSE -t.amount_minor END) ELSE 0 END
+      + CASE WHEN t.to_pocket_id = p.id THEN t.to_amount_minor ELSE 0 END)
+    FROM transactions t WHERE (t.pocket_id = p.id OR t.to_pocket_id = p.id) AND t.user_id = p.user_id), 0) AS balanceMinor,
+  EXISTS (SELECT 1 FROM transactions x WHERE (x.pocket_id = p.id OR x.to_pocket_id = p.id) AND x.user_id = p.user_id) AS hasTransactions
   FROM pockets p`;
 const SUB = `SELECT id, section_id AS sectionId, name, position, kind, budget_kind AS budgetKind,
   CASE WHEN budget_kind = 'amount' THEN budget_minor END AS budgetMinor, budget_basis_points AS budgetBasisPoints,
   keep, cap_minor AS capMinor FROM subsections`;
 const TX = `SELECT id, date, kind, amount_minor AS amountMinor, pocket_id AS pocketId, subsection_id AS subsectionId, source_id AS sourceId,
+  base_amount_minor AS baseAmountMinor, to_pocket_id AS toPocketId, to_amount_minor AS toAmountMinor,
   payee, note, source FROM transactions`;
 
 type Rule = { shares: { sectionId: number | null; basisPoints: number }[]; overspent: 'income' | 'section' };
@@ -21,15 +26,31 @@ const idOf = (req: Request): number => {
 };
 const inUse = (what: string) => new HttpError(409, 'in_use', `This ${what} has transactions. Delete them first.`);
 
-export function dataRouter(db: Db): Router {
+const noRate = (currency: string) => new HttpError(409, 'no_rate', `There is no exchange rate for ${currency} yet.`);
+const localDay = (ms: number) => {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+export function dataRouter(db: Db, rates: Rates, now: () => number): Router {
   const r = Router();
+  // Rates are read when stale before any route runs; a failed read keeps the old ones.
+  r.use(async (_req, _res, next) => { await rates.ensure(); next(); });
+  const today = () => localDay(now());
   const one = (sql: string, ...args: unknown[]): any => db.prepare(sql).get(...args);
   const all = <T = any>(sql: string, ...args: unknown[]) => db.prepare(sql).all(...args) as T[];
   const must = (row: any): any => {
     if (!row) throw notFound();
     return row;
   };
-  const pocketOf = (uid: number, id: number) => must(one(`${POCKET} WHERE p.id = ? AND p.user_id = ?`, id, uid));
+  const withBase = (p: any, base: string) => ({ ...p, hasTransactions: !!p.hasTransactions, baseBalanceMinor: rates.convert(p.balanceMinor, p.currency, base, today()) });
+  const pocketOf = (user: { id: number; baseCurrency: string }, id: number) =>
+    withBase(must(one(`${POCKET} WHERE p.id = ? AND p.user_id = ?`, id, user.id)), user.baseCurrency);
+  const hasTx = (uid: number, id: number) => !!one('SELECT 1 FROM transactions WHERE (pocket_id = ? OR to_pocket_id = ?) AND user_id = ?', id, id, uid);
+  const currencyOf = (user: { baseCurrency: string }, c: unknown) => {
+    if (typeof c !== 'string' || !rates.offered(user.baseCurrency).includes(c)) throw fieldError('currency', 'Choose a currency.');
+    return c;
+  };
   const subOf = (uid: number, id: number) => must(one(`${SUB} WHERE id = ? AND user_id = ?`, id, uid));
   const txOf = (uid: number, id: number) => must(one(`${TX} WHERE id = ? AND user_id = ?`, id, uid));
   const ruleOf = (id: number): Rule => {
@@ -52,7 +73,7 @@ export function dataRouter(db: Db): Router {
   const lastClosedOf = (uid: number): string | null => one('SELECT MAX(month) AS m FROM closed_months WHERE user_id = ?', uid).m ?? null;
   const monthsOf = (uid: number) => {
     const lastClosed = lastClosedOf(uid);
-    const first: string | null = lastClosed ? nextMonth(lastClosed) : one('SELECT MIN(substr(date, 1, 7)) AS m FROM transactions WHERE user_id = ?', uid).m;
+    const first: string | null = lastClosed ? nextMonth(lastClosed) : one(`SELECT MIN(substr(date, 1, 7)) AS m FROM transactions WHERE user_id = ? AND kind != 'transfer'`, uid).m;
     const now = new Date();
     const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     return { lastClosed, toClose: first && first < current ? first : null };
@@ -69,28 +90,57 @@ export function dataRouter(db: Db): Router {
 
   // Pockets
   r.get('/pockets', (req, res) => {
-    res.json({ pockets: all(`${POCKET} WHERE p.user_id = ? ORDER BY p.id`, req.user.id) });
+    res.json({ pockets: all(`${POCKET} WHERE p.user_id = ? ORDER BY p.id`, req.user.id).map((p) => withBase(p, req.user.baseCurrency)) });
   });
   r.post('/pockets', (req, res) => {
     const b = parse(s.pocket, req.body);
+    const currency = b.currency === undefined ? req.user.baseCurrency : currencyOf(req.user, b.currency);
     const { lastInsertRowid } = db
       .prepare('INSERT INTO pockets (user_id, name, kind, emoji, currency, opening_balance_minor) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(req.user.id, b.name, b.kind, b.emoji ?? String.fromCodePoint(s.DEFAULT_EMOJI[b.kind]), req.user.baseCurrency, b.openingBalanceMinor);
-    res.status(201).json({ pocket: pocketOf(req.user.id, Number(lastInsertRowid)) });
+      .run(req.user.id, b.name, b.kind, b.emoji ?? String.fromCodePoint(s.DEFAULT_EMOJI[b.kind]), currency, b.openingBalanceMinor);
+    res.status(201).json({ pocket: pocketOf(req.user, Number(lastInsertRowid)) });
   });
   r.patch('/pockets/:id', (req, res) => {
-    const cur = pocketOf(req.user.id, idOf(req));
+    const cur = pocketOf(req.user, idOf(req));
     const b = parse(s.pocket, { ...cur, ...req.body });
-    db.prepare('UPDATE pockets SET name = ?, kind = ?, emoji = ?, opening_balance_minor = ? WHERE id = ? AND user_id = ?').run(
-      b.name, b.kind, b.emoji, b.openingBalanceMinor, cur.id, req.user.id,
+    if (b.currency !== cur.currency) {
+      currencyOf(req.user, b.currency);
+      if (hasTx(req.user.id, cur.id)) throw fieldError('currency', 'A pocket with transactions keeps its currency.');
+    }
+    db.prepare('UPDATE pockets SET name = ?, kind = ?, emoji = ?, currency = ?, opening_balance_minor = ? WHERE id = ? AND user_id = ?').run(
+      b.name, b.kind, b.emoji, b.currency, b.openingBalanceMinor, cur.id, req.user.id,
     );
-    res.json({ pocket: pocketOf(req.user.id, cur.id) });
+    res.json({ pocket: pocketOf(req.user, cur.id) });
   });
   r.delete('/pockets/:id', (req, res) => {
-    const cur = pocketOf(req.user.id, idOf(req));
-    if (one('SELECT 1 FROM transactions WHERE pocket_id = ? AND user_id = ?', cur.id, req.user.id)) throw inUse('pocket');
+    const cur = pocketOf(req.user, idOf(req));
+    if (hasTx(req.user.id, cur.id)) throw inUse('pocket');
     db.prepare('DELETE FROM pockets WHERE id = ? AND user_id = ?').run(cur.id, req.user.id);
     res.status(204).end();
+  });
+
+  // Currencies
+  r.get('/rates', (req, res) => {
+    const base = req.user.baseCurrency;
+    const date = parse(s.rateQuery, req.query).date ?? today();
+    const currencies = rates.offered(base).flatMap((currency) => {
+      const rate = rates.rate(base, currency, date);
+      return rate ? [{ currency, rate }] : [];
+    });
+    res.json({ date: rates.storedDate(date) ?? date, base, currencies });
+  });
+  r.get('/networth', (req, res) => {
+    const base = req.user.baseCurrency;
+    const sums = new Map<string, number>([[base, 0]]);
+    for (const p of all<{ currency: string; balanceMinor: number }>(`${POCKET} WHERE p.user_id = ?`, req.user.id))
+      sums.set(p.currency, (sums.get(p.currency) ?? 0) + p.balanceMinor);
+    const missingRates: string[] = [];
+    const byCurrency = [...sums].sort(([a], [b]) => (a === base ? -1 : b === base ? 1 : a < b ? -1 : 1)).map(([currency, amountMinor]) => {
+      const baseMinor = rates.convert(amountMinor, currency, base, today());
+      if (baseMinor === null) missingRates.push(currency);
+      return { currency, amountMinor, baseMinor, rate: currency === base ? null : rates.rate(currency, base, today()) };
+    });
+    res.json({ currency: base, totalMinor: byCurrency.reduce((a, x) => a + (x.baseMinor ?? 0), 0), byCurrency, missingRates });
   });
 
   // Sections and subsections
@@ -198,14 +248,31 @@ export function dataRouter(db: Db): Router {
 
   // Transactions
   const LEFTOVERS = "Last month's leftovers";
-  const checked = (uid: number, body: unknown) => {
+  const checked = (user: { id: number; baseCurrency: string }, body: unknown) => {
+    const uid = user.id;
     const t = parse(s.transaction, body);
     if (isClosed(uid, t.date.slice(0, 7))) throw fieldError('date', 'This date is in a closed month.');
-    if (!one('SELECT 1 FROM pockets WHERE id = ? AND user_id = ?', t.pocketId, uid)) throw fieldError('pocketId', 'Choose a pocket.');
+    const from = one('SELECT currency FROM pockets WHERE id = ? AND user_id = ?', t.pocketId, uid);
+    if (!from) throw fieldError('pocketId', 'Choose a pocket.');
+    let toAmountMinor = t.toAmountMinor;
+    if (t.kind === 'transfer') {
+      const to = one('SELECT currency FROM pockets WHERE id = ? AND user_id = ?', t.toPocketId, uid);
+      if (!to) throw fieldError('toPocketId', 'Choose a different pocket.');
+      if (to.currency === from.currency) {
+        if (toAmountMinor !== null && toAmountMinor !== t.amountMinor) throw fieldError('toAmountMinor', 'Both pockets use the same currency, so the amount that arrived is the same.');
+        toAmountMinor = t.amountMinor;
+      } else if (toAmountMinor === null) throw fieldError('toAmountMinor', 'Enter the amount that arrived.');
+    }
     if (t.subsectionId !== null && !one('SELECT 1 FROM subsections WHERE id = ? AND user_id = ?', t.subsectionId, uid))
       throw fieldError('subsectionId', 'Choose a subsection.');
     if (t.sourceId !== null && !one('SELECT 1 FROM sources WHERE id = ? AND user_id = ? AND is_leftovers = 0', t.sourceId, uid)) throw fieldError('sourceId', 'Choose a source.');
-    return t;
+    return { ...t, toAmountMinor, currency: from.currency as string };
+  };
+  // The amount in the base currency at the date's rate.
+  const baseOf = (user: { baseCurrency: string }, t: { amountMinor: number; currency: string; date: string }) => {
+    const v = rates.convert(t.amountMinor, t.currency, user.baseCurrency, t.date);
+    if (v === null) throw noRate(t.currency);
+    return v;
   };
   const lockedTx = (uid: number, cur: { date: string }) => {
     if (isClosed(uid, cur.date.slice(0, 7))) throw new HttpError(409, 'closed', 'This transaction is in a closed month. Reopen the month to change it.');
@@ -214,25 +281,28 @@ export function dataRouter(db: Db): Router {
     const q = parse(s.txQuery, req.query);
     let sql = `${TX} WHERE user_id = ? AND substr(date, 1, 7) = ?`;
     const args: unknown[] = [req.user.id, q.month];
-    if (q.pocketId !== undefined) { sql += ' AND pocket_id = ?'; args.push(q.pocketId); }
+    if (q.pocketId !== undefined) { sql += ' AND (pocket_id = ? OR to_pocket_id = ?)'; args.push(q.pocketId, q.pocketId); }
     if (q.subsectionId !== undefined) { sql += ' AND subsection_id = ?'; args.push(q.subsectionId); }
     res.json({ transactions: all(`${sql} ORDER BY date DESC, id DESC`, ...args) });
   });
   r.post('/transactions', (req, res) => {
-    const t = checked(req.user.id, req.body);
+    const t = checked(req.user, req.body);
     const { lastInsertRowid } = db
-      .prepare(`INSERT INTO transactions (user_id, date, kind, amount_minor, pocket_id, subsection_id, source_id, payee, note)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(req.user.id, t.date, t.kind, t.amountMinor, t.pocketId, t.subsectionId, t.sourceId, t.payee, t.note);
+      .prepare(`INSERT INTO transactions (user_id, date, kind, amount_minor, base_amount_minor, pocket_id, subsection_id, source_id, to_pocket_id, to_amount_minor, payee, note)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(req.user.id, t.date, t.kind, t.amountMinor, baseOf(req.user, t), t.pocketId, t.subsectionId, t.sourceId, t.toPocketId, t.toAmountMinor, t.payee, t.note);
     res.status(201).json({ transaction: txOf(req.user.id, Number(lastInsertRowid)) });
   });
   r.patch('/transactions/:id', (req, res) => {
     const cur = txOf(req.user.id, idOf(req)) as any;
     lockedTx(req.user.id, cur);
-    const t = checked(req.user.id, { ...cur, ...req.body });
-    db.prepare(`UPDATE transactions SET date = ?, kind = ?, amount_minor = ?, pocket_id = ?, subsection_id = ?, source_id = ?, payee = ?, note = ?
-                WHERE id = ? AND user_id = ?`)
-      .run(t.date, t.kind, t.amountMinor, t.pocketId, t.subsectionId, t.sourceId, t.payee, t.note, cur.id, req.user.id);
+    const t = checked(req.user, { ...cur, ...req.body });
+    // The base amount is worked out again only when its date, amount or pocket changes.
+    const same = t.date === cur.date && t.amountMinor === cur.amountMinor && t.pocketId === cur.pocketId;
+    db.prepare(`UPDATE transactions SET date = ?, kind = ?, amount_minor = ?, base_amount_minor = ?, pocket_id = ?, subsection_id = ?, source_id = ?,
+                  to_pocket_id = ?, to_amount_minor = ?, payee = ?, note = ? WHERE id = ? AND user_id = ?`)
+      .run(t.date, t.kind, t.amountMinor, same ? cur.baseAmountMinor : baseOf(req.user, t), t.pocketId, t.subsectionId, t.sourceId,
+        t.toPocketId, t.toAmountMinor, t.payee, t.note, cur.id, req.user.id);
     res.json({ transaction: txOf(req.user.id, cur.id) });
   });
   r.delete('/transactions/:id', (req, res) => {
@@ -395,7 +465,7 @@ export function dataRouter(db: Db): Router {
   const flow = (uid: number, month: string, carry: ReturnType<typeof carriesOf>) => {
     const income = new Map(
       all<{ id: number; v: number }>(
-        `SELECT source_id AS id, SUM(amount_minor) AS v FROM transactions
+        `SELECT source_id AS id, SUM(base_amount_minor) AS v FROM transactions
          WHERE user_id = ? AND kind = 'income' AND substr(date, 1, 7) = ? GROUP BY source_id`, uid, month,
       ).map((x) => [x.id, x.v]),
     );
@@ -432,12 +502,12 @@ export function dataRouter(db: Db): Router {
     const f = flow(uid, month, carry);
     const spent = new Map(
       all<{ id: number; v: number }>(
-        `SELECT subsection_id AS id, SUM(amount_minor) AS v FROM transactions
+        `SELECT subsection_id AS id, SUM(base_amount_minor) AS v FROM transactions
          WHERE user_id = ? AND kind = 'expense' AND substr(date, 1, 7) = ? GROUP BY subsection_id`, uid, month,
       ).map((x) => [x.id, x.v]),
     );
     const txIncome = one(
-      `SELECT COALESCE(SUM(amount_minor), 0) AS v FROM transactions
+      `SELECT COALESCE(SUM(base_amount_minor), 0) AS v FROM transactions
        WHERE user_id = ? AND kind = 'income' AND substr(date, 1, 7) = ?`, uid, month).v as number;
     // What moves gave (+) and took (-), per subsection and per section's rest.
     const movedSub = new Map<number, number>(), movedSec = new Map<number, number>();

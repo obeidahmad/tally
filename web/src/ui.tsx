@@ -63,6 +63,24 @@ export function CurrencyField({ value, onChange, error }: { value: string; onCha
   );
 }
 
+const currencyNames = new Intl.DisplayNames('en', { type: 'currency' });
+
+/** A pocket's currency: the base currency first, then the others alphabetically, as "USD · US Dollar". */
+export function PocketCurrencyField({ value, onChange, error, offered, base, locked }: {
+  value: string; onChange: (v: string) => void; error?: string; offered: string[]; base: string; locked: boolean;
+}) {
+  const codes = [...new Set([base, ...offered.filter((c) => c !== base).sort(), value])];
+  return (
+    <Field label="Currency" error={error} hint={locked ? 'A pocket with transactions keeps its currency.' : undefined}>
+      {(p) => (
+        <select {...p} value={value} disabled={locked} onChange={(e) => onChange(e.target.value)}>
+          {codes.map((c) => <option key={c} value={c}>{c} · {currencyNames.of(c) ?? c}</option>)}
+        </select>
+      )}
+    </Field>
+  );
+}
+
 export function KindField({ value, onChange, error }: { value: PocketKind; onChange: (v: PocketKind) => void; error?: string }) {
   return (
     <Field label="Kind" error={error}>

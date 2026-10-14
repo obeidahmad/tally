@@ -28,7 +28,7 @@ test('add a pocket: the card shows name, kind in words, currency, balance and so
   await expect(card).toContainText('EUR');
   await expect(card).toContainText('1,000.00');
   await expect(card).toContainText('Entered by hand');
-  await expect(page.getByText('Total in pockets')).toBeVisible();
+  await expect(page.getByText('Net worth', { exact: true })).toBeVisible();
   await expect(page.locator('.num-hero').first()).toContainText('1,000.00');
   await expect(page.locator('.num-hero').first()).toContainText('EUR');
   await shot(page, 'pockets-desktop-light');

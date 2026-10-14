@@ -15,12 +15,12 @@ export const monthTitle = (d = new Date()) => d.toLocaleString('en-GB', { month:
 export const dayHeading = () => `${new Date().getUTCDate()} ${new Date().toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' })}`;
 
 /** The owner adds a new person through POST /api/users, so each test has a fresh account with no data. */
-export async function createPerson(baseURL: string, displayName = 'Tess'): Promise<Person> {
+export async function createPerson(baseURL: string, displayName = 'Tess', baseCurrency = 'EUR'): Promise<Person> {
   const ctx = await request.newContext({ baseURL });
   const login = await ctx.post('/api/auth/login', { data: { username: OWNER.username, password: OWNER.password } });
   expect(login.status(), 'owner sign-in (first-run set-up must have happened)').toBe(200);
   const person = { username: unique(), displayName, password: 'a long test password' };
-  const res = await ctx.post('/api/users', { data: { ...person, baseCurrency: 'EUR' } });
+  const res = await ctx.post('/api/users', { data: { ...person, baseCurrency } });
   expect(res.status()).toBe(201);
   await ctx.dispose();
   return person;
@@ -96,6 +96,13 @@ export async function seedBudget(s: Seed) {
 }
 
 type Fixtures = { me: Person & { seed: Seed } };
+
+/** Spec 12: a pocket in another currency, made through the API. */
+export async function currencyPocket(page: Page, name: string, currency: string, openingBalanceMinor = 0, kind = 'bank') {
+  const res = await page.request.post('/api/pockets', { data: { name, kind, currency, openingBalanceMinor } });
+  expect(res.status()).toBe(201);
+  return (await res.json()).pocket as { id: number };
+}
 
 /** `me` is a brand-new person who is already signed in on `page`. */
 export const test = base.extend<Fixtures>({

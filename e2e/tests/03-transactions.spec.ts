@@ -81,7 +81,7 @@ test('the transaction dialog has its fields in order and defaults to Expense and
   await expect(group(d, 'Type')).toBeVisible();
   await expect(d.getByRole('radio', { name: 'Expense' })).toBeChecked();
   await expect(d.getByRole('radio', { name: 'Income' })).not.toBeChecked();
-  await expect(group(d, 'Type').locator('.ty-segmented label')).toHaveCount(2);
+  await expect(group(d, 'Type').locator('.ty-segmented label')).toHaveCount(3);
   await expect(group(d, 'Type').locator('.ty-chip')).toHaveCount(0);
   await expect(d.getByLabel('Date')).toHaveValue(new Date().toISOString().slice(0, 10));
   await expect(d.getByLabel('Amount')).toHaveClass(/ty-input--amount/);
