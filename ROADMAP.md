@@ -37,8 +37,8 @@ Built in three slices:
    - `specs/07-add-destination.md`: in the step dialog, the button that sends a step to one more section is named "+ Add destination" and looks like a button.
    - `specs/08-add-income-source.md`: the Pipeline page's button and its dialog read "Add income source".
    - `specs/09-closing-a-month.md`: rest rules, closing and reopening a month, subsections keeping what they did not spend, and overspending as a negative rest.
-   - Subsections in the pipeline: percentages and an order inside a section.
-   - Rollover caps and moving money between subsections.
+   - `specs/11-subsection-budgets.md`: subsection budgets as an amount or a percentage, their order, rollover caps and savings goals.
+   - `specs/13-moving-money.md`: moving money between subsections and sections, always with a reason.
 3. **Currencies and net worth:** pockets in other currencies, transfers and conversions, where each subsection's money sits, net worth over time.
 
 **Accounts**

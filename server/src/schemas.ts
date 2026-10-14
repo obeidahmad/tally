@@ -50,7 +50,33 @@ export const pocket = z.object({
   openingBalanceMinor: minor(-MAX, 'Enter a whole number of minor units.'),
 });
 export const section = z.object({ name });
-export const subsection = z.object({ name, budgetMinor: minor(0, 'Enter a budget of zero or more.') });
+const whole = (v: unknown, min: number, max: number) => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+// Money and percentage fields are checked by hand: which rule applies depends on kind, budgetKind and keep.
+export const subsection = z
+  .object({
+    name,
+    kind: z.enum(['spending', 'goal'], { error: 'Choose a kind.' }),
+    budgetKind: z.enum(['amount', 'percent'], { error: 'Choose how the budget is set.' }),
+    keep: z.enum(['all', 'cap', 'none'], { error: 'Choose what it keeps.' }),
+    budgetMinor: z.any().optional(),
+    budgetBasisPoints: z.any().optional(),
+    capMinor: z.any().optional(),
+  })
+  .superRefine((b, ctx) => {
+    const bad = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
+    if (b.budgetKind === 'amount' && !whole(b.budgetMinor, 0, MAX)) bad('budgetMinor', 'Enter an amount, 0 or more.');
+    if (b.budgetKind === 'percent' && !whole(b.budgetBasisPoints, 1, 10000)) bad('budgetBasisPoints', 'Enter a percentage above 0 and up to 100.');
+    if (b.kind === 'goal' && b.keep !== 'cap') bad('keep', 'Choose what it keeps.');
+    if (b.keep === 'cap' && b.kind === 'goal' && !whole(b.capMinor, 1, MAX)) bad('capMinor', 'Enter a target above zero.');
+    if (b.keep === 'cap' && b.kind === 'spending' && !whole(b.capMinor, 0, MAX)) bad('capMinor', 'Enter an amount, 0 or more.');
+  })
+  .transform((b) => ({
+    name: b.name, kind: b.kind, budgetKind: b.budgetKind, keep: b.keep,
+    budgetMinor: b.budgetKind === 'amount' ? (b.budgetMinor as number) : 0,
+    budgetBasisPoints: b.budgetKind === 'percent' ? (b.budgetBasisPoints as number) : null,
+    capMinor: b.keep === 'cap' ? (b.capMinor as number) : null,
+  }));
+export const subsectionPosition = z.number({ error: 'Choose a position.' }).int('Choose a position.');
 
 const date = z
   .string({ error: 'Enter a date.' })

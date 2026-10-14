@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api, ApiError, useLoad, type Budget, type BudgetSection, type BudgetSubsection, type Months, type Pocket, type Section, type Source } from '../api';
 import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dates';
 import { CloseDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
-import { formatMinor } from '../money';
+import { formatMinor, percentText } from '../money';
 import { useAuth } from '../auth';
 import { EmptyCard, Load, StatePill, Topbar, useRescueFocus, useToast } from '../ui';
 import { pick } from '../pick';
@@ -22,22 +22,38 @@ const dot = (slot: number) => (slot >= 1 && slot <= 8 ? `ty-dot ty-dot--${slot}`
 
 type Dialog =
   | { t: 'tx'; kind?: 'income' } | { t: 'section'; section?: BudgetSection }
-  | { t: 'sub'; sectionId: number; sub?: BudgetSubsection } | { t: 'close' };
+  | { t: 'sub'; sectionId: number; sub?: BudgetSubsection; position?: number; count: number } | { t: 'close' };
+
+const goals = (sec: BudgetSection) => sec.subsections.length > 0 && sec.subsections.every((x) => x.kind === 'goal');
+const sum = (sec: BudgetSection, k: 'budgetMinor' | 'availableMinor') => sec.subsections.reduce((t, x) => t + x[k], 0);
 
 function Row({ sub, from, onOpen }: { sub: BudgetSubsection; from: string; onOpen?: () => void }) {
+  const goal = sub.kind === 'goal';
+  const target = sub.capMinor ?? 0;
   const total = sub.budgetMinor + sub.carriedMinor;
   const s = rowState(total, sub.spentMinor);
-  const summary = `${formatMinor(sub.spentMinor)} of ${formatMinor(total)} spent`;
+  const saved = sub.availableMinor;
+  const pct = target > 0 ? Math.floor((saved * 100) / target) : 0;
+  const summary = goal ? `${formatMinor(saved)} of ${formatMinor(target)} saved` : `${formatMinor(sub.spentMinor)} of ${formatMinor(total)} spent`;
+  const notes = [
+    sub.budgetKind === 'percent' && sub.budgetBasisPoints !== null && `${percentText(sub.budgetBasisPoints)}% of what is left`,
+    !goal && sub.keep === 'cap' && `rolls over up to ${formatMinor(target)}`,
+    !goal && sub.keep === 'none' && 'does not roll over',
+    goal && `fills to ${formatMinor(target)}`,
+    !goal && sub.carriedMinor !== 0 && `+${formatMinor(sub.carriedMinor)} from ${from}`,
+  ].filter(Boolean).join(' · ');
   return (
     <div className={onOpen ? 'ty-brow app-pick' : 'ty-brow'} {...(onOpen ? pick(onOpen) : {})}>
       <div className="ty-brow__name">
-        <div className="ty-brow__title"><span>{sub.name}</span>{sub.carriedMinor !== 0 && <span className="ty-cap">+{formatMinor(sub.carriedMinor)} from {from}</span>}</div>
-        <div className={s.meter} role="img" aria-label={summary}><span style={{ width: `${s.pct}%` }} /></div>
+        <div className="ty-brow__title"><span>{sub.name}</span><span className="ty-cap">{notes}</span></div>
+        <div className={goal ? 'ty-meter ty-meter--goal' : s.meter} role="img" aria-label={summary}><span style={{ width: `${goal ? Math.max(0, Math.min(100, pct)) : s.pct}%` }} /></div>
         <div className="ty-cap ty-brow__sub">{summary}</div>
       </div>
       <div className="ty-num ty-right ty-wide">{formatMinor(sub.budgetMinor)}</div>
-      <div className="ty-num ty-right ty-wide">{formatMinor(sub.spentMinor)}</div>
-      <div className="ty-right"><span className={s.pill}>{s.text}</span></div>
+      <div className="ty-num ty-right ty-wide">{formatMinor(goal ? saved : sub.spentMinor)}</div>
+      <div className="ty-right">{goal
+        ? <span className="ty-pill">{pct}% of {formatMinor(target).replace(/\.00$/, '')}</span>
+        : <span className={s.pill}>{s.text}</span>}</div>
     </div>
   );
 }
@@ -139,18 +155,24 @@ export default function BudgetPage() {
                         <span className={dot(sec.colorSlot)} /><b>{sec.name}</b>
                         {!budget.closed && <button className="ty-btn ty-btn--quiet ty-btn--sm" onClick={() => setDialog({ t: 'section', section: sec })}>Edit</button>}
                         <span className={sec.restMinor < 0 ? 'ty-pill ty-pill--warning' : 'ty-pill'}>Rest {formatMinor(sec.restMinor)}</span>
-                        <span className="ty-cap ty-shead__sub">{formatMinor(sec.spentMinor)} of {formatMinor(sec.budgetedMinor)} spent</span>
+                        <span className="ty-cap ty-shead__sub">{goals(sec) ? `${formatMinor(sum(sec, 'availableMinor'))} saved` : `${formatMinor(sec.spentMinor)} of ${formatMinor(sec.budgetedMinor)} spent`}</span>
                       </div>
-                      <div className="ty-shead__tot ty-wide"><span className="ty-label">Budgeted</span><span className="ty-num">{formatMinor(sec.budgetedMinor)}</span></div>
-                      <div className="ty-shead__tot ty-wide"><span className="ty-label">Spent</span><span className="ty-num">{formatMinor(sec.spentMinor)}</span></div>
-                      <div className="ty-shead__tot"><span className="ty-label">Available</span><span className="ty-num">{formatMinor(sec.availableMinor)}</span></div>
+                      {goals(sec) ? (<>
+                        <div className="ty-shead__tot ty-wide"><span className="ty-label">This month</span><span className="ty-num">{formatMinor(sum(sec, 'budgetMinor'))}</span></div>
+                        <div className="ty-shead__tot ty-wide"><span className="ty-label">Saved</span><span className="ty-num">{formatMinor(sum(sec, 'availableMinor'))}</span></div>
+                        <div className="ty-shead__tot"><span className="ty-label">Target</span><span className="ty-num"> </span></div>
+                      </>) : (<>
+                        <div className="ty-shead__tot ty-wide"><span className="ty-label">Budgeted</span><span className="ty-num">{formatMinor(sec.budgetedMinor)}</span></div>
+                        <div className="ty-shead__tot ty-wide"><span className="ty-label">Spent</span><span className="ty-num">{formatMinor(sec.spentMinor)}</span></div>
+                        <div className="ty-shead__tot"><span className="ty-label">Available</span><span className="ty-num">{formatMinor(sec.availableMinor)}</span></div>
+                      </>)}
                     </div>
-                    {sec.subsections.map((sub) => (
-                      <Row key={sub.id} sub={sub} from={monthName(shiftMonth(month, -1))} onOpen={budget.closed ? undefined : () => setDialog({ t: 'sub', sectionId: sec.id, sub })} />
+                    {sec.subsections.map((sub, i) => (
+                      <Row key={sub.id} sub={sub} from={monthName(shiftMonth(month, -1))} onOpen={budget.closed ? undefined : () => setDialog({ t: 'sub', sectionId: sec.id, sub, position: i + 1, count: sec.subsections.length })} />
                     ))}
                     {!budget.closed && (
                       <div className="ty-section__add">
-                        <button className="ty-btn ty-btn--quiet ty-btn--sm" onClick={() => setDialog({ t: 'sub', sectionId: sec.id })}>Add subsection</button>
+                        <button className="ty-btn ty-btn--quiet ty-btn--sm" onClick={() => setDialog({ t: 'sub', sectionId: sec.id, count: sec.subsections.length })}>Add subsection</button>
                       </div>
                     )}
                   </section>
@@ -164,7 +186,7 @@ export default function BudgetPage() {
         )}
       </Load>
       {dialog?.t === 'section' && <SectionDialog section={dialog.section} onClose={close} />}
-      {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub} currency={user.baseCurrency} onClose={close} />}
+      {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub} position={dialog.position} count={dialog.count} currency={user.baseCurrency} onClose={close} />}
     </>
   );
 }

@@ -270,7 +270,7 @@ describe('money', () => {
     expect(b).toMatchObject({ month: '2026-10', currency: 'EUR' });
     expect(b.totals).toEqual({ incomeMinor: 50000, budgetedMinor: 30000, spentMinor: 3000, availableMinor: 27000, leftOverMinor: 20000 });
     expect(b.sections[0]).toMatchObject({ id: sec.id, colorSlot: 1, budgetedMinor: 30000, spentMinor: 3000, availableMinor: 27000 });
-    expect(b.sections[0].subsections[0]).toEqual({ id: sub.id, name: 'Food', budgetMinor: 30000, carriedMinor: 0, spentMinor: 3000, availableMinor: 27000 });
+    expect(b.sections[0].subsections[0]).toMatchObject({ id: sub.id, name: 'Food', budgetMinor: 30000, carriedMinor: 0, spentMinor: 3000, availableMinor: 27000 });
     expect((await o.get('/api/budget?month=2026-12')).body.totals.spentMinor).toBe(0);
     expect((await o.get('/api/budget?month=2026-13')).status).toBe(400);
     expect((await o.get('/api/budget')).status).toBe(400);

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, type CloseSummary, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
+import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, type CloseSummary, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
 import { monthName, monthTitle, shiftMonth, today } from './dates';
 import { AMOUNT_ERROR, formatMinor, minorToInput, parseAmount, parsePercent, percentText, PERCENT_ERROR } from './money';
 import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, SubsectionOptions, TextField, useToast } from './ui';
@@ -227,7 +227,7 @@ export function PocketDialog({ pocket, currency, onClose }: { pocket?: Pocket; c
 /* ---------- Section and subsection ---------- */
 
 export function SectionDialog({ section, onClose }: {
-  section?: { id: number; name: string; subsections: { name: string; budgetMinor: number }[] }; onClose: () => void;
+  section?: { id: number; name: string; subsections: SubRules[] }; onClose: () => void;
 }) {
   const toast = useToast();
   const f = useForm();
@@ -246,7 +246,7 @@ export function SectionDialog({ section, onClose }: {
     onClose();
     toast('Section deleted', () => void (async () => {
       const { section: again } = await api<{ section: Section }>('POST', '/sections', { name });
-      for (const s of subsections) await api('POST', `/sections/${again.id}/subsections`, { name: s.name, budgetMinor: s.budgetMinor });
+      for (const [i, s] of subsections.entries()) await api('POST', `/sections/${again.id}/subsections`, subBody(s, i + 1));
     })().catch(() => {}));
   });
 
@@ -261,28 +261,67 @@ export function SectionDialog({ section, onClose }: {
   );
 }
 
-export function SubsectionDialog({ sectionId, sub, currency, onClose }: {
-  sectionId: number; sub?: { id: number; name: string; budgetMinor: number }; currency: string; onClose: () => void;
+type SubRules = SubsectionRules & { name: string; budgetMinor: number | null };
+
+/** The body that recreates a subsection: only the budget and cap fields that apply. */
+const subBody = (x: SubRules, position?: number) => ({
+  name: x.name, kind: x.kind, budgetKind: x.budgetKind, keep: x.keep,
+  ...(x.budgetKind === 'percent' ? { budgetBasisPoints: x.budgetBasisPoints } : { budgetMinor: x.budgetMinor }),
+  ...(x.keep === 'cap' ? { capMinor: x.capMinor } : {}),
+  ...(position ? { position } : {}),
+});
+
+const Seg = ({ legend, name, value, options, onChange }: { legend: string; name: string; value: string; options: [string, string][]; onChange: (v: string) => void }) => (
+  <fieldset className="ty-fieldset">
+    <legend className="ty-label">{legend}</legend>
+    <div className="ty-segmented">
+      {options.map(([v, label]) => <label key={v}><input type="radio" name={name} checked={value === v} onChange={() => onChange(v)} />{label}</label>)}
+    </div>
+  </fieldset>
+);
+
+export function SubsectionDialog({ sectionId, sub, position, count, currency, onClose }: {
+  sectionId: number; sub?: SubRules & { id: number }; position?: number; count: number; currency: string; onClose: () => void;
 }) {
   const toast = useToast();
   const f = useForm();
   const [name, setName] = useState(sub?.name ?? '');
-  const [budget, setBudget] = useState(minorToInput(sub?.budgetMinor ?? 0));
+  const [kind, setKind] = useState(sub?.kind ?? 'spending');
+  const [budgetKind, setBudgetKind] = useState(sub?.budgetKind ?? 'amount');
+  const [budget, setBudget] = useState(minorToInput(sub?.budgetKind === 'percent' ? 0 : sub?.budgetMinor ?? 0));
+  const [percent, setPercent] = useState(sub?.budgetBasisPoints ? percentText(sub.budgetBasisPoints) : '');
+  const [keep, setKeep] = useState(sub?.keep ?? 'all');
+  const [cap, setCap] = useState(sub?.capMinor ? minorToInput(sub.capMinor) : '');
+  const [pos, setPos] = useState(String(position ?? count + 1));
 
   const save = f.on(async () => {
-    const budgetMinor = parseAmount(budget, { allowZero: true });
-    if (budgetMinor === null) throw fieldError('budgetMinor', 'Enter an amount of zero or more, with at most two decimals.');
-    if (sub) await api('PATCH', `/subsections/${sub.id}`, { name, budgetMinor });
-    else await api('POST', `/sections/${sectionId}/subsections`, { name, budgetMinor });
+    const goal = kind === 'goal';
+    const b: Record<string, unknown> = { name, kind, budgetKind, keep: goal ? 'cap' : keep };
+    if (budgetKind === 'amount') {
+      const budgetMinor = parseAmount(budget, { allowZero: true });
+      if (budgetMinor === null) throw fieldError('budgetMinor', 'Enter an amount of zero or more, with at most two decimals.');
+      b.budgetMinor = budgetMinor;
+    } else {
+      const bp = parsePercent(percent);
+      if (bp === null) throw fieldError('budgetBasisPoints', PERCENT_ERROR);
+      b.budgetBasisPoints = bp;
+    }
+    if (goal || keep === 'cap') {
+      const capMinor = parseAmount(cap, { allowZero: !goal });
+      if (capMinor === null) throw fieldError('capMinor', goal ? AMOUNT_ERROR : 'Enter an amount of zero or more, with at most two decimals.');
+      b.capMinor = capMinor;
+    }
+    if (sub) await api('PATCH', `/subsections/${sub.id}`, count > 1 ? { ...b, position: Number(pos) } : b);
+    else await api('POST', `/sections/${sectionId}/subsections`, b);
     onClose();
     toast('Saved');
   });
 
   const remove = f.on(async () => {
     await api('DELETE', `/subsections/${sub!.id}`);
-    const { name, budgetMinor } = sub!;
+    const again = subBody(sub!, position);
     onClose();
-    toast('Subsection deleted', () => void api('POST', `/sections/${sectionId}/subsections`, { name, budgetMinor }).catch(() => {}));
+    toast('Subsection deleted', () => void api('POST', `/sections/${sectionId}/subsections`, again).catch(() => {}));
   });
 
   return (
@@ -290,7 +329,39 @@ export function SubsectionDialog({ sectionId, sub, currency, onClose }: {
       <form className="ty-stack" onSubmit={save} noValidate>
         <FormError message={f.formError} />
         <TextField label="Name" value={name} onChange={setName} error={f.errors.name} />
-        <AmountField label="Monthly budget" value={budget} onChange={setBudget} error={f.errors.budgetMinor} currency={currency} />
+        <Seg legend="Kind" name="kind" value={kind} onChange={(v) => setKind(v as typeof kind)} options={[['spending', 'Spending'], ['goal', 'Savings goal']]} />
+        {f.errors.kind && <span className="ty-error">{f.errors.kind}</span>}
+        <Seg legend="Budget" name="budgetKind" value={budgetKind} onChange={(v) => setBudgetKind(v as typeof budgetKind)} options={[['amount', 'Amount'], ['percent', 'Percentage']]} />
+        {f.errors.budgetKind && <span className="ty-error">{f.errors.budgetKind}</span>}
+        {budgetKind === 'amount' ? (
+          <AmountField label="Monthly budget" value={budget} onChange={setBudget} error={f.errors.budgetMinor} currency={currency} />
+        ) : (
+          <Field label="Percentage" error={f.errors.budgetBasisPoints} hint="Of what is left in the section after the fixed amounts.">
+            {(p) => (
+              <div className="ty-affix">
+                <input {...p} className={`${p.className} ty-input--amount`} inputMode="decimal" autoComplete="off" value={percent} onChange={(e) => setPercent(e.target.value)} />
+                <span className="ty-muted">%</span>
+              </div>
+            )}
+          </Field>
+        )}
+        {kind === 'goal' ? (
+          <AmountField label="Target" value={cap} onChange={setCap} error={f.errors.capMinor} currency={currency} hint="It keeps its money until it reaches the target." />
+        ) : (<>
+          <Seg legend="At month end, keep" name="keep" value={keep} onChange={(v) => setKeep(v as typeof keep)} options={[['all', 'Everything'], ['cap', 'Up to'], ['none', 'Nothing']]} />
+          {f.errors.keep && <span className="ty-error">{f.errors.keep}</span>}
+          <span className="ty-cap">What is not kept joins the section's rest.</span>
+          {keep === 'cap' && <AmountField label="Keep up to" value={cap} onChange={setCap} error={f.errors.capMinor} currency={currency} />}
+        </>)}
+        {sub && count > 1 && (
+          <Field label="Position" error={f.errors.position}>
+            {(p) => (
+              <select {...p} value={pos} onChange={(e) => setPos(e.target.value)}>
+                {Array.from({ length: count }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+              </select>
+            )}
+          </Field>
+        )}
         <Foot busy={f.busy} onCancel={onClose} onDelete={sub && remove} label={sub ? 'Save' : 'Add subsection'} />
       </form>
     </Modal>

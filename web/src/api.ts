@@ -3,7 +3,11 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string };
 export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker';
 export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number };
-export type Subsection = { id: number; sectionId: number; name: string; budgetMinor: number; position: number };
+export type SubsectionRules = {
+  kind: 'spending' | 'goal'; budgetKind: 'amount' | 'percent'; budgetBasisPoints: number | null;
+  keep: 'all' | 'cap' | 'none'; capMinor: number | null;
+};
+export type Subsection = { id: number; sectionId: number; name: string; budgetMinor: number | null; position: number } & SubsectionRules;
 export type Source = { id: number; name: string; boxId: number; isLeftovers: boolean };
 export type RestRule = { shares: { sectionId: number | null; basisPoints: number }[]; overspent: 'income' | 'section' };
 export type Section = { id: number; name: string; colorSlot: number; position: number; subsections: Subsection[]; rest: RestRule };
@@ -17,7 +21,7 @@ export type Transaction = {
   id: number; date: string; kind: 'expense' | 'income'; amountMinor: number;
   pocketId: number; subsectionId: number | null; sourceId: number | null; payee: string; note: string; source: 'manual';
 };
-export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number };
+export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number } & SubsectionRules;
 export type BudgetSection = {
   id: number; name: string; colorSlot: number; budgetedMinor: number; restMinor: number; spentMinor: number; availableMinor: number;
   subsections: BudgetSubsection[];

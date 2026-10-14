@@ -7,7 +7,9 @@ const POCKET = `SELECT p.id, p.name, p.kind, p.emoji, p.currency, p.opening_bala
   p.opening_balance_minor + COALESCE((SELECT SUM(CASE t.kind WHEN 'income' THEN t.amount_minor ELSE -t.amount_minor END)
     FROM transactions t WHERE t.pocket_id = p.id AND t.user_id = p.user_id), 0) AS balanceMinor
   FROM pockets p`;
-const SUB = `SELECT id, section_id AS sectionId, name, budget_minor AS budgetMinor, position FROM subsections`;
+const SUB = `SELECT id, section_id AS sectionId, name, position, kind, budget_kind AS budgetKind,
+  CASE WHEN budget_kind = 'amount' THEN budget_minor END AS budgetMinor, budget_basis_points AS budgetBasisPoints,
+  keep, cap_minor AS capMinor FROM subsections`;
 const TX = `SELECT id, date, kind, amount_minor AS amountMinor, pocket_id AS pocketId, subsection_id AS subsectionId, source_id AS sourceId,
   payee, note, source FROM transactions`;
 
@@ -128,22 +130,43 @@ export function dataRouter(db: Db): Router {
     db.prepare('DELETE FROM sections WHERE id = ? AND user_id = ?').run(cur.id, req.user.id);
     res.status(204).end();
   });
+  // Checks a subsection's body, including the rules that need the database, then saves it at `position` among its section's subsections.
+  const saveSub = (uid: number, sectionId: number, id: number | null, input: any, keepPosition?: number) => {
+    const b = parse(s.subsection, input);
+    const others = all<{ id: number; bp: number | null }>(
+      'SELECT id, budget_basis_points AS bp FROM subsections WHERE section_id = ? AND user_id = ? AND id IS NOT ? ORDER BY position, id', sectionId, uid, id);
+    if (b.budgetKind === 'percent' && others.reduce((a, x) => a + (x.bp ?? 0), 0) + b.budgetBasisPoints! > 10000)
+      throw fieldError('budgetBasisPoints', 'The percentages in one section can add up to at most 100.');
+    const pos = input.position ?? keepPosition ?? others.length + 1;
+    if (!s.subsectionPosition.safeParse(pos).success || pos < 1 || pos > others.length + 1) throw fieldError('position', 'Choose a position.');
+    return db.transaction(() => {
+      const cols = [b.name, b.kind, b.budgetKind, b.budgetMinor, b.budgetBasisPoints, b.keep, b.capMinor];
+      if (id === null)
+        id = Number(db.prepare(`INSERT INTO subsections (user_id, section_id, name, kind, budget_kind, budget_minor, budget_basis_points, keep, cap_minor, position)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`).run(uid, sectionId, ...cols).lastInsertRowid);
+      else
+        db.prepare('UPDATE subsections SET name = ?, kind = ?, budget_kind = ?, budget_minor = ?, budget_basis_points = ?, keep = ?, cap_minor = ? WHERE id = ? AND user_id = ?')
+          .run(...cols, id, uid);
+      const order = others.map((x) => x.id);
+      order.splice(pos - 1, 0, id);
+      order.forEach((x, i) => db.prepare('UPDATE subsections SET position = ? WHERE id = ?').run(i + 1, x));
+      return subOf(uid, id);
+    })();
+  };
+  // A goal always keeps up to its target, so a body that makes a subsection a goal without saying so gets that.
+  const withDefaults = (base: any, body: any) => {
+    const m = { ...base, ...body };
+    if (body.keep === undefined && m.kind === 'goal') m.keep = 'cap';
+    return m;
+  };
   r.post('/sections/:id/subsections', (req, res) => {
     const sec = sectionOf(req.user.id, idOf(req));
-    const b = parse(s.subsection, req.body);
-    const { lastInsertRowid } = db
-      .prepare(`INSERT INTO subsections (user_id, section_id, name, budget_minor, position)
-                VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM subsections WHERE section_id = ?))`)
-      .run(req.user.id, sec.id, b.name, b.budgetMinor, sec.id);
-    res.status(201).json({ subsection: subOf(req.user.id, Number(lastInsertRowid)) });
+    res.status(201).json({ subsection: saveSub(req.user.id, sec.id, null, withDefaults({ kind: 'spending', budgetKind: 'amount', keep: 'all' }, req.body ?? {})) });
   });
   r.patch('/subsections/:id', (req, res) => {
     const cur = subOf(req.user.id, idOf(req)) as any;
-    const b = parse(s.subsection, { ...cur, ...req.body });
-    db.prepare('UPDATE subsections SET name = ?, budget_minor = ? WHERE id = ? AND user_id = ?').run(
-      b.name, b.budgetMinor, cur.id, req.user.id,
-    );
-    res.json({ subsection: subOf(req.user.id, cur.id) });
+    const { position, ...base } = cur;
+    res.json({ subsection: saveSub(req.user.id, cur.sectionId, cur.id, withDefaults(base, req.body ?? {}), position) });
   });
   r.delete('/subsections/:id', (req, res) => {
     const cur = subOf(req.user.id, idOf(req)) as any;
@@ -417,15 +440,21 @@ export function dataRouter(db: Db): Router {
 
     const sections = secs.map((sec) => {
       let claimed = 0, overspent = 0, carried = 0;
+      const budgetedMinor = pipeline.sections.find((x) => x.id === sec.id)!.receivedMinor;
+      // Fixed amounts first; percentages share what remains, each rounded down to the cent.
+      const remains = BigInt(Math.max(0, budgetedMinor - sec.subsections.reduce((a: number, x: any) => a + (x.budgetMinor ?? 0), 0)));
       const subsections: any[] = sec.subsections.map((x: any) => {
+        const budgetMinor: number = x.budgetKind === 'amount' ? x.budgetMinor : Number((remains * BigInt(x.budgetBasisPoints)) / 10000n);
         const spentMinor = spent.get(x.id) ?? 0;
         const carriedMinor = carry.subs.get(x.id) ?? 0;
-        claimed += x.budgetMinor;
+        claimed += budgetMinor;
         carried += carriedMinor;
-        overspent += Math.max(0, spentMinor - x.budgetMinor - carriedMinor);
-        return { id: x.id, name: x.name, budgetMinor: x.budgetMinor, carriedMinor, spentMinor, availableMinor: x.budgetMinor + carriedMinor - spentMinor };
+        overspent += Math.max(0, spentMinor - budgetMinor - carriedMinor);
+        return {
+          id: x.id, name: x.name, kind: x.kind, budgetKind: x.budgetKind, budgetMinor, budgetBasisPoints: x.budgetBasisPoints,
+          keep: x.keep, capMinor: x.capMinor, carriedMinor, spentMinor, availableMinor: budgetMinor + carriedMinor - spentMinor,
+        };
       });
-      const budgetedMinor = pipeline.sections.find((x) => x.id === sec.id)!.receivedMinor;
       const spentMinor = subsections.reduce((a: number, x: any) => a + x.spentMinor, 0);
       return {
         id: sec.id, name: sec.name, colorSlot: sec.colorSlot,
@@ -469,12 +498,19 @@ export function dataRouter(db: Db): Router {
     };
     const subs = new Map<number, number>();
     for (const sec of m.budget.sections) {
-      for (const x of sec.subsections) if (x.availableMinor > 0) subs.set(x.id, x.availableMinor);
+      let restMinor = sec.restMinor;
+      for (const x of sec.subsections) {
+        const u = x.availableMinor;
+        if (u <= 0) continue;
+        const kept = x.keep === 'all' ? u : x.keep === 'cap' ? Math.min(u, x.capMinor!) : 0;
+        if (kept > 0) subs.set(x.id, kept);
+        restMinor += u - kept; // what a subsection does not keep joins the section's rest
+      }
       const rule: Rule = m.rules.get(sec.id)!;
-      if (sec.restMinor < 0) add(sec.id, 10000, rule.overspent === 'section' ? sec.id : null, sec.restMinor);
+      if (restMinor < 0) add(sec.id, 10000, rule.overspent === 'section' ? sec.id : null, restMinor);
       else {
-        const parts = rule.shares.map((x) => Math.floor((sec.restMinor * x.basisPoints) / 10000));
-        parts[0]! += sec.restMinor - parts.reduce((a, n) => a + n, 0);
+        const parts = rule.shares.map((x) => Math.floor((restMinor * x.basisPoints) / 10000));
+        parts[0]! += restMinor - parts.reduce((a, n) => a + n, 0);
         rule.shares.forEach((x, i) => add(sec.id, x.basisPoints, x.sectionId, parts[i]!));
       }
     }
