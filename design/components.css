@@ -30,6 +30,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .ty-btn--icon { width: 2.5rem; padding: 0; }
 .ty-btn--sm { height: 2rem; padding: 0 var(--space-3); font-size: 0.8125rem; }
 .ty-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+a.ty-btn { text-decoration: none; }
 .ty-input:disabled, .ty-segmented label:has(input:disabled), .ty-chip:has(input:disabled) { background: var(--surface-sunken); color: var(--ink-muted); cursor: not-allowed; }
 .ty-segmented label:has(input:disabled):hover { color: var(--ink-muted); }
 .ty-segmented label:has(input:disabled):active, .ty-chip:has(input:disabled):active { transform: none; }
