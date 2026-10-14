@@ -8,6 +8,7 @@ import { burnTime, currentSession, endSession, hashPassword, requireAuth, startS
 import { bankCallback } from './banks';
 import { createRates, ECB_URL } from './rates';
 import { dataRouter } from './data';
+import { recurringRouter } from './recurring';
 import type { Db } from './db';
 import { errorHandler, fieldError, HttpError, notFound, parse, requireJson } from './http';
 import * as s from './schemas';
@@ -114,6 +115,7 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
 
   api.use('/imports', express.json({ limit: '25mb' }));
   api.use(dataRouter(db, rates, now, bank));
+  api.use(recurringRouter(db, now));
   api.use(() => { throw notFound(); });
   app.use('/api', api);
 

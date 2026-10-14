@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAutoSync } from '../bank';
 import { api, useLoad, type Pocket, type Section, type Source, type Transaction } from '../api';
 import { currentMonth, dayHeading, monthTitle, shiftMonth } from '../dates';
@@ -50,11 +50,14 @@ export default function TransactionsPage() {
   return (
     <>
       <Topbar title="Transactions" add={{ label: 'Add transaction', onClick: () => setDialog({}), spend: true }} />
-      <header className="ty-month__top ty-wide">
-        <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>Transactions</h1>
-        <span className="ty-grow" />
-        <button className="ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button>
-        <button className="ty-btn ty-btn--spend" onClick={() => setDialog({})}>Add transaction</button>
+      <header className="ty-month">
+        <div className="ty-month__top ty-wide">
+          <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>Transactions</h1>
+          <span className="ty-grow" />
+          <button className="ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button>
+          <button className="ty-btn ty-btn--spend" onClick={() => setDialog({})}>Add transaction</button>
+        </div>
+        <Link className="ty-btn ty-month__add" to="/recurring">Recurring</Link>
       </header>
       <div><button className="app-phone-only ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button></div>
       <div className="app-filters">
