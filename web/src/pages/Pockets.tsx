@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 import { api, KIND_WORDS, useLoad, type Holding, type NetWorth, type Pocket, type Section, type Source, type Where } from '../api';
+import { bankByPocket, countsLine, loadConnections, syncedLine, useAutoSync } from '../bank';
 import { PocketDialog, TransactionDialog } from '../dialogs';
 import { formatMinor } from '../money';
 import { useAuth } from '../auth';
@@ -67,16 +68,18 @@ export default function PocketsPage() {
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<{ pocket?: Pocket; transfer?: boolean } | null>(null);
   const close = () => setDialog(null);
+  useAutoSync();
   const state = useLoad(async () => {
-    const [p, n, s, src, w, h] = await Promise.all([
+    const [p, n, s, src, w, h, banks] = await Promise.all([
       api<{ pockets: Pocket[] }>('GET', '/pockets'),
       api<NetWorth>('GET', '/networth'),
       api<{ sections: Section[] }>('GET', '/sections'),
       api<{ sources: Source[] }>('GET', '/sources'),
       api<Where>('GET', '/where'),
       api<{ holdings: Holding[] }>('GET', '/holdings'),
+      loadConnections(),
     ]);
-    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources, where: w, held: h.holdings.filter((x) => !x.soldDate) };
+    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources, where: w, held: h.holdings.filter((x) => !x.soldDate), banks: bankByPocket(banks) };
   }, []);
 
   useRescueFocus(state.data ? state.data.pockets.length === 0 : undefined);
@@ -100,7 +103,7 @@ export default function PocketsPage() {
         <button className="ty-btn ty-month__add" onClick={() => navigate("/investments")}>Investments</button>
       </header>
       <Load state={state}>
-        {({ pockets, sections, sources, where, held }) => (
+        {({ pockets, sections, sources, where, held, banks }) => (
           <>
             {pockets.length === 0 ? (
               <EmptyCard text="No pockets yet. A pocket is where money sits: a bank account, cash, a fund." action="Add pocket" onAction={() => setDialog({})} />
@@ -109,6 +112,7 @@ export default function PocketsPage() {
                 {pockets.map((p) => {
                   const paid = held.filter((x) => x.pocketId === p.id).reduce((t, x) => t + x.paidMinor, 0);
                   const converted = p.currency === user.baseCurrency ? '' : p.baseValueMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseValueMinor)} ${user.baseCurrency}`;
+                  const shown = p.syncedAt ? p.syncedBalanceMinor ?? p.valueMinor : p.valueMinor;
                   const sub = [converted, held.some((x) => x.pocketId === p.id) && `paid ${formatMinor(paid)} ${p.currency}`].filter(Boolean).join(' · ') || ' ';
                   return (
                     <article key={p.id} className="ty-card ty-pocket app-pick" {...pick(() => setDialog({ pocket: p }))}>
@@ -117,10 +121,11 @@ export default function PocketsPage() {
                         <span className="ty-pill">{p.currency}</span>
                       </div>
                       <div>
-                        <div className={p.valueMinor < 0 ? 'num-lg ty-num--neg' : 'num-lg'}>{formatMinor(p.valueMinor)}<span className="ty-cur">{p.currency}</span></div>
+                        <div className={shown < 0 ? 'num-lg ty-num--neg' : 'num-lg'}>{formatMinor(shown)}<span className="ty-cur">{p.currency}</span></div>
                         <div className="ty-cap">{sub}</div>
                       </div>
-                      <div className="ty-cap">Entered by hand</div>
+                      <div className="ty-cap">{syncedLine(p, banks.get(p.id))}</div>
+                      {countsLine(p) && <div className="ty-cap">{countsLine(p)}</div>}
                     </article>
                   );
                 })}

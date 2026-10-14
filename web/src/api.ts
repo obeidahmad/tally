@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; homePocketId: number | null };
 export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker';
-export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number; valueMinor: number; baseValueMinor: number | null; hasTransactions: boolean };
+export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number; valueMinor: number; baseValueMinor: number | null; hasTransactions: boolean; syncedBalanceMinor: number | null; syncedAt: string | null };
 export type SubsectionRules = {
   kind: 'spending' | 'goal'; budgetKind: 'amount' | 'percent'; budgetBasisPoints: number | null;
   keep: 'all' | 'cap' | 'none'; capMinor: number | null;
@@ -20,7 +20,7 @@ export type CloseSummary = {
 export type Transaction = {
   id: number; date: string; kind: 'expense' | 'income' | 'transfer'; amountMinor: number; baseAmountMinor: number;
   pocketId: number; subsectionId: number | null; sourceId: number | null;
-  toPocketId: number | null; toAmountMinor: number | null; payee: string; note: string; source: 'manual' | 'import';
+  toPocketId: number | null; toAmountMinor: number | null; payee: string; note: string; source: 'manual' | 'import' | 'bank';
 };
 export type Holding = {
   id: number; name: string; pocketId: number; subsectionId: number; paidMinor: number;

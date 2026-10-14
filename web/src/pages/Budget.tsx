@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { EndingNotice, loadConnections } from '../bank';
 import { api, ApiError, useLoad, type Budget, type Holding, type Rates, type BudgetSection, type BudgetSubsection, type End, type Move, type Months, type Pocket, type Section, type Source } from '../api';
 import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dates';
 import { CloseDialog, endKey, MoveDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
@@ -95,7 +96,7 @@ export default function BudgetPage() {
 
   const state = useLoad(
     async () => {
-      const [budget, months, p, s, src, mv, h, r] = await Promise.all([
+      const [budget, months, p, s, src, mv, h, r, connections] = await Promise.all([
         api<Budget>('GET', `/budget?month=${month}`),
         api<Months>('GET', '/months'),
         api<{ pockets: Pocket[] }>('GET', '/pockets'),
@@ -104,8 +105,9 @@ export default function BudgetPage() {
         api<{ moves: Move[] }>('GET', `/moves?month=${month}`),
         api<{ holdings: Holding[] }>('GET', '/holdings'),
         api<Rates>('GET', '/rates'),
+        loadConnections(),
       ]);
-      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources, moves: mv.moves, holdings: h.holdings.filter((x) => !x.soldDate), rates: r };
+      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources, moves: mv.moves, holdings: h.holdings.filter((x) => !x.soldDate), rates: r, connections };
     },
     [month],
   );
@@ -158,6 +160,7 @@ export default function BudgetPage() {
               <div><Link className="app-link" to="/transactions?unsorted=1">Sort them</Link></div>
             </div>
           )}
+          {state.data.connections.map((c) => <EndingNotice key={c.id} connection={c} />)}
           <div className="ty-stats">
             <div className="ty-stat"><span className="ty-label">Income</span><span className="num-lg">{formatMinor(state.data.budget.totals.incomeMinor)}</span></div>
             <div className="ty-stat"><span className="ty-label">Budgeted</span><span className="num-lg">{formatMinor(state.data.budget.totals.budgetedMinor)}</span></div>

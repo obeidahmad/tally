@@ -83,3 +83,6 @@
 .rp-tip__foot { margin-top: var(--space-1); padding-top: var(--space-1); border-top: 1px solid var(--line); }
 .rp-table { overflow-x: auto; }
 @media (max-width: 640px) { .rp-tip { min-width: 8rem; } }
+.app-textarea { height: auto; padding: var(--space-3); resize: vertical; font-family: ui-monospace, monospace; }
+.app-bank + .app-bank { border-top: 1px solid var(--line); padding-top: var(--space-4); }
+.app-actions { display: flex; gap: var(--space-2); }

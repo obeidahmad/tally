@@ -51,7 +51,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
   const [amount, setAmount] = useState(tx ? minorToInput(tx.amountMinor) : '');
   const [payee, setPayee] = useState(tx?.payee ?? '');
   // 'new' is the "+ Add source" chip
-  const imported = tx?.source === 'import';
+  const imported = !!tx && tx.source !== 'manual';
   const [always, setAlways] = useState(false);
   const [sourceId, setSourceId] = useState(tx?.sourceId?.toString() ?? (imported ? '' : sources[0]?.id.toString() ?? 'new'));
   const [newSource, setNewSource] = useState('');

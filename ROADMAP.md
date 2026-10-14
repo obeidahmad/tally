@@ -125,6 +125,7 @@ The pipeline is what makes Tally different: money moves through steps in an orde
 - `specs/15-statement-import-and-rules.md`: CSV statements and rules that sort transactions by payee.
 - **File import:** bank statement files (CSV) from any bank. This is the fallback that keeps working when a live connection does not.
 - **Trading212:** through the user's own API key. The official API is in beta and covers Invest and Stocks ISA accounts.
+- `specs/17-bank-connections.md`: banks through Enable Banking, with each person's own registration.
 - **Banks (Revolut, Bank of Cyprus):** through Enable Banking, which is free for a private individual reading their own accounts. Each person on the server uses their own registration.
 - Imported transactions keep the pocket the source reported; the subsection can be changed. Hand-entered ones stay fully editable.
 - Bank access has to be re-approved from time to time; the app reminds the user before it lapses.
@@ -134,7 +135,7 @@ The pipeline is what makes Tally different: money moves through steps in an orde
 Taken from the three apps, after the phases above:
 
 - Rules that categorise transactions automatically.
-- Detection of subscriptions and recurring bills.
+- Detection of subscriptions and recurring bills (`specs/18-recurring.md`).
 - Reports and charts: spending by section over time, cash flow.
 - Sharing one budget between partners.
 
