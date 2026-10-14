@@ -1,35 +1,41 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, useLoad, type Pocket, type Section, type Source, type Transaction } from '../api';
 import { currentMonth, dayHeading, monthTitle, shiftMonth } from '../dates';
 import { TransactionDialog } from '../dialogs';
+import { ImportDialog } from '../import';
 import { formatMinor } from '../money';
 import { useAuth } from '../auth';
 import { pick } from '../pick';
 import { EmptyCard, Field, Load, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
 
 const MONTHS_BACK = 36;
+const UNSORTED = 'unsorted'; // the Subsection filter's "Needs sorting" choice
 
 export default function TransactionsPage() {
   const { user } = useAuth();
   const now = currentMonth();
   const [month, setMonth] = useState(now);
-  const [subsectionId, setSubsectionId] = useState('');
+  const [params] = useSearchParams();
+  const [subsectionId, setSubsectionId] = useState(params.get('unsorted') ? UNSORTED : '');
   const [pocketId, setPocketId] = useState('');
-  const [dialog, setDialog] = useState<{ tx?: Transaction } | null>(null);
+  const [dialog, setDialog] = useState<{ tx?: Transaction; importing?: boolean } | null>(null);
   const close = () => setDialog(null);
 
   const state = useLoad(
     async () => {
-      const q = new URLSearchParams({ month });
-      if (subsectionId) q.set('subsectionId', subsectionId);
+      const unsorted = subsectionId === UNSORTED;
+      const q = new URLSearchParams(unsorted ? { unsorted: '1' } : { month });
+      if (subsectionId && !unsorted) q.set('subsectionId', subsectionId);
       if (pocketId) q.set('pocketId', pocketId);
-      const [t, p, s, src] = await Promise.all([
+      const [t, p, s, src, u] = await Promise.all([
         api<{ transactions: Transaction[] }>('GET', `/transactions?${q}`),
         api<{ pockets: Pocket[] }>('GET', '/pockets'),
         api<{ sections: Section[] }>('GET', '/sections'),
         api<{ sources: Source[] }>('GET', '/sources'),
+        api<{ transactions: Transaction[] }>('GET', '/transactions?unsorted=1'),
       ]);
-      return { transactions: t.transactions, pockets: p.pockets, sections: s.sections, sources: src.sources };
+      return { transactions: t.transactions, pockets: p.pockets, sections: s.sections, sources: src.sources, unsortedCount: u.transactions.length };
     },
     [month, subsectionId, pocketId],
   );
@@ -45,12 +51,14 @@ export default function TransactionsPage() {
       <header className="ty-month__top ty-wide">
         <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>Transactions</h1>
         <span className="ty-grow" />
+        <button className="ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button>
         <button className="ty-btn ty-btn--spend" onClick={() => setDialog({})}>Add transaction</button>
       </header>
+      <div><button className="app-phone-only ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button></div>
       <div className="app-filters">
         <Field label="Month">
           {(p) => (
-            <select {...p} value={month} onChange={(e) => setMonth(e.target.value)}>
+            <select {...p} value={month} disabled={subsectionId === UNSORTED} onChange={(e) => setMonth(e.target.value)}>
               {months.map((m) => <option key={m} value={m}>{monthTitle(m)}</option>)}
             </select>
           )}
@@ -59,6 +67,7 @@ export default function TransactionsPage() {
           {(p) => (
             <select {...p} value={subsectionId} onChange={(e) => setSubsectionId(e.target.value)}>
               <option value="">All subsections</option>
+              {state.data && (state.data.unsortedCount > 0 || subsectionId === UNSORTED) && <option value={UNSORTED}>Needs sorting ({state.data.unsortedCount})</option>}
               {state.data && <SubsectionOptions sections={state.data.sections} />}
             </select>
           )}
@@ -74,6 +83,7 @@ export default function TransactionsPage() {
       </div>
       <Load state={state}>
         {({ transactions, pockets, sections, sources }) => {
+          const unsortedView = subsectionId === UNSORTED;
           const sourceName = new Map(sources.map((x) => [x.id, x.name]));
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
           const pocketById = new Map(pockets.map((p) => [p.id, p]));
@@ -85,7 +95,7 @@ export default function TransactionsPage() {
           return (
             <>
               {transactions.length === 0 ? (
-                <EmptyCard text={`No transactions in ${monthTitle(month)}.`} action="Add transaction" onAction={() => setDialog({})} />
+                <EmptyCard text={unsortedView ? 'Nothing needs sorting.' : `No transactions in ${monthTitle(month)}.`} action="Add transaction" onAction={() => setDialog({})} />
               ) : (
                 <section className="ty-section" aria-label="Transactions">
                   {days.map(([date, list]) => (
@@ -94,7 +104,9 @@ export default function TransactionsPage() {
                       {list.map((t) => {
                         const sub = t.subsectionId === null ? undefined : subs.get(t.subsectionId);
                         const transfer = t.kind === 'transfer';
-                        const where = sub?.name ?? (transfer ? '' : 'Income');
+                        const imported = t.source === 'import';
+                        const unsorted = imported && (t.kind === 'income' ? t.sourceId === null : t.subsectionId === null);
+                        const where = unsorted ? '' : sub?.name ?? (transfer ? '' : 'Income');
                         const p = pocketById.get(t.pocketId);
                         const pocket = p && <><span className="ty-emoji">{p.emoji}</span> {p.name}</>;
                         const code = p?.currency ?? user.baseCurrency;
@@ -112,12 +124,12 @@ export default function TransactionsPage() {
                         return (
                           <div key={t.id} className="ty-trow app-pick" {...pick(() => setDialog({ tx: t }))}>
                             <div className="ty-trow__who">
-                              <b>{transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? sourceName.get(t.sourceId!) : t.payee}</b>
-                              <span className="ty-cap">{transfer ? moved : t.kind === 'income' ? 'Income · entered by hand' : 'Entered by hand'}</span>
-                              <span className="ty-cap ty-trow__meta">{t.kind === 'income' ? pocket : <>{where && `${where} · `}{pocket}</>}</span>
+                              <b>{transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? (t.sourceId === null ? t.payee : sourceName.get(t.sourceId)) : t.payee}</b>
+                              <span className="ty-cap">{transfer ? moved : `${t.kind === 'income' ? 'Income · ' : ''}${imported ? (t.kind === 'income' ? 'from a statement' : 'From a statement') : (t.kind === 'income' ? 'entered by hand' : 'Entered by hand')}`}</span>
+                              <span className="ty-cap ty-trow__meta">{unsorted ? <><span className="ty-pill ty-pill--warning">Needs sorting</span> · {pocket}</> : t.kind === 'income' ? pocket : <>{where && `${where} · `}{pocket}</>}</span>
                             </div>
                             <div className="ty-tag ty-wide">
-                              {where && <><span className={sub && sub.slot >= 1 ? `ty-dot ty-dot--${sub.slot}` : 'ty-dot'} />{where}</>}
+                              {unsorted ? <span className="ty-pill ty-pill--warning">Needs sorting</span> : where && <><span className={sub && sub.slot >= 1 ? `ty-dot ty-dot--${sub.slot}` : 'ty-dot'} />{where}</>}
                             </div>
                             <div className="ty-wide">{pocket}</div>
                             {amount}
@@ -128,7 +140,8 @@ export default function TransactionsPage() {
                   ))}
                 </section>
               )}
-              {dialog && <TransactionDialog tx={dialog.tx} pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
+              {dialog?.importing && <ImportDialog pockets={pockets} onClose={close} />}
+              {dialog && !dialog.importing && <TransactionDialog tx={dialog.tx} pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
             </>
           );
         }}

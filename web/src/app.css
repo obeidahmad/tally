@@ -42,3 +42,7 @@
   /* the bottom sheet: pinned to the bottom edge, full width */
   .ty-dialog { margin: auto 0 0; max-width: 100%; }
 }
+
+/* Import preview table and rules */
+.app-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); }
+.app-scroll .ty-table td, .app-scroll .ty-table th { white-space: nowrap; text-align: left; }
