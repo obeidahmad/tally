@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, ApiError, useLoad, type Budget, type BudgetSection, type BudgetSubsection, type End, type Move, type Months, type Pocket, type Section, type Source } from '../api';
+import { api, ApiError, useLoad, type Budget, type Holding, type Rates, type BudgetSection, type BudgetSubsection, type End, type Move, type Months, type Pocket, type Section, type Source } from '../api';
 import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dates';
 import { CloseDialog, endKey, MoveDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
 import { formatMinor, percentText } from '../money';
@@ -28,7 +28,7 @@ const goals = (sec: BudgetSection) => sec.subsections.length > 0 && sec.subsecti
 const moved = (n: number) => (n === 0 ? '' : `${n > 0 ? '+' : ''}${formatMinor(n)} moved`);
 const sum = (sec: BudgetSection, k: 'budgetMinor' | 'availableMinor') => sec.subsections.reduce((t, x) => t + x[k], 0);
 
-function Row({ sub, from, goals, onOpen }: { sub: BudgetSubsection; from: string; goals: boolean; onOpen?: () => void }) {
+function Row({ sub, from, goals, held, onOpen }: { sub: BudgetSubsection; from: string; goals: boolean; held?: string; onOpen?: () => void }) {
   const isGoal = sub.kind === 'goal';
   const goal = isGoal && goals; // in a mixed section a goal row is laid out like any row
   const target = sub.capMinor ?? 0;
@@ -45,6 +45,7 @@ function Row({ sub, from, goals, onOpen }: { sub: BudgetSubsection; from: string
     isGoal && `fills to ${formatMinor(target)}`,
     !isGoal && carried !== 0 && `+${formatMinor(carried)} from ${from}`,
     moved(sub.movedMinor ?? 0),
+    held,
   ].filter(Boolean).join(' · ');
   return (
     <div className={onOpen ? 'ty-brow app-pick' : 'ty-brow'} {...(onOpen ? pick(onOpen) : {})}>
@@ -94,15 +95,17 @@ export default function BudgetPage() {
 
   const state = useLoad(
     async () => {
-      const [budget, months, p, s, src, mv] = await Promise.all([
+      const [budget, months, p, s, src, mv, h, r] = await Promise.all([
         api<Budget>('GET', `/budget?month=${month}`),
         api<Months>('GET', '/months'),
         api<{ pockets: Pocket[] }>('GET', '/pockets'),
         api<{ sections: Section[] }>('GET', '/sections'),
         api<{ sources: Source[] }>('GET', '/sources'),
         api<{ moves: Move[] }>('GET', `/moves?month=${month}`),
+        api<{ holdings: Holding[] }>('GET', '/holdings'),
+        api<Rates>('GET', '/rates'),
       ]);
-      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources, moves: mv.moves };
+      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources, moves: mv.moves, holdings: h.holdings.filter((x) => !x.soldDate), rates: r };
     },
     [month],
   );
@@ -165,7 +168,18 @@ export default function BudgetPage() {
         </>)}
       </header>
       <Load state={state}>
-        {({ budget, months, pockets, sections, sources, moves }) => (
+        {({ budget, months, pockets, sections, sources, moves, holdings, rates }) => {
+          // in the base currency at today's rate (the rates are units per 1 base)
+          const perBase = (c: string) => (c === user.baseCurrency ? 1 : Number(rates.currencies.find((x) => x.currency === c)?.rate));
+          const heldNote = (id: number) => {
+            const hs = holdings.filter((x) => x.subsectionId === id);
+            if (hs.length === 0) return undefined;
+            const cur = (pid: number) => pockets.find((p) => p.id === pid)?.currency ?? user.baseCurrency;
+            const paid = hs.reduce((t, x) => t + x.paidMinor / perBase(cur(x.pocketId)), 0);
+            const worth = hs.reduce((t, x) => t + x.worthMinor / perBase(x.worthCurrency), 0);
+            return Number.isFinite(paid + worth) ? `paid ${formatMinor(Math.round(paid))} · worth ${formatMinor(Math.round(worth))}` : undefined;
+          };
+          return (
           <>
             {budget.sections.length === 0 ? (
               <EmptyCard text="No sections yet. A section is a group such as Needs or Savings." action="Add section" onAction={() => setDialog({ t: 'section' })} />
@@ -191,7 +205,7 @@ export default function BudgetPage() {
                       </>)}
                     </div>
                     {sec.subsections.map((sub, i) => (
-                      <Row key={sub.id} sub={sub} goals={goals(sec)} from={monthName(shiftMonth(month, -1))} onOpen={budget.closed ? undefined : () => setDialog({ t: 'sub', sectionId: sec.id, sub, position: i + 1, count: sec.subsections.length })} />
+                      <Row key={sub.id} sub={sub} goals={goals(sec)} from={monthName(shiftMonth(month, -1))} held={heldNote(sub.id)} onOpen={budget.closed ? undefined : () => setDialog({ t: 'sub', sectionId: sec.id, sub, position: i + 1, count: sec.subsections.length })} />
                     ))}
                     {!budget.closed && (
                       <div className="ty-section__add">
@@ -208,7 +222,8 @@ export default function BudgetPage() {
             {dialog?.t === 'move' && <MoveDialog month={month} sections={budget.sections} from={dialog.from} currency={user.baseCurrency} onClose={close} />}
             {dialog?.t === 'tx' && <TransactionDialog kind={dialog.kind} pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
           </>
-        )}
+          );
+        }}
       </Load>
       {dialog?.t === 'section' && <SectionDialog section={dialog.section} onMove={() => setDialog({ t: 'move', from: { sectionId: dialog.section!.id } })} onClose={close} />}
       {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub} position={dialog.position} count={dialog.count} currency={user.baseCurrency} onMove={() => setDialog({ t: 'move', from: { subsectionId: dialog.sub!.id } })} onClose={close} />}

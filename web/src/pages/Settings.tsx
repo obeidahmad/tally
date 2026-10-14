@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { api, useForm, useLoad, type User } from '../api';
+import { api, useForm, useLoad, type Pocket, type User } from '../api';
 import { useAuth } from '../auth';
-import { Load, CurrencyField, FormError, Modal, TextField, Topbar, useToast } from '../ui';
+import { Field, Load, CurrencyField, FormError, Modal, TextField, Topbar, useToast } from '../ui';
 
 function ChangePassword() {
   const toast = useToast();
@@ -23,6 +23,28 @@ function ChangePassword() {
         <div><button type="submit" className="ty-btn" disabled={f.busy}>Change password</button></div>
       </form>
     </section>
+  );
+}
+
+function HomePocket() {
+  const { user, setUser } = useAuth();
+  const toast = useToast();
+  const f = useForm();
+  const pockets = useLoad(() => api<{ pockets: Pocket[] }>('GET', '/pockets').then((r) => r.pockets), []).data ?? [];
+  if (pockets.length === 0) return null;
+  const change = (id: string) => f.on(async () => {
+    const r = await api<{ user: User }>('PATCH', '/me', { homePocketId: Number(id) });
+    setUser(r.user);
+    toast('Saved');
+  })();
+  return (
+    <Field label="Home pocket" error={f.errors.homePocketId ?? f.formError} hint="Money sits here unless you move it with a transfer.">
+      {(p) => (
+        <select {...p} value={user.homePocketId ?? pockets[0].id} disabled={f.busy} onChange={(e) => change(e.target.value)}>
+          {pockets.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+      )}
+    </Field>
   );
 }
 
@@ -98,6 +120,7 @@ export default function SettingsPage() {
           <dt className="ty-label">Username</dt><dd>{user.username}</dd>
           <dt className="ty-label">Base currency</dt><dd>{user.baseCurrency}</dd>
         </dl>
+        <HomePocket />
       </section>
       <ChangePassword />
       <div><button className="ty-btn app-phone-only" onClick={signOut}>Sign out</button></div>

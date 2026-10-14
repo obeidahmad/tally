@@ -30,8 +30,8 @@ export async function burnTime(pw: string) {
   await verifyPassword(pw, await dummy);
 }
 
-export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string };
-export const USER_COLS = 'id, username, display_name AS displayName, is_owner AS isOwner, base_currency AS baseCurrency';
+export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; homePocketId: number | null };
+export const USER_COLS = 'id, username, display_name AS displayName, is_owner AS isOwner, base_currency AS baseCurrency, home_pocket_id AS homePocketId';
 export const toUser = (row: any): User => ({ ...row, isOwner: !!row.isOwner });
 
 declare global {
@@ -67,7 +67,7 @@ export function currentSession(db: Db, token: unknown): { user: User; hash: stri
   const hash = sha256(token);
   const row = db
     .prepare(`SELECT s.expires_at AS exp, u.id, u.username, u.display_name AS displayName,
-                     u.is_owner AS isOwner, u.base_currency AS baseCurrency
+                     u.is_owner AS isOwner, u.base_currency AS baseCurrency, u.home_pocket_id AS homePocketId
               FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`)
     .get(hash) as any;
   if (!row) return null;

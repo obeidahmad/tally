@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { api, KIND_WORDS, useLoad, type NetWorth, type Pocket, type Section, type Source } from '../api';
+import { useNavigate } from "react-router-dom";
+import { api, KIND_WORDS, useLoad, type Holding, type NetWorth, type Pocket, type Section, type Source, type Where } from '../api';
 import { PocketDialog, TransactionDialog } from '../dialogs';
 import { formatMinor } from '../money';
 import { useAuth } from '../auth';
@@ -15,18 +16,67 @@ function netLine(n: NetWorth) {
   }).join(' · ');
 }
 
+const dot = (slot: number) => (slot >= 1 && slot <= 8 ? `ty-dot ty-dot--${slot}` : 'ty-dot');
+
+function WhereTable({ where, sections }: { where: Where; sections: Section[] }) {
+  const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
+  if (where.rows.length === 0) return null;
+  return (
+    <section className="ty-stack" aria-labelledby="where-h">
+      <h2 className="text-title" id="where-h" style={{ margin: 0 }}>Where each subsection's money sits</h2>
+      <div className="ty-section ty-wide"><table className="ty-table">
+        <thead><tr><th>Subsection</th>{where.pockets.map((p) => <th key={p.id}>{p.name}</th>)}<th>Total in {where.currency}</th></tr></thead>
+        <tbody>{where.rows.map((r) => {
+          const s = subs.get(r.subsectionId);
+          return (
+            <tr key={r.subsectionId}>
+              <td><span className="ty-tag"><span className={dot(s?.slot ?? 0)} />{s?.name}</span></td>
+              {where.pockets.map((p) => {
+                const c = r.cells.find((x) => x.pocketId === p.id);
+                return c
+                  ? <td key={p.id} className="ty-num">{formatMinor(c.amountMinor)}{p.currency !== where.currency && <span className="ty-cur">{p.currency}</span>}</td>
+                  : <td key={p.id} className="ty-muted">–</td>;
+              })}
+              <td className="ty-num">{formatMinor(r.totalMinor)}</td>
+            </tr>
+          );
+        })}</tbody>
+      </table></div>
+      <div className="ty-section app-phone-card">{where.rows.map((r) => {
+        const s = subs.get(r.subsectionId);
+        const cells = r.cells.map((c) => {
+          const p = where.pockets.find((x) => x.id === c.pocketId);
+          return `${formatMinor(c.amountMinor)}${p && p.currency !== where.currency ? ` ${p.currency}` : ''} in ${p?.name}`;
+        }).join(' · ');
+        return (
+          <div key={r.subsectionId} className="ty-brow">
+            <div className="ty-brow__name">
+              <span className="ty-tag"><span className={dot(s?.slot ?? 0)} /><b>{s?.name}</b></span>
+              {cells && <span className="ty-cap">{cells}</span>}
+            </div>
+            <div className="ty-num ty-right">{formatMinor(r.totalMinor)}</div>
+          </div>
+        );
+      })}</div>
+    </section>
+  );
+}
+
 export default function PocketsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [dialog, setDialog] = useState<{ pocket?: Pocket; transfer?: boolean } | null>(null);
   const close = () => setDialog(null);
   const state = useLoad(async () => {
-    const [p, n, s, src] = await Promise.all([
+    const [p, n, s, src, w, h] = await Promise.all([
       api<{ pockets: Pocket[] }>('GET', '/pockets'),
       api<NetWorth>('GET', '/networth'),
       api<{ sections: Section[] }>('GET', '/sections'),
       api<{ sources: Source[] }>('GET', '/sources'),
+      api<Where>('GET', '/where'),
+      api<{ holdings: Holding[] }>('GET', '/holdings'),
     ]);
-    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources };
+    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources, where: w, held: h.holdings.filter((x) => !x.soldDate) };
   }, []);
 
   useRescueFocus(state.data ? state.data.pockets.length === 0 : undefined);
@@ -47,29 +97,36 @@ export default function PocketsPage() {
         <button className="ty-btn ty-btn--primary ty-wide" onClick={() => setDialog({})}>Add pocket</button>
       </div>
         <button className="ty-btn ty-month__add" onClick={() => setDialog({ transfer: true })}>Transfer</button>
+        <button className="ty-btn ty-month__add" onClick={() => navigate("/investments")}>Investments</button>
       </header>
       <Load state={state}>
-        {({ pockets, sections, sources }) => (
+        {({ pockets, sections, sources, where, held }) => (
           <>
             {pockets.length === 0 ? (
               <EmptyCard text="No pockets yet. A pocket is where money sits: a bank account, cash, a fund." action="Add pocket" onAction={() => setDialog({})} />
             ) : (
               <div className="ty-grid">
-                {pockets.map((p) => (
-                  <article key={p.id} className="ty-card ty-pocket app-pick" {...pick(() => setDialog({ pocket: p }))}>
-                    <div className="ty-pocket__top">
-                      <div className="ty-grow"><b><span className="ty-emoji">{p.emoji}</span> {p.name}</b><span className="ty-cap">{KIND_WORDS[p.kind]}</span></div>
-                      <span className="ty-pill">{p.currency}</span>
-                    </div>
-                    <div>
-                      <div className={p.balanceMinor < 0 ? 'num-lg ty-num--neg' : 'num-lg'}>{formatMinor(p.balanceMinor)}<span className="ty-cur">{p.currency}</span></div>
-                      <div className="ty-cap">{p.currency === user.baseCurrency ? ' ' : p.baseBalanceMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseBalanceMinor)} ${user.baseCurrency}`}</div>
-                    </div>
-                    <div className="ty-cap">Entered by hand</div>
-                  </article>
-                ))}
+                {pockets.map((p) => {
+                  const paid = held.filter((x) => x.pocketId === p.id).reduce((t, x) => t + x.paidMinor, 0);
+                  const converted = p.currency === user.baseCurrency ? '' : p.baseValueMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseValueMinor)} ${user.baseCurrency}`;
+                  const sub = [converted, held.some((x) => x.pocketId === p.id) && `paid ${formatMinor(paid)} ${p.currency}`].filter(Boolean).join(' · ') || ' ';
+                  return (
+                    <article key={p.id} className="ty-card ty-pocket app-pick" {...pick(() => setDialog({ pocket: p }))}>
+                      <div className="ty-pocket__top">
+                        <div className="ty-grow"><b><span className="ty-emoji">{p.emoji}</span> {p.name}</b><span className="ty-cap">{KIND_WORDS[p.kind]}</span></div>
+                        <span className="ty-pill">{p.currency}</span>
+                      </div>
+                      <div>
+                        <div className={p.valueMinor < 0 ? 'num-lg ty-num--neg' : 'num-lg'}>{formatMinor(p.valueMinor)}<span className="ty-cur">{p.currency}</span></div>
+                        <div className="ty-cap">{sub}</div>
+                      </div>
+                      <div className="ty-cap">Entered by hand</div>
+                    </article>
+                  );
+                })}
               </div>
             )}
+            <WhereTable where={where} sections={sections} />
             {dialog?.transfer && <TransactionDialog kind="transfer" pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
             {dialog && !dialog.transfer && <PocketDialog pocket={dialog.pocket} currency={user.baseCurrency} onClose={close} />}
           </>

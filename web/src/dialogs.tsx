@@ -7,7 +7,7 @@ import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, PocketCur
 
 const BALANCE_ERROR = 'Enter an amount, with at most two decimals.';
 
-function Foot({ busy, onCancel, onDelete, onMove, label = 'Save', tone = 'primary' }: { busy: boolean; onCancel: () => void; onDelete?: () => void; onMove?: () => void; label?: string; tone?: 'primary' | 'income' | 'spend' }) {
+export function Foot({ busy, onCancel, onDelete, onMove, label = 'Save', tone = 'primary' }: { busy: boolean; onCancel: () => void; onDelete?: () => void; onMove?: () => void; label?: string; tone?: 'primary' | 'income' | 'spend' }) {
   return (
     <div className="ty-dialog__foot">
       {(onDelete || onMove) && (

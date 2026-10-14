@@ -193,3 +193,20 @@ export const move = z.object({
   amountMinor: minor(1, 'Enter an amount above zero.'),
   reason: text(1, 200, 'Say why you are moving this money.'),
 });
+
+export const whereQuery = z.object({ month: month.optional() });
+export const homePocket = z.object({ homePocketId: z.number({ error: 'Choose a pocket.' }).int('Choose a pocket.') });
+const ref = (msg: string) => z.number({ error: msg }).int(msg);
+export const holding = z.object({
+  name,
+  pocketId: ref('Choose a pocket.'),
+  subsectionId: ref('Choose a subsection.'),
+  paidMinor: minor(0, 'Enter an amount, 0 or more.'),
+  worthMinor: minor(0, 'Enter an amount, 0 or more.').optional(),
+  worthCurrency: z.string({ error: 'Choose a currency.' }).optional(),
+});
+export const sale = z.object({
+  date,
+  receivedMinor: minor(0, 'Enter an amount, 0 or more.'),
+  sourceId: z.number({ error: 'Choose a source.' }).int('Choose a source.').nullable().optional(),
+});

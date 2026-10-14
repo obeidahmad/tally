@@ -114,7 +114,7 @@ describe('reference rates', () => {
   it('converts to the nearest cent, halves away from zero', async () => {
     const { a, food } = await world();
     const chf = await pocket(a, 'Swiss', 'CHF', -5);
-    expect(chf.baseBalanceMinor).toBe(-3); // -2.5
+    expect(chf.baseValueMinor).toBe(-3); // -2.5
     expect((await post(a, '/api/transactions', expense(chf.id, food.id, { amountMinor: 5 }))).transaction.baseAmountMinor).toBe(3); // 2.5
     expect((await post(a, '/api/transactions', expense(chf.id, food.id, { amountMinor: 4 }))).transaction.baseAmountMinor).toBe(2);
     expect((await post(a, '/api/transactions', expense(chf.id, food.id, { amountMinor: 1086 }))).transaction.baseAmountMinor).toBe(543);
@@ -132,7 +132,7 @@ describe('pockets', () => {
   it('defaults to the base currency and checks the currency', async () => {
     const a = await owner();
     expect((await pocket(a, 'Bank')).currency).toBe('EUR');
-    expect(await pocket(a, 'Dollars', 'USD')).toMatchObject({ currency: 'USD', balanceMinor: 0, baseBalanceMinor: 0 });
+    expect(await pocket(a, 'Dollars', 'USD')).toMatchObject({ currency: 'USD', balanceMinor: 0, baseValueMinor: 0 });
     for (const currency of ['JPY', 'XXX', 'usd', 5]) {
       const e = await bad(json(a.post('/api/pockets')).send({ name: 'x', kind: 'bank', openingBalanceMinor: 0, currency }), 400);
       expect(e.fields).toEqual({ currency: 'Choose a currency.' });
@@ -141,14 +141,14 @@ describe('pockets', () => {
 
   it("shows the balance in its own currency and in the base currency at today's rate", async () => {
     const { a, usd } = await world();
-    expect(usd).toMatchObject({ balanceMinor: 50000, baseBalanceMinor: 46041 });
-    expect((await get(a, '/api/pockets')).pockets.map((p: any) => p.baseBalanceMinor)).toEqual([100000, 46041]);
+    expect(usd).toMatchObject({ balanceMinor: 50000, baseValueMinor: 46041 });
+    expect((await get(a, '/api/pockets')).pockets.map((p: any) => p.baseValueMinor)).toEqual([100000, 46041]);
   });
 
   it('has a null base balance with no rate', async () => {
     const { a, usd } = await world();
     db.prepare("DELETE FROM rates WHERE currency = 'USD'").run();
-    expect((await get(a, '/api/pockets')).pockets[1]).toMatchObject({ id: usd.id, balanceMinor: 50000, baseBalanceMinor: null });
+    expect((await get(a, '/api/pockets')).pockets[1]).toMatchObject({ id: usd.id, balanceMinor: 50000, baseValueMinor: null });
   });
 
   it('changes currency only while it has no transaction', async () => {

@@ -84,6 +84,13 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.status(204).end();
   });
 
+  api.get('/me', (req, res) => { res.json({ user: req.user }); });
+  api.patch('/me', (req, res) => {
+    const b = parse(s.homePocket, req.body);
+    if (!db.prepare('SELECT 1 FROM pockets WHERE id = ? AND user_id = ?').get(b.homePocketId, req.user.id)) throw fieldError('homePocketId', 'Choose a pocket.');
+    db.prepare('UPDATE users SET home_pocket_id = ? WHERE id = ?').run(b.homePocketId, req.user.id);
+    res.json({ user: userById(req.user.id) });
+  });
   api.post('/me/password', async (req, res) => {
     const b = parse(s.changePassword, req.body);
     const { hash } = db.prepare('SELECT password_hash AS hash FROM users WHERE id = ?').get(req.user.id) as { hash: string };

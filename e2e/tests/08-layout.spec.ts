@@ -1,12 +1,12 @@
 import { test, expect, dialog, shot, seedBudget } from '../support/fixtures';
 
 const names = ['Budget', 'Transactions', 'Pockets', 'Settings']; // the phone tab bar
-const sidebar = ['Budget', 'Pipeline', 'Transactions', 'Pockets', 'Settings']; // spec 06 adds Pipeline after Budget
+const sidebar = ['Budget', 'Pipeline', 'Transactions', 'Pockets', 'Investments', 'Settings']; // spec 06 adds Pipeline after Budget, spec 14 Investments after Pockets
 
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test('all five pages are reachable from the sidebar, Pipeline right after Budget, and only those five', async ({ page, me }) => {
+  test('all six pages are reachable from the sidebar, Pipeline right after Budget, Investments after Pockets, and only those six', async ({ page, me }) => {
     await page.goto('/budget');
     const side = page.locator('.ty-side');
     await expect(side.getByRole('link')).toHaveText(sidebar);
