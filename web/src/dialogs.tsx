@@ -51,7 +51,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
   const [amount, setAmount] = useState(tx ? minorToInput(tx.amountMinor) : '');
   const [payee, setPayee] = useState(tx?.payee ?? '');
   // 'new' is the "+ Add source" chip
-  const [sourceId, setSourceId] = useState(tx?.sourceId?.toString() ?? sources[0]?.id.toString() ?? 'new');
+  const imported = tx?.source === 'import';
+  const [always, setAlways] = useState(false);
+  const [sourceId, setSourceId] = useState(tx?.sourceId?.toString() ?? (imported ? '' : sources[0]?.id.toString() ?? 'new'));
   const [newSource, setNewSource] = useState('');
   const [subsectionId, setSubsectionId] = useState(tx?.subsectionId?.toString() ?? '');
   // 'new' is the "+ Add pocket" chip
@@ -82,6 +84,29 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
     : undefined;
 
   const save = f.on(async () => {
+    if (imported) {
+      const chosen = kind === 'income' ? sourceId : subsectionId;
+      let sorted = 0;
+      // the rule goes first: if it is refused, nothing is saved
+      if (always && chosen) {
+        const match = payee.trim();
+        try {
+          sorted = (await api<{ sorted: number }>('POST', '/rules', { match, ...(kind === 'income' ? { sourceId: Number(chosen) } : { subsectionId: Number(chosen) }) })).sorted;
+        } catch (e) {
+          if (e instanceof ApiError && e.fields?.match) throw new ApiError(e.status, e.code, e.message, { rule: e.fields.match });
+          throw e;
+        }
+        // the rule also sorted this transaction when it was waiting and matched: it is not "more"
+        const waiting = kind === 'income' ? tx.sourceId === null : tx.subsectionId === null;
+        if (waiting && tx.payee.toLowerCase().includes(match.toLowerCase())) sorted = Math.max(0, sorted - 1);
+      }
+      await api('PATCH', `/transactions/${tx.id}`, {
+        payee, note, ...(kind === 'income' ? { sourceId: sourceId ? Number(sourceId) : null } : { subsectionId: subsectionId ? Number(subsectionId) : null }),
+      });
+      onClose();
+      toast(sorted > 0 ? `Saved. ${sorted} more sorted.` : 'Saved');
+      return;
+    }
     const amountMinor = parseAmount(amount); // checked before a pocket is created for nothing
     if (amountMinor === null) throw fieldError('amountMinor', AMOUNT_ERROR);
     if (kind === 'transfer') {
@@ -143,9 +168,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
         <fieldset className="ty-fieldset">
           <legend className="ty-label">Type</legend>
           <div className="ty-segmented">
-            <label><input type="radio" name="type" checked={kind === 'expense'} onChange={() => setKind('expense')} />Expense</label>
-            <label><input type="radio" name="type" checked={kind === 'income'} onChange={() => setKind('income')} />Income</label>
-            <label><input type="radio" name="type" checked={kind === 'transfer'} onChange={() => setKind('transfer')} />Transfer</label>
+            <label><input type="radio" name="type" disabled={imported} checked={kind === 'expense'} onChange={() => setKind('expense')} />Expense</label>
+            <label><input type="radio" name="type" disabled={imported} checked={kind === 'income'} onChange={() => setKind('income')} />Income</label>
+            <label><input type="radio" name="type" disabled={imported} checked={kind === 'transfer'} onChange={() => setKind('transfer')} />Transfer</label>
           </div>
         </fieldset>
         {blocked ? (
@@ -191,11 +216,10 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
           </>
         ) : (
           <>
-            <TextField label="Date" type="date" value={date} onChange={setDate} error={f.errors.date} />
-            <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={fromCode} />
-            {kind === 'expense' ? (
-              <TextField label="Payee" value={payee} onChange={setPayee} error={f.errors.payee} />
-            ) : (
+            <TextField label="Date" type="date" value={date} onChange={setDate} error={f.errors.date} disabled={imported} />
+            <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={fromCode} disabled={imported} />
+            {(kind === 'expense' || imported) && <TextField label="Payee" value={payee} onChange={setPayee} error={f.errors.payee} />}
+            {kind === 'income' && (
               <fieldset className="ty-fieldset">
                 <legend className="ty-label">Source</legend>
                 <div className="ty-chips">
@@ -204,9 +228,11 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
                       <input type="radio" name="source" checked={sourceId === String(x.id)} onChange={() => setSourceId(String(x.id))} />{x.name}
                     </label>
                   ))}
-                  <label className="ty-chip ty-chip--add">
-                    <input type="radio" name="source" checked={sourceId === 'new'} onChange={() => setSourceId('new')} />+ Add source
-                  </label>
+                  {!imported && (
+                    <label className="ty-chip ty-chip--add">
+                      <input type="radio" name="source" checked={sourceId === 'new'} onChange={() => setSourceId('new')} />+ Add source
+                    </label>
+                  )}
                 </div>
                 {f.errors.sourceId && <span className="ty-error">{f.errors.sourceId}</span>}
                 {sourceId === 'new' && (
@@ -231,13 +257,15 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
               <div className="ty-chips">
                 {pockets.map((x) => (
                   <label key={x.id} className="ty-chip">
-                    <input type="radio" name="pocket" checked={pocketId === String(x.id)} onChange={() => setPocketId(String(x.id))} />
+                    <input type="radio" name="pocket" disabled={imported} checked={pocketId === String(x.id)} onChange={() => setPocketId(String(x.id))} />
                     <span className="ty-emoji">{x.emoji}</span> {x.name}
                   </label>
                 ))}
-                <label className="ty-chip ty-chip--add">
-                  <input type="radio" name="pocket" checked={pocketId === 'new'} onChange={() => setPocketId('new')} />+ Add pocket
-                </label>
+                {!imported && (
+                  <label className="ty-chip ty-chip--add">
+                    <input type="radio" name="pocket" checked={pocketId === 'new'} onChange={() => setPocketId('new')} />+ Add pocket
+                  </label>
+                )}
               </div>
               {f.errors.pocketId && <span className="ty-error">{f.errors.pocketId}</span>}
               {pocketId === 'new' && (
@@ -248,7 +276,14 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
                 </div>
               )}
             </fieldset>
+            {imported && <span className="ty-cap">Imported from a statement: only its subsection or source, payee and note can change.</span>}
             <TextField label="Note (optional)" value={note} onChange={setNote} error={f.errors.note} />
+            {imported && (kind === 'income' ? sourceId : subsectionId) && payee.trim() && (
+              <div className="ty-field">
+                <label><input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} /> Always use this for {payee.trim()}</label>
+                {f.errors.rule && <span className="ty-error">{f.errors.rule}</span>}
+              </div>
+            )}
           </>
         )}
         {blocked ? (

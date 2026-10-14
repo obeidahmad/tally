@@ -159,7 +159,28 @@ export const percentStep = z.object({
 export const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use a month like 2026-10.');
 const id = z.string().regex(/^\d+$/, 'Use a whole number.').transform(Number);
 export const monthQuery = z.object({ month });
-export const txQuery = z.object({ month, pocketId: id.optional(), subsectionId: id.optional() });
+export const txQuery = z.object({ month: month.optional(), pocketId: id.optional(), subsectionId: id.optional(), unsorted: z.enum(['0', '1']).optional() });
+
+export const importText = z.object({
+  pocketId: z.number({ error: 'Choose a pocket.' }).int('Choose a pocket.'),
+  text: z.string({ error: 'Choose a file.' }).max(5_000_000, 'The file is too large.'),
+});
+const col = z.number().int().min(0).max(10000);
+const COLUMNS = 'Choose the columns of this file.';
+export const importBody = importText.extend({
+  mapping: z
+    .object({
+      date: col, dateFormat: z.enum(['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'DD.MM.YYYY']), amount: col.nullish(), debit: col.nullish(), credit: col.nullish(),
+      payee: col, note: col.nullish(), decimal: z.enum(['.', ',']),
+    }, { error: COLUMNS })
+    .refine((m) => (m.amount != null) !== (m.debit != null || m.credit != null) && (m.debit != null) === (m.credit != null), COLUMNS),
+});
+
+export const rule = z.object({
+  match: text(1, 60, 'Enter the text to look for.'),
+  subsectionId: z.number().int().nullish(),
+  sourceId: z.number().int().nullish(),
+});
 
 // Rest rules are checked rule by rule so each failure gets its own sentence on `shares`.
 export const restRule = z.object({

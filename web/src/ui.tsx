@@ -34,14 +34,14 @@ export function TextField({ label, value, onChange, error, type = 'text', autoCo
   );
 }
 
-export function AmountField({ label, value, onChange, error, currency, hint }: {
-  label: string; value: string; onChange: (v: string) => void; error?: string; currency: string; hint?: string;
+export function AmountField({ label, value, onChange, error, currency, hint, disabled }: {
+  label: string; value: string; onChange: (v: string) => void; error?: string; currency: string; hint?: string; disabled?: boolean;
 }) {
   return (
     <Field label={label} error={error} hint={hint}>
       {(p) => (
         <div className="ty-affix">
-          <input {...p} className={`${p.className} ty-input--amount`} inputMode="decimal" autoComplete="off" value={value} onChange={(e) => onChange(e.target.value)} />
+          <input {...p} className={`${p.className} ty-input--amount`} inputMode="decimal" autoComplete="off" disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)} />
           <span className="ty-muted">{currency}</span>
         </div>
       )}

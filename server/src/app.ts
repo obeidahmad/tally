@@ -25,7 +25,9 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   );
 
   const api = express.Router();
-  api.use(requireJson, express.json(), cookieParser());
+  const json = express.json();
+  // A statement can be 5,000,000 characters: its routes get a bigger limit, and only after sign-in.
+  api.use(requireJson, (req, res, next) => (req.path.startsWith('/imports') ? next() : json(req, res, next)), cookieParser());
 
   const userById = (id: number) => toUser(db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id));
   const needsSetup = () => !db.prepare('SELECT 1 FROM users').get();
@@ -112,6 +114,7 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.status(201).json({ user: await addUser(parse(s.newAccount, req.body), false) });
   });
 
+  api.use('/imports', express.json({ limit: '25mb' }));
   api.use(dataRouter(db, rates, now));
   api.use(() => { throw notFound(); });
   app.use('/api', api);

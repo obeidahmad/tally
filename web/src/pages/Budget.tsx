@@ -152,6 +152,12 @@ export default function BudgetPage() {
               <div><button className="ty-btn ty-btn--sm" onClick={() => setDialog({ t: 'close' })}>Close {monthName(state.data.months.toClose)}</button></div>
             </div>
           )}
+          {state.data.budget.unsortedCount > 0 && (
+            <div className="ty-inset">
+              <span>{state.data.budget.unsortedCount} imported {state.data.budget.unsortedCount === 1 ? 'transaction needs' : 'transactions need'} a subsection or source.</span>
+              <div><Link className="app-link" to="/transactions?unsorted=1">Sort them</Link></div>
+            </div>
+          )}
           <div className="ty-stats">
             <div className="ty-stat"><span className="ty-label">Income</span><span className="num-lg">{formatMinor(state.data.budget.totals.incomeMinor)}</span></div>
             <div className="ty-stat"><span className="ty-label">Budgeted</span><span className="num-lg">{formatMinor(state.data.budget.totals.budgetedMinor)}</span></div>

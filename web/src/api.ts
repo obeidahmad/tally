@@ -20,7 +20,7 @@ export type CloseSummary = {
 export type Transaction = {
   id: number; date: string; kind: 'expense' | 'income' | 'transfer'; amountMinor: number; baseAmountMinor: number;
   pocketId: number; subsectionId: number | null; sourceId: number | null;
-  toPocketId: number | null; toAmountMinor: number | null; payee: string; note: string; source: 'manual';
+  toPocketId: number | null; toAmountMinor: number | null; payee: string; note: string; source: 'manual' | 'import';
 };
 export type Holding = {
   id: number; name: string; pocketId: number; subsectionId: number; paidMinor: number;
@@ -30,6 +30,7 @@ export type Where = {
   currency: string; pockets: { id: number; name: string; currency: string }[];
   rows: { subsectionId: number; totalMinor: number; cells: { pocketId: number; amountMinor: number }[] }[];
 };
+export type Rule = { id: number; match: string; subsectionId: number | null; sourceId: number | null };
 export type Rates = { date: string; base: string; currencies: { currency: string; rate: string }[] };
 export type NetWorth = {
   currency: string; totalMinor: number; missingRates: string[];
@@ -45,7 +46,7 @@ export type Move = { id: number; month: string; from: End; to: End; amountMinor:
 export type Budget = {
   month: string; currency: string; closed: boolean;
   totals: { incomeMinor: number; budgetedMinor: number; spentMinor: number; availableMinor: number; leftOverMinor: number };
-  sections: BudgetSection[];
+  sections: BudgetSection[]; unsortedCount: number;
 };
 
 export type StepBody =

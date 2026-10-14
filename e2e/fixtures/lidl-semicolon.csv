@@ -1,0 +1,8 @@
+Date;Description;Amount;Reference
+01.{MM}.{YYYY};LIDL Limassol;-23,50;card 1
+01.{MM}.{YYYY};LIDL Limassol;-11,20;card 2
+01.{MM}.{YYYY};LIDL Limassol;-8,90;card 3
+01.{MM}.{YYYY};Netflix;-13,99;subscription
+01.{MM}.{YYYY};Kiosk Larnaca;-4,20;snack
+01.{MM}.{YYYY};ACME Salary;2000,00;pay
+01.{MM}.{YYYY};Bank fee;0,00;waived
