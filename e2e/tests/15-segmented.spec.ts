@@ -48,8 +48,8 @@ test('transaction dialog: "Type" is a ty-segmented of "Expense" and "Income"; ti
   const d = await openAddTransaction(page);
   const g = group(d, 'Type');
   await expect(g.locator('.ty-segmented')).toHaveCount(1);
-  await expect(segments(d, 'Type')).toHaveText(['Expense', 'Income']);
-  await expect(g.getByRole('radio')).toHaveCount(2);
+  await expect(segments(d, 'Type')).toHaveText(['Expense', 'Income', 'Transfer']);
+  await expect(g.getByRole('radio')).toHaveCount(3);
   await expect(g.locator('.ty-chip')).toHaveCount(0);
   await expect(chip(d, 'Type', 'Expense')).toBeChecked();
   await expect(d.getByRole('button', { name: 'Add expense', exact: true })).toHaveClass(/ty-btn--spend/);

@@ -5,14 +5,16 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { burnTime, currentSession, endSession, hashPassword, requireAuth, startSession, toUser, USER_COLS, verifyPassword } from './auth';
+import { createRates, ECB_URL } from './rates';
 import { dataRouter } from './data';
 import type { Db } from './db';
 import { errorHandler, fieldError, HttpError, notFound, parse, requireJson } from './http';
 import * as s from './schemas';
 
-export type AppOptions = { db: Db; cookieSecure?: boolean; webDist?: string };
+export type AppOptions = { db: Db; cookieSecure?: boolean; webDist?: string; ratesUrl?: string; now?: () => number };
 
-export function createApp({ db, cookieSecure = false, webDist = path.join(__dirname, '..', '..', 'web', 'dist') }: AppOptions) {
+export function createApp({ db, cookieSecure = false, webDist = path.join(__dirname, '..', '..', 'web', 'dist'), ratesUrl = process.env.TALLY_RATES_URL ?? ECB_URL, now = Date.now }: AppOptions) {
+  const rates = createRates(db, ratesUrl, now);
   const app = express();
   // Tally is normally reached over plain HTTP: no upgrade-insecure-requests, and HSTS only when HTTPS is declared.
   app.use(
@@ -103,7 +105,7 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.status(201).json({ user: await addUser(parse(s.newAccount, req.body), false) });
   });
 
-  api.use(dataRouter(db));
+  api.use(dataRouter(db, rates, now));
   api.use(() => { throw notFound(); });
   app.use('/api', api);
 
@@ -116,5 +118,6 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   }
 
   app.use(errorHandler);
+  app.locals.rates = rates;
   return app;
 }

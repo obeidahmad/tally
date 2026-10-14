@@ -47,12 +47,13 @@ export const pocket = z.object({
   name,
   kind: z.enum(['bank', 'cash', 'fund', 'broker'], { error: 'Choose a kind.' }),
   emoji: z.enum(EMOJI, { error: 'Choose an emoji.' }).optional(),
+  currency: z.string({ error: 'Choose a currency.' }).optional(),
   openingBalanceMinor: minor(-MAX, 'Enter a whole number of minor units.'),
 });
 export const section = z.object({ name });
 export const subsection = z.object({ name, budgetMinor: minor(0, 'Enter a budget of zero or more.') });
 
-const date = z
+export const date = z
   .string({ error: 'Enter a date.' })
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a date.')
   .refine((s) => {
@@ -60,30 +61,49 @@ const date = z
     return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
   }, 'Enter a real date.');
 
+const DIFFERENT = 'Choose a different pocket.';
 export const transaction = z
   .object({
     date,
-    kind: z.enum(['expense', 'income'], { error: 'Choose expense or income.' }),
+    kind: z.enum(['expense', 'income', 'transfer'], { error: 'Choose expense or income.' }),
     amountMinor: minor(1, 'Enter an amount above zero, as a whole number of minor units.'),
     pocketId: z.number({ error: 'Choose a pocket.' }).int('Choose a pocket.'),
-    subsectionId: z.number({ error: 'Choose a subsection.' }).int('Choose a subsection.').nullable(),
+    subsectionId: z.number({ error: 'Choose a subsection.' }).int('Choose a subsection.').nullable().optional(),
     payee: z.string({ error: 'Enter a payee.' }).trim().max(120, 'Use 120 characters or fewer.').default(''),
     sourceId: z.number({ error: 'Choose a source.' }).int('Choose a source.').nullable().default(null),
     note: z.string({ error: 'Enter a note.' }).max(500, 'Use 500 characters or fewer.').default(''),
+    toPocketId: z.unknown().optional(),
+    toAmountMinor: z.unknown().optional(),
   })
   .superRefine((t, ctx) => {
-    if (t.kind === 'expense' && t.subsectionId === null)
-      ctx.addIssue({ code: 'custom', path: ['subsectionId'], message: 'Choose a subsection.' });
-    if (t.kind === 'income' && t.subsectionId !== null)
-      ctx.addIssue({ code: 'custom', path: ['subsectionId'], message: 'Income has no subsection.' });
-    if (t.kind === 'expense' && !t.payee)
-      ctx.addIssue({ code: 'custom', path: ['payee'], message: 'Enter a payee.' });
-    if (t.kind === 'expense' && t.sourceId !== null)
-      ctx.addIssue({ code: 'custom', path: ['sourceId'], message: 'An expense has no source.' });
-    if (t.kind === 'income' && t.sourceId === null)
-      ctx.addIssue({ code: 'custom', path: ['sourceId'], message: 'Choose a source.' });
+    const bad = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
+    if (t.kind === 'transfer') {
+      if (!Number.isInteger(t.toPocketId) || t.toPocketId === t.pocketId) bad('toPocketId', DIFFERENT);
+      if (t.toAmountMinor != null && !(Number.isInteger(t.toAmountMinor) && (t.toAmountMinor as number) >= 1 && (t.toAmountMinor as number) <= MAX))
+        bad('toAmountMinor', 'Enter the amount that arrived.');
+      if (t.sourceId !== null) bad('sourceId', 'A transfer has no source.');
+      return;
+    }
+    if (t.subsectionId === undefined) bad('subsectionId', 'Choose a subsection.');
+    if (t.kind === 'expense' && t.subsectionId === null) bad('subsectionId', 'Choose a subsection.');
+    if (t.kind === 'income' && t.subsectionId != null) bad('subsectionId', 'Income has no subsection.');
+    if (t.kind === 'expense' && !t.payee) bad('payee', 'Enter a payee.');
+    if (t.kind === 'expense' && t.sourceId !== null) bad('sourceId', 'An expense has no source.');
+    if (t.kind === 'income' && t.sourceId === null) bad('sourceId', 'Choose a source.');
   })
-  .transform((t) => (t.kind === 'income' ? { ...t, payee: '' } : t));
+  .transform((t) => {
+    const { toPocketId, toAmountMinor, ...rest } = t;
+    const transfer = t.kind === 'transfer';
+    return {
+      ...rest,
+      subsectionId: t.subsectionId ?? null,
+      payee: t.kind === 'expense' ? t.payee : '',
+      toPocketId: transfer ? (toPocketId as number) : null,
+      toAmountMinor: transfer ? ((toAmountMinor as number | null | undefined) ?? null) : null,
+    };
+  });
+
+export const rateQuery = z.object({ date: date.optional() });
 
 export const source = z.object({ name });
 const POS = 'Choose a position.';

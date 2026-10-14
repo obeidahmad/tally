@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string };
 export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker';
-export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number };
+export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number; baseBalanceMinor: number | null; hasTransactions: boolean };
 export type Subsection = { id: number; sectionId: number; name: string; budgetMinor: number; position: number };
 export type Source = { id: number; name: string; boxId: number; isLeftovers: boolean };
 export type RestRule = { shares: { sectionId: number | null; basisPoints: number }[]; overspent: 'income' | 'section' };
@@ -14,8 +14,14 @@ export type CloseSummary = {
   keptMinor: number; incomeMinor: number;
 };
 export type Transaction = {
-  id: number; date: string; kind: 'expense' | 'income'; amountMinor: number;
-  pocketId: number; subsectionId: number | null; sourceId: number | null; payee: string; note: string; source: 'manual';
+  id: number; date: string; kind: 'expense' | 'income' | 'transfer'; amountMinor: number; baseAmountMinor: number;
+  pocketId: number; subsectionId: number | null; sourceId: number | null;
+  toPocketId: number | null; toAmountMinor: number | null; payee: string; note: string; source: 'manual';
+};
+export type Rates = { date: string; base: string; currencies: { currency: string; rate: string }[] };
+export type NetWorth = {
+  currency: string; totalMinor: number; missingRates: string[];
+  byCurrency: { currency: string; amountMinor: number; baseMinor: number; rate: string | null }[];
 };
 export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number };
 export type BudgetSection = {

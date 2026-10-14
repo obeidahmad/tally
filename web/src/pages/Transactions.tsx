@@ -93,23 +93,34 @@ export default function TransactionsPage() {
                       <div className="ty-day ty-label">{dayHeading(date)}</div>
                       {list.map((t) => {
                         const sub = t.subsectionId === null ? undefined : subs.get(t.subsectionId);
-                        const where = sub?.name ?? 'Income';
+                        const transfer = t.kind === 'transfer';
+                        const where = sub?.name ?? (transfer ? '' : 'Income');
                         const p = pocketById.get(t.pocketId);
                         const pocket = p && <><span className="ty-emoji">{p.emoji}</span> {p.name}</>;
+                        const code = p?.currency ?? user.baseCurrency;
+                        const to = t.toPocketId === null ? undefined : pocketById.get(t.toPocketId);
+                        const moved = to && to.currency !== code
+                          ? `Transfer · ${formatMinor(t.amountMinor)} ${code} became ${formatMinor(t.toAmountMinor ?? 0)} ${to.currency} at ${(Number(t.toAmountMinor) / t.amountMinor).toFixed(4)}`
+                          : `Transfer · ${formatMinor(t.amountMinor)} ${code}`;
+                        const abroad = !transfer && code !== user.baseCurrency;
+                        const amount = abroad
+                          ? <div className="ty-right"><div className={`ty-num${t.kind === 'income' ? ' ty-num--pos' : ''}`}>{t.kind === 'income' ? '+' : ''}{formatMinor(t.kind === 'income' ? t.amountMinor : -t.amountMinor)} {code}</div><div className="ty-cap">≈ {formatMinor(t.baseAmountMinor)} {user.baseCurrency}</div></div>
+                          : transfer ? <div className="ty-num ty-right">{formatMinor(-t.amountMinor)}</div>
+                          : t.kind === 'income'
+                            ? <div className="ty-num ty-right ty-num--pos">+{formatMinor(t.amountMinor)}</div>
+                            : <div className="ty-num ty-right">{formatMinor(-t.amountMinor)}</div>;
                         return (
                           <div key={t.id} className="ty-trow app-pick" {...pick(() => setDialog({ tx: t }))}>
                             <div className="ty-trow__who">
-                              <b>{t.kind === 'income' ? sourceName.get(t.sourceId!) : t.payee}</b>
-                              <span className="ty-cap">{t.kind === 'income' ? 'Income · entered by hand' : 'Entered by hand'}</span>
-                              <span className="ty-cap ty-trow__meta">{t.kind === 'income' ? pocket : <>{where} · {pocket}</>}</span>
+                              <b>{transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? sourceName.get(t.sourceId!) : t.payee}</b>
+                              <span className="ty-cap">{transfer ? moved : t.kind === 'income' ? 'Income · entered by hand' : 'Entered by hand'}</span>
+                              <span className="ty-cap ty-trow__meta">{t.kind === 'income' ? pocket : <>{where && `${where} · `}{pocket}</>}</span>
                             </div>
                             <div className="ty-tag ty-wide">
-                              <span className={sub && sub.slot >= 1 ? `ty-dot ty-dot--${sub.slot}` : 'ty-dot'} />{where}
+                              {where && <><span className={sub && sub.slot >= 1 ? `ty-dot ty-dot--${sub.slot}` : 'ty-dot'} />{where}</>}
                             </div>
                             <div className="ty-wide">{pocket}</div>
-                            {t.kind === 'income'
-                              ? <div className="ty-num ty-right ty-num--pos">+{formatMinor(t.amountMinor)}</div>
-                              : <div className="ty-num ty-right">{formatMinor(-t.amountMinor)}</div>}
+                            {amount}
                           </div>
                         );
                       })}
