@@ -1,16 +1,21 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, type CloseSummary, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
+import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, type BudgetSection, type CloseSummary, type End, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
 import { monthName, monthTitle, shiftMonth, today } from './dates';
 import { AMOUNT_ERROR, formatMinor, minorToInput, parseAmount, parsePercent, percentText, PERCENT_ERROR } from './money';
 import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, SubsectionOptions, TextField, useToast } from './ui';
 
 const BALANCE_ERROR = 'Enter an amount, with at most two decimals.';
 
-function Foot({ busy, onCancel, onDelete, label = 'Save', tone = 'primary' }: { busy: boolean; onCancel: () => void; onDelete?: () => void; label?: string; tone?: 'primary' | 'income' | 'spend' }) {
+function Foot({ busy, onCancel, onDelete, onMove, label = 'Save', tone = 'primary' }: { busy: boolean; onCancel: () => void; onDelete?: () => void; onMove?: () => void; label?: string; tone?: 'primary' | 'income' | 'spend' }) {
   return (
     <div className="ty-dialog__foot">
-      {onDelete && <button type="button" className="ty-btn ty-btn--danger app-foot-start" disabled={busy} onClick={onDelete}>Delete</button>}
+      {(onDelete || onMove) && (
+        <span className="app-foot-start">
+          {onDelete && <button type="button" className="ty-btn ty-btn--danger" disabled={busy} onClick={onDelete}>Delete</button>}
+          {onMove && <button type="button" className="ty-btn ty-btn--quiet" disabled={busy} onClick={onMove}>Move money</button>}
+        </span>
+      )}
       <button type="button" className="ty-btn ty-btn--quiet" onClick={onCancel}>Cancel</button>
       <button type="submit" className={`ty-btn ty-btn--${tone}`} disabled={busy}>{label}</button>
     </div>
@@ -226,8 +231,8 @@ export function PocketDialog({ pocket, currency, onClose }: { pocket?: Pocket; c
 
 /* ---------- Section and subsection ---------- */
 
-export function SectionDialog({ section, onClose }: {
-  section?: { id: number; name: string; subsections: SubRules[] }; onClose: () => void;
+export function SectionDialog({ section, onMove, onClose }: {
+  section?: { id: number; name: string; subsections: SubRules[] }; onMove?: () => void; onClose: () => void;
 }) {
   const toast = useToast();
   const f = useForm();
@@ -255,7 +260,7 @@ export function SectionDialog({ section, onClose }: {
       <form className="ty-stack" onSubmit={save} noValidate>
         <FormError message={f.formError} />
         <TextField label="Name" value={name} onChange={setName} error={f.errors.name} />
-        <Foot busy={f.busy} onCancel={onClose} onDelete={section && remove} label={section ? 'Save' : 'Add section'} />
+        <Foot busy={f.busy} onCancel={onClose} onDelete={section && remove} onMove={section && onMove} label={section ? 'Save' : 'Add section'} />
       </form>
     </Modal>
   );
@@ -280,8 +285,8 @@ const Seg = ({ legend, name, value, options, onChange }: { legend: string; name:
   </fieldset>
 );
 
-export function SubsectionDialog({ sectionId, sub, position, count, currency, onClose }: {
-  sectionId: number; sub?: SubRules & { id: number }; position?: number; count: number; currency: string; onClose: () => void;
+export function SubsectionDialog({ sectionId, sub, position, count, currency, onMove, onClose }: {
+  sectionId: number; sub?: SubRules & { id: number }; position?: number; count: number; currency: string; onMove?: () => void; onClose: () => void;
 }) {
   const toast = useToast();
   const f = useForm();
@@ -362,7 +367,7 @@ export function SubsectionDialog({ sectionId, sub, position, count, currency, on
             )}
           </Field>
         )}
-        <Foot busy={f.busy} onCancel={onClose} onDelete={sub && remove} label={sub ? 'Save' : 'Add subsection'} />
+        <Foot busy={f.busy} onCancel={onClose} onDelete={sub && remove} onMove={sub && onMove} label={sub ? 'Save' : 'Add subsection'} />
       </form>
     </Modal>
   );
@@ -680,6 +685,66 @@ export function RestDialog({ section, sections, onClose }: {
           {f.errors.overspent && <span className="ty-error">{f.errors.overspent}</span>}
         </fieldset>
         <Foot busy={f.busy} onCancel={onClose} />
+      </form>
+    </Modal>
+  );
+}
+
+/* ---------- Move money ---------- */
+
+/** One place money can move from or to: a subsection, or a section's rest. */
+type MoveEnd = { key: string; label: string; end: End; availableMinor: number };
+
+const moveEnds = (sections: BudgetSection[]): MoveEnd[] => sections.flatMap((s) => [
+  { key: `r${s.id}`, label: `Rest of ${s.name}`, end: { sectionId: s.id }, availableMinor: s.restMinor },
+  ...s.subsections.map((x) => ({ key: `s${x.id}`, label: x.name, end: { subsectionId: x.id }, availableMinor: x.availableMinor })),
+]);
+
+export const endKey = (e: End) => ('sectionId' in e ? `r${e.sectionId}` : `s${e.subsectionId}`);
+
+export function MoveDialog({ month, sections, from: start, currency, onClose }: {
+  month: string; sections: BudgetSection[]; from: End; currency: string; onClose: () => void;
+}) {
+  const toast = useToast();
+  const f = useForm();
+  const ends = moveEnds(sections);
+  const [from, setFrom] = useState(endKey(start));
+  const [to, setTo] = useState('');
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const src = ends.find((e) => e.key === from)!;
+  const minor = parseAmount(amount);
+  const hint = minor !== null && minor <= src.availableMinor ? `${src.label} has ${formatMinor(src.availableMinor)}. After the move: ${formatMinor(src.availableMinor - minor)}.` : `${src.label} has ${formatMinor(src.availableMinor)}.`;
+  const options = (
+    <>{sections.map((s) => (
+      <optgroup key={s.id} label={s.name}>
+        {ends.filter((e) => e.key === `r${s.id}` || s.subsections.some((x) => `s${x.id}` === e.key)).map((e) => <option key={e.key} value={e.key}>{e.label}</option>)}
+      </optgroup>
+    ))}</>
+  );
+
+  const save = f.on(async () => {
+    const dest = ends.find((e) => e.key === to);
+    if (!dest) throw fieldError('to', 'Choose where the money goes.');
+    if (dest.key === src.key) throw fieldError('to', 'Choose a different place.');
+    if (minor === null) throw fieldError('amountMinor', 'Enter an amount above zero.');
+    if (src.availableMinor <= 0) throw fieldError('amountMinor', `${src.label} has nothing to move.`);
+    if (minor > src.availableMinor) throw fieldError('amountMinor', `${src.label} has only ${formatMinor(src.availableMinor)} to move.`);
+    if (!reason.trim()) throw fieldError('reason', 'Say why you are moving this money.');
+    await api('POST', '/moves', { month, from: src.end, to: dest.end, amountMinor: minor, reason: reason.trim() });
+    onClose();
+    toast(`Moved ${formatMinor(minor)}`);
+  });
+
+  return (
+    <Modal title={`Move money in ${monthTitle(month)}`} sub="Moving money changes your plan for the month. Do it when you have to, and say why." onClose={onClose}>
+      <form className="ty-stack" onSubmit={save} noValidate>
+        <FormError message={f.formError} />
+        <Field label="From" error={f.errors.from}>{(p) => <select {...p} value={from} onChange={(e) => setFrom(e.target.value)}>{options}</select>}</Field>
+        <Field label="To" error={f.errors.to}>{(p) => <select {...p} value={to} onChange={(e) => setTo(e.target.value)}><option value="">Choose a place</option>{options}</select>}</Field>
+        <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={currency} hint={hint} />
+        <TextField label="Why" value={reason} onChange={setReason} error={f.errors.reason} />
+        <Foot busy={f.busy} onCancel={onClose} label={minor === null ? 'Move' : `Move ${formatMinor(minor)}`} />
       </form>
     </Modal>
   );

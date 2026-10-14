@@ -155,3 +155,21 @@ export const restRule = z.object({
   }),
   overspent: z.enum(['income', 'section'], { error: 'Choose where an overspent rest goes.' }),
 });
+
+// An end names exactly one of subsectionId or sectionId; whether it is the person's own is checked against the database.
+const end = (msg: string) =>
+  z.unknown().transform((v, ctx): { subsectionId: number } | { sectionId: number } => {
+    const o = v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+    const keys = Object.keys(o);
+    if (keys.length === 1 && (keys[0] === 'subsectionId' || keys[0] === 'sectionId') && Number.isSafeInteger(o[keys[0]!]))
+      return { [keys[0]!]: o[keys[0]!] } as any;
+    ctx.addIssue({ code: 'custom', message: msg });
+    return z.NEVER;
+  });
+export const move = z.object({
+  month,
+  from: end('Choose where the money comes from.'),
+  to: end('Choose where the money goes.'),
+  amountMinor: minor(1, 'Enter an amount above zero.'),
+  reason: text(1, 200, 'Say why you are moving this money.'),
+});

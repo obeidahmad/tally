@@ -234,7 +234,8 @@ test('editing: "Edit expense" and "Edit income" with a Save button', async ({ pa
 
 test('"Money in" and "Money out" appear nowhere: not in any page, dialog, label or bundle', async ({ page, me, baseURL }) => {
   await seedBudget(me.seed);
-  const bad = /money\s+(in|out)\b/i;
+  // Spec 13 gives the move dialog the title "Move money in <month>", which is not the old tab label.
+  const bad = /(?<!move )money\s+(in|out)\b/i;
   const seen = async (where: string) => {
     const text = await page.evaluate(() =>
       document.body.innerText + '\n' + [...document.querySelectorAll('[aria-label],[title],[placeholder]')]

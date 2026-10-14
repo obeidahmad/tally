@@ -110,6 +110,7 @@ The page checks amounts and percentages with the sentences from spec 04 before s
 
 - **Notes after a subsection's name,** joined with " · ": "60% of what is left" for a percentage; "rolls over up to 100.00" for `cap`; "does not roll over" for `none`; "fills to 15,000.00" for a goal; and spec 09's "+49.99 from September", except on a goal, whose carried money is already its Saved.
 - **A goal row** is built as `BudgetRow` shows it: columns This month (its budget), Saved (its `availableMinor`), and the Pill "42% of 15,000" (saved ÷ target, rounded down to a whole percent; the target without ".00"). Its meter is `ty-meter--goal`, saved against target, at most full. On phones the line under the meter reads "6,300.00 of 15,000.00 saved".
+- **In a section that mixes goals and spending,** a goal row uses the section's Budgeted, Spent and Available columns like any row, with its "fills to …" note; the goal layout is only for a section of goals.
 - **A section whose subsections are all goals** shows the header labels "This month", "Saved" and "Target", with the totals of the first two and nothing under "Target", as `SectionGroup` shows.
 - Rows show in `position` order.
 

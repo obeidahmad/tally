@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, ApiError, useLoad, type Budget, type BudgetSection, type BudgetSubsection, type Months, type Pocket, type Section, type Source } from '../api';
+import { api, ApiError, useLoad, type Budget, type BudgetSection, type BudgetSubsection, type End, type Move, type Months, type Pocket, type Section, type Source } from '../api';
 import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dates';
-import { CloseDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
+import { CloseDialog, endKey, MoveDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
 import { formatMinor, percentText } from '../money';
 import { useAuth } from '../auth';
 import { EmptyCard, Load, StatePill, Topbar, useRescueFocus, useToast } from '../ui';
@@ -22,25 +22,29 @@ const dot = (slot: number) => (slot >= 1 && slot <= 8 ? `ty-dot ty-dot--${slot}`
 
 type Dialog =
   | { t: 'tx'; kind?: 'income' } | { t: 'section'; section?: BudgetSection }
-  | { t: 'sub'; sectionId: number; sub?: BudgetSubsection; position?: number; count: number } | { t: 'close' };
+  | { t: 'sub'; sectionId: number; sub?: BudgetSubsection; position?: number; count: number } | { t: 'close' } | { t: 'move'; from: End };
 
 const goals = (sec: BudgetSection) => sec.subsections.length > 0 && sec.subsections.every((x) => x.kind === 'goal');
+const moved = (n: number) => (n === 0 ? '' : `${n > 0 ? '+' : ''}${formatMinor(n)} moved`);
 const sum = (sec: BudgetSection, k: 'budgetMinor' | 'availableMinor') => sec.subsections.reduce((t, x) => t + x[k], 0);
 
-function Row({ sub, from, onOpen }: { sub: BudgetSubsection; from: string; onOpen?: () => void }) {
-  const goal = sub.kind === 'goal';
+function Row({ sub, from, goals, onOpen }: { sub: BudgetSubsection; from: string; goals: boolean; onOpen?: () => void }) {
+  const isGoal = sub.kind === 'goal';
+  const goal = isGoal && goals; // in a mixed section a goal row is laid out like any row
   const target = sub.capMinor ?? 0;
-  const total = sub.budgetMinor + sub.carriedMinor;
+  const carried = sub.carriedMinor ?? 0;
+  const total = sub.budgetMinor + carried + (sub.movedMinor ?? 0);
   const s = rowState(total, sub.spentMinor);
   const saved = sub.availableMinor;
   const pct = target > 0 ? Math.floor((saved * 100) / target) : 0;
   const summary = goal ? `${formatMinor(saved)} of ${formatMinor(target)} saved` : `${formatMinor(sub.spentMinor)} of ${formatMinor(total)} spent`;
   const notes = [
     sub.budgetKind === 'percent' && sub.budgetBasisPoints !== null && `${percentText(sub.budgetBasisPoints)}% of what is left`,
-    !goal && sub.keep === 'cap' && `rolls over up to ${formatMinor(target)}`,
-    !goal && sub.keep === 'none' && 'does not roll over',
-    goal && `fills to ${formatMinor(target)}`,
-    !goal && sub.carriedMinor !== 0 && `+${formatMinor(sub.carriedMinor)} from ${from}`,
+    !isGoal && sub.keep === 'cap' && `rolls over up to ${formatMinor(target)}`,
+    !isGoal && sub.keep === 'none' && 'does not roll over',
+    isGoal && `fills to ${formatMinor(target)}`,
+    !isGoal && carried !== 0 && `+${formatMinor(carried)} from ${from}`,
+    moved(sub.movedMinor ?? 0),
   ].filter(Boolean).join(' · ');
   return (
     <div className={onOpen ? 'ty-brow app-pick' : 'ty-brow'} {...(onOpen ? pick(onOpen) : {})}>
@@ -58,6 +62,24 @@ function Row({ sub, from, onOpen }: { sub: BudgetSubsection; from: string; onOpe
   );
 }
 
+function MovedCard({ moves, sections, closed }: { moves: Move[]; sections: BudgetSection[]; closed: boolean }) {
+  const names = new Map(sections.flatMap((s) => [[`r${s.id}`, `Rest of ${s.name}`], ...s.subsections.map((x) => [`s${x.id}`, x.name])] as [string, string][]));
+  return (
+    <section className="ty-card ty-stack" aria-label="Moved this month">
+      <h2 className="text-title" style={{ margin: 0 }}>Moved this month</h2>
+      {moves.map((m) => (
+        <div key={m.id} className="app-move">
+          <div>
+            <div>{formatMinor(m.amountMinor)} from {names.get(endKey(m.from))} to {names.get(endKey(m.to))}</div>
+            <div className="ty-cap">{m.reason}</div>
+          </div>
+          {!closed && <button className="ty-btn ty-btn--quiet ty-btn--sm" onClick={() => void api('DELETE', `/moves/${m.id}`).catch(() => {})}>Undo</button>}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 export default function BudgetPage() {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -72,14 +94,15 @@ export default function BudgetPage() {
 
   const state = useLoad(
     async () => {
-      const [budget, months, p, s, src] = await Promise.all([
+      const [budget, months, p, s, src, mv] = await Promise.all([
         api<Budget>('GET', `/budget?month=${month}`),
         api<Months>('GET', '/months'),
         api<{ pockets: Pocket[] }>('GET', '/pockets'),
         api<{ sections: Section[] }>('GET', '/sections'),
         api<{ sources: Source[] }>('GET', '/sources'),
+        api<{ moves: Move[] }>('GET', `/moves?month=${month}`),
       ]);
-      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources };
+      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources, moves: mv.moves };
     },
     [month],
   );
@@ -142,7 +165,7 @@ export default function BudgetPage() {
         </>)}
       </header>
       <Load state={state}>
-        {({ budget, months, pockets, sections, sources }) => (
+        {({ budget, months, pockets, sections, sources, moves }) => (
           <>
             {budget.sections.length === 0 ? (
               <EmptyCard text="No sections yet. A section is a group such as Needs or Savings." action="Add section" onAction={() => setDialog({ t: 'section' })} />
@@ -155,7 +178,7 @@ export default function BudgetPage() {
                         <span className={dot(sec.colorSlot)} /><b>{sec.name}</b>
                         {!budget.closed && <button className="ty-btn ty-btn--quiet ty-btn--sm" onClick={() => setDialog({ t: 'section', section: sec })}>Edit</button>}
                         <span className={sec.restMinor < 0 ? 'ty-pill ty-pill--warning' : 'ty-pill'}>Rest {formatMinor(sec.restMinor)}</span>
-                        <span className="ty-cap ty-shead__sub">{goals(sec) ? `${formatMinor(sum(sec, 'availableMinor'))} saved` : `${formatMinor(sec.spentMinor)} of ${formatMinor(sec.budgetedMinor)} spent`}</span>
+                        <span className="ty-cap ty-shead__sub">{[goals(sec) ? `${formatMinor(sum(sec, 'availableMinor'))} saved` : `${formatMinor(sec.spentMinor)} of ${formatMinor(sec.budgetedMinor)} spent`, moved(sec.movedMinor ?? 0)].filter(Boolean).join(' · ')}</span>
                       </div>
                       {goals(sec) ? (<>
                         <div className="ty-shead__tot ty-wide"><span className="ty-label">This month</span><span className="ty-num">{formatMinor(sum(sec, 'budgetMinor'))}</span></div>
@@ -168,7 +191,7 @@ export default function BudgetPage() {
                       </>)}
                     </div>
                     {sec.subsections.map((sub, i) => (
-                      <Row key={sub.id} sub={sub} from={monthName(shiftMonth(month, -1))} onOpen={budget.closed ? undefined : () => setDialog({ t: 'sub', sectionId: sec.id, sub, position: i + 1, count: sec.subsections.length })} />
+                      <Row key={sub.id} sub={sub} goals={goals(sec)} from={monthName(shiftMonth(month, -1))} onOpen={budget.closed ? undefined : () => setDialog({ t: 'sub', sectionId: sec.id, sub, position: i + 1, count: sec.subsections.length })} />
                     ))}
                     {!budget.closed && (
                       <div className="ty-section__add">
@@ -178,15 +201,17 @@ export default function BudgetPage() {
                   </section>
                 ))}
                 <div><button className="ty-btn" onClick={() => setDialog({ t: 'section' })}>Add section</button></div>
+                {moves.length > 0 && <MovedCard moves={moves} sections={budget.sections} closed={budget.closed} />}
               </div>
             )}
             {dialog?.t === 'close' && months.toClose && <CloseDialog month={months.toClose} sections={budget.sections} onClose={close} />}
+            {dialog?.t === 'move' && <MoveDialog month={month} sections={budget.sections} from={dialog.from} currency={user.baseCurrency} onClose={close} />}
             {dialog?.t === 'tx' && <TransactionDialog kind={dialog.kind} pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
           </>
         )}
       </Load>
-      {dialog?.t === 'section' && <SectionDialog section={dialog.section} onClose={close} />}
-      {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub} position={dialog.position} count={dialog.count} currency={user.baseCurrency} onClose={close} />}
+      {dialog?.t === 'section' && <SectionDialog section={dialog.section} onMove={() => setDialog({ t: 'move', from: { sectionId: dialog.section!.id } })} onClose={close} />}
+      {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub} position={dialog.position} count={dialog.count} currency={user.baseCurrency} onMove={() => setDialog({ t: 'move', from: { subsectionId: dialog.sub!.id } })} onClose={close} />}
     </>
   );
 }

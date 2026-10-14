@@ -127,6 +127,10 @@ export function dataRouter(db: Db): Router {
       throw new HttpError(409, 'in_use', 'This section is used in the pipeline. Remove it from the steps and rest rules first.');
     if (one('SELECT 1 FROM carries WHERE user_id = ? AND (section_id = ? OR subsection_id IN (SELECT id FROM subsections WHERE section_id = ?))', req.user.id, cur.id, cur.id))
       throw new HttpError(409, 'in_use', 'This section has money carried between months.');
+    if (one(`SELECT 1 FROM moves WHERE user_id = ? AND (from_section_id = ? OR to_section_id = ?
+             OR from_subsection_id IN (SELECT id FROM subsections WHERE section_id = ?) OR to_subsection_id IN (SELECT id FROM subsections WHERE section_id = ?))`,
+      req.user.id, cur.id, cur.id, cur.id, cur.id))
+      throw new HttpError(409, 'in_use', 'This section has money moved this month.');
     db.prepare('DELETE FROM sections WHERE id = ? AND user_id = ?').run(cur.id, req.user.id);
     res.status(204).end();
   });
@@ -173,6 +177,8 @@ export function dataRouter(db: Db): Router {
     if (one('SELECT 1 FROM transactions WHERE subsection_id = ? AND user_id = ?', cur.id, req.user.id)) throw inUse('subsection');
     if (one('SELECT 1 FROM carries WHERE subsection_id = ? AND user_id = ?', cur.id, req.user.id))
       throw new HttpError(409, 'in_use', 'This subsection has money carried between months.');
+    if (one('SELECT 1 FROM moves WHERE (from_subsection_id = ? OR to_subsection_id = ?) AND user_id = ?', cur.id, cur.id, req.user.id))
+      throw new HttpError(409, 'in_use', 'This subsection has money moved this month.');
     db.prepare('DELETE FROM subsections WHERE id = ? AND user_id = ?').run(cur.id, req.user.id);
     res.status(204).end();
   });
@@ -377,6 +383,14 @@ export function dataRouter(db: Db): Router {
     return c;
   };
 
+  type End = { subsectionId: number } | { sectionId: number };
+  const MOVE = 'SELECT id, month, from_subsection_id AS fs, from_section_id AS fc, to_subsection_id AS ts, to_section_id AS tc, amount_minor AS amountMinor, reason FROM moves';
+  const moveOf = (x: any) => ({
+    id: x.id, month: x.month, from: (x.fs !== null ? { subsectionId: x.fs } : { sectionId: x.fc }) as End,
+    to: (x.ts !== null ? { subsectionId: x.ts } : { sectionId: x.tc }) as End, amountMinor: x.amountMinor, reason: x.reason,
+  });
+  const movesOf = (uid: number, month: string) => all(`${MOVE} WHERE user_id = ? AND month = ? ORDER BY id`, uid, month).map(moveOf);
+
   // What the month's income does: boxes, steps, what each section receives from them, what is left.
   const flow = (uid: number, month: string, carry: ReturnType<typeof carriesOf>) => {
     const income = new Map(
@@ -425,6 +439,14 @@ export function dataRouter(db: Db): Router {
     const txIncome = one(
       `SELECT COALESCE(SUM(amount_minor), 0) AS v FROM transactions
        WHERE user_id = ? AND kind = 'income' AND substr(date, 1, 7) = ?`, uid, month).v as number;
+    // What moves gave (+) and took (-), per subsection and per section's rest.
+    const movedSub = new Map<number, number>(), movedSec = new Map<number, number>();
+    for (const x of movesOf(uid, month)) {
+      for (const [e, sign] of [[x.from, -1], [x.to, 1]] as const) {
+        const [map, key] = 'subsectionId' in e ? [movedSub, e.subsectionId] : [movedSec, e.sectionId];
+        map.set(key, (map.get(key) ?? 0) + sign * x.amountMinor);
+      }
+    }
     const secs = all<{ id: number }>('SELECT id FROM sections WHERE user_id = ? ORDER BY position, id', uid).map(({ id }) => sectionOf(uid, id));
     const closed = isClosed(uid, month);
 
@@ -439,7 +461,7 @@ export function dataRouter(db: Db): Router {
     };
 
     const sections = secs.map((sec) => {
-      let claimed = 0, overspent = 0, carried = 0;
+      let claimed = 0, overspent = 0, carried = 0, moved = 0;
       const budgetedMinor = pipeline.sections.find((x) => x.id === sec.id)!.receivedMinor;
       // Fixed amounts first; percentages share what remains, each rounded down to the cent.
       const remains = BigInt(Math.max(0, budgetedMinor - sec.subsections.reduce((a: number, x: any) => a + (x.budgetMinor ?? 0), 0)));
@@ -447,18 +469,22 @@ export function dataRouter(db: Db): Router {
         const budgetMinor: number = x.budgetKind === 'amount' ? x.budgetMinor : Number((remains * BigInt(x.budgetBasisPoints)) / 10000n);
         const spentMinor = spent.get(x.id) ?? 0;
         const carriedMinor = carry.subs.get(x.id) ?? 0;
+        const movedMinor = movedSub.get(x.id) ?? 0;
         claimed += budgetMinor;
         carried += carriedMinor;
-        overspent += Math.max(0, spentMinor - budgetMinor - carriedMinor);
+        moved += movedMinor;
+        overspent += Math.max(0, spentMinor - budgetMinor - carriedMinor - movedMinor);
         return {
           id: x.id, name: x.name, kind: x.kind, budgetKind: x.budgetKind, budgetMinor, budgetBasisPoints: x.budgetBasisPoints,
-          keep: x.keep, capMinor: x.capMinor, carriedMinor, spentMinor, availableMinor: budgetMinor + carriedMinor - spentMinor,
+          keep: x.keep, capMinor: x.capMinor, carriedMinor, movedMinor, spentMinor, availableMinor: budgetMinor + carriedMinor + movedMinor - spentMinor,
         };
       });
       const spentMinor = subsections.reduce((a: number, x: any) => a + x.spentMinor, 0);
+      const movedMinor = movedSec.get(sec.id) ?? 0;
       return {
-        id: sec.id, name: sec.name, colorSlot: sec.colorSlot,
-        budgetedMinor, restMinor: budgetedMinor - claimed - overspent, spentMinor, availableMinor: budgetedMinor + carried - spentMinor, subsections,
+        id: sec.id, name: sec.name, colorSlot: sec.colorSlot, movedMinor,
+        budgetedMinor, restMinor: budgetedMinor - claimed - overspent + movedMinor, spentMinor,
+        availableMinor: budgetedMinor + carried + moved + movedMinor - spentMinor, subsections,
       };
     });
     const budgetedMinor = sections.reduce((a, x) => a + x.budgetedMinor, 0);
@@ -484,6 +510,49 @@ export function dataRouter(db: Db): Router {
   });
   r.get('/budget', (req, res) => {
     res.json(answer(req.user, parse(s.monthQuery, req.query).month, 'budget'));
+  });
+
+  // Moves
+  const closedErr = () => new HttpError(409, 'closed', 'This month is closed. Reopen it to change it.');
+  const fmt = (n: number, cur: string) => {
+    const d = new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).resolvedOptions().maximumFractionDigits ?? 2;
+    return new Intl.NumberFormat('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }).format(n / 10 ** d);
+  };
+  r.get('/moves', (req, res) => {
+    res.json({ moves: movesOf(req.user.id, parse(s.monthQuery, req.query).month) });
+  });
+  r.post('/moves', (req, res) => {
+    const uid = req.user.id;
+    const b = parse(s.move, req.body);
+    if (isClosed(uid, b.month)) throw closedErr();
+    const budget = live(req.user, b.month).budget;
+    // Finds the end among the person's own subsections or sections: its name and what it has to move.
+    const find = (e: End) => {
+      for (const sec of budget.sections) {
+        if ('sectionId' in e && sec.id === e.sectionId) return { name: sec.name, availableMinor: sec.restMinor };
+        const sub = 'subsectionId' in e ? sec.subsections.find((x) => x.id === e.subsectionId) : undefined;
+        if (sub) return { name: sub.name, availableMinor: sub.availableMinor };
+      }
+    };
+    const from = find(b.from);
+    if (!from) throw fieldError('from', 'Choose where the money comes from.');
+    if (!find(b.to)) throw fieldError('to', 'Choose where the money goes.');
+    if (JSON.stringify(b.from) === JSON.stringify(b.to)) throw fieldError('to', 'Choose a different place.');
+    if (from.availableMinor <= 0) throw fieldError('amountMinor', `${from.name} has nothing to move.`);
+    if (b.amountMinor > from.availableMinor)
+      throw fieldError('amountMinor', `${from.name} has only ${fmt(from.availableMinor, req.user.baseCurrency)} to move.`);
+    const n = (e: End, k: 'subsectionId' | 'sectionId') => (k in e ? (e as any)[k] : null);
+    const { lastInsertRowid } = db
+      .prepare(`INSERT INTO moves (user_id, month, from_subsection_id, from_section_id, to_subsection_id, to_section_id, amount_minor, reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(uid, b.month, n(b.from, 'subsectionId'), n(b.from, 'sectionId'), n(b.to, 'subsectionId'), n(b.to, 'sectionId'), b.amountMinor, b.reason);
+    res.status(201).json({ move: moveOf(one(`${MOVE} WHERE id = ?`, lastInsertRowid)) });
+  });
+  r.delete('/moves/:id', (req, res) => {
+    const cur = must(one(`${MOVE} WHERE id = ? AND user_id = ?`, idOf(req), req.user.id));
+    if (isClosed(req.user.id, cur.month)) throw closedErr();
+    db.prepare('DELETE FROM moves WHERE id = ? AND user_id = ?').run(cur.id, req.user.id);
+    res.status(204).end();
   });
 
   // Closing

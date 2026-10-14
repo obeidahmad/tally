@@ -21,11 +21,13 @@ export type Transaction = {
   id: number; date: string; kind: 'expense' | 'income'; amountMinor: number;
   pocketId: number; subsectionId: number | null; sourceId: number | null; payee: string; note: string; source: 'manual';
 };
-export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number } & SubsectionRules;
+export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number; movedMinor: number } & SubsectionRules;
 export type BudgetSection = {
-  id: number; name: string; colorSlot: number; budgetedMinor: number; restMinor: number; spentMinor: number; availableMinor: number;
+  id: number; name: string; colorSlot: number; budgetedMinor: number; restMinor: number; spentMinor: number; availableMinor: number; movedMinor: number;
   subsections: BudgetSubsection[];
 };
+export type End = { subsectionId: number } | { sectionId: number };
+export type Move = { id: number; month: string; from: End; to: End; amountMinor: number; reason: string };
 export type Budget = {
   month: string; currency: string; closed: boolean;
   totals: { incomeMinor: number; budgetedMinor: number; spentMinor: number; availableMinor: number; leftOverMinor: number };
