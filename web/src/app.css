@@ -60,3 +60,26 @@
 /* Import preview table and rules */
 .app-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); }
 .app-scroll .ty-table td, .app-scroll .ty-table th { white-space: nowrap; text-align: left; }
+
+/* Reports: hand-built svg charts, tokens only */
+.rp-plot { position: relative; }
+.rp-plot svg { display: block; max-width: 100%; overflow: visible; }
+.rp-axis text { fill: var(--ink-muted); font-size: 0.6875rem; }
+.rp-grid { stroke: var(--line); stroke-width: 1; }
+.rp-total { fill: var(--ink); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.rp-seg, .rp-dot { transition: opacity 150ms ease-out; }
+.rp-col:hover .rp-seg, .rp-col:focus-within .rp-seg, .rp-col:hover .rp-dot, .rp-col:focus-within .rp-dot { opacity: 0.8; }
+.rp-hit { outline: none; }
+.rp-hit:focus-visible { stroke: var(--focus); stroke-width: 2; }
+.rp-line { stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.rp-dot { fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
+.rp-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; padding: 0; list-style: none; }
+.rp-legend li { display: flex; align-items: center; gap: var(--space-2); }
+.rp-tip { position: absolute; top: 0; z-index: 1; min-width: 10rem; padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-raised); pointer-events: none; }
+.rp-tip__title { margin-bottom: var(--space-2); font-size: 0.8125rem; font-weight: 600; color: var(--ink); }
+.rp-tip__row { display: flex; align-items: baseline; gap: var(--space-2); }
+.rp-tip__key { width: 0.75rem; height: 2px; align-self: center; flex: none; }
+.rp-tip__val { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rp-tip__foot { margin-top: var(--space-1); padding-top: var(--space-1); border-top: 1px solid var(--line); }
+.rp-table { overflow-x: auto; }
+@media (max-width: 640px) { .rp-tip { min-width: 8rem; } }

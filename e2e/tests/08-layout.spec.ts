@@ -1,7 +1,7 @@
 import { test, expect, dialog, shot, seedBudget } from '../support/fixtures';
 
 const names = ['Budget', 'Transactions', 'Pockets', 'Settings']; // the phone tab bar
-const sidebar = ['Budget', 'Pipeline', 'Transactions', 'Pockets', 'Investments', 'Settings']; // spec 06 adds Pipeline after Budget, spec 14 Investments after Pockets
+const sidebar = ['Budget', 'Pipeline', 'Transactions', 'Pockets', 'Investments', 'Reports', 'Settings']; // spec 19 adds Reports after Investments; spec 06 adds Pipeline after Budget, spec 14 Investments after Pockets
 
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });

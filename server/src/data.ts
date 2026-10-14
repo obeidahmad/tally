@@ -158,8 +158,68 @@ export function dataRouter(db: Db, rates: Rates, now: () => number): Router {
     res.json({ currency: base, totalMinor: byCurrency.reduce((a, x) => a + (x.baseMinor ?? 0), 0), byCurrency, missingRates });
   });
 
+  r.get('/reports', (req, res) => {
+    const uid = req.user.id;
+    const base = req.user.baseCurrency;
+    const q = req.query.months;
+    if (q !== undefined && !(typeof q === 'string' && ['3', '6', '12', '24'].includes(q))) throw fieldError('months', 'Choose 3, 6, 12 or 24 months.');
+    const n = Number(q ?? 12);
+    const [y, m] = today().split('-').map(Number) as [number, number];
+    const months = Array.from({ length: n }, (_, i) => {
+      const d = new Date(Date.UTC(y, m - 1 - (n - 1 - i), 1));
+      return d.toISOString().slice(0, 7);
+    });
+    const sections = all<{ id: number }>('SELECT id FROM sections WHERE user_id = ? ORDER BY position, id', uid);
+    const bySub = new Map<string, number>();
+    for (const x of all<{ month: string; sectionId: number; v: number }>(
+      `SELECT substr(t.date, 1, 7) AS month, s.section_id AS sectionId, SUM(t.base_amount_minor) AS v
+       FROM (SELECT * FROM transactions WHERE user_id = ? AND kind = 'expense' AND NOT (${UNSORTED})) t
+       JOIN subsections s ON s.id = t.subsection_id GROUP BY 1, 2`, uid))
+      bySub.set(`${x.month}/${x.sectionId}`, x.v);
+    const flow = new Map<string, number>();
+    for (const x of all<{ month: string; kind: string; v: number }>(
+      `SELECT substr(date, 1, 7) AS month, kind, SUM(base_amount_minor) AS v FROM transactions
+       WHERE user_id = ? AND kind IN ('income', 'expense') AND NOT (${UNSORTED}) GROUP BY 1, 2`, uid))
+      flow.set(`${x.month}/${x.kind}`, x.v);
+
+    // Past months: opening balance plus transactions up to the month's last day. A held holding's cost is deducted from the
+    // balance and added back, so it cancels out; no purchase date is stored, so it is never left out of a month.
+    const pockets = all<{ id: number; currency: string; opening: number }>('SELECT id, currency, opening_balance_minor AS opening FROM pockets WHERE user_id = ?', uid);
+    const moved = db.prepare(
+      `SELECT COALESCE(SUM(CASE WHEN pocket_id = ? THEN (CASE kind WHEN 'income' THEN amount_minor ELSE -amount_minor END) ELSE 0 END
+         + CASE WHEN to_pocket_id = ? THEN to_amount_minor ELSE 0 END), 0) FROM transactions
+       WHERE user_id = ? AND (pocket_id = ? OR to_pocket_id = ?) AND date <= ?`).pluck();
+    const current = months[n - 1]!;
+    const missing = new Set<string>();
+    const networth = months.map((month) => {
+      const day = month === current ? today() : `${month}-${new Date(Date.UTC(+month.slice(0, 4), +month.slice(5), 0)).getUTCDate()}`;
+      const sums = new Map<string, number>();
+      if (month === current)
+        for (const p of all<any>(`${POCKET} WHERE p.user_id = ?`, uid).map((x) => withBase(x, base))) sums.set(p.currency, (sums.get(p.currency) ?? 0) + p.valueMinor);
+      else for (const p of pockets) sums.set(p.currency, (sums.get(p.currency) ?? 0) + p.opening + (moved.get(p.id, p.id, uid, p.id, p.id, day) as number));
+      let minor = 0;
+      for (const [currency, amount] of sums) {
+        const c = rates.convert(amount, currency, base, day);
+        if (c === null) missing.add(currency);
+        else minor += c;
+      }
+      return { month, minor };
+    });
+    res.json({
+      currency: base,
+      months,
+      spending: months.map((month) => {
+        const bySection = sections.map(({ id }) => ({ sectionId: id, minor: bySub.get(`${month}/${id}`) ?? 0 }));
+        return { month, bySection, totalMinor: bySection.reduce((a, x) => a + x.minor, 0) };
+      }),
+      cashflow: months.map((month) => ({ month, incomeMinor: flow.get(`${month}/income`) ?? 0, spendingMinor: flow.get(`${month}/expense`) ?? 0 })),
+      networth,
+      missingRates: [...missing].sort(),
+    });
+  });
+
   // Sections and subsections
-  r.get('/sections', (req, res) => {
+  r.get('/sections',(req, res) => {
     const ids = all<{ id: number }>('SELECT id FROM sections WHERE user_id = ? ORDER BY position, id', req.user.id);
     res.json({ sections: ids.map((x) => sectionOf(req.user.id, x.id)) });
   });

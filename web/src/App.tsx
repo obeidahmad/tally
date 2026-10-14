@@ -7,11 +7,12 @@ import { SetupPage, SignInPage } from './pages/Entry';
 import InvestmentsPage from './pages/Investments';
 import PipelinePage from './pages/Pipeline';
 import PocketsPage from './pages/Pockets';
+import ReportsPage from './pages/Reports';
 import SettingsPage from './pages/Settings';
 import TransactionsPage from './pages/Transactions';
 import { Load, ToastProvider } from './ui';
 
-const PAGES = [['/budget', 'Budget'], ['/pipeline', 'Pipeline'], ['/transactions', 'Transactions'], ['/pockets', 'Pockets'], ['/investments', 'Investments'], ['/settings', 'Settings']] as const;
+const PAGES = [['/budget', 'Budget'], ['/pipeline', 'Pipeline'], ['/transactions', 'Transactions'], ['/pockets', 'Pockets'], ['/investments', 'Investments'], ['/reports', 'Reports'], ['/settings', 'Settings']] as const;
 
 function Shell() {
   const { user, setUser } = useAuth();
@@ -28,7 +29,7 @@ function Shell() {
         </div>
       </aside>
       <main className="ty-main"><Outlet /></main>
-      <nav className="ty-tabs" aria-label="Main">{PAGES.filter(([to]) => to !== '/pipeline' && to !== '/investments').map(link)}</nav>
+      <nav className="ty-tabs" aria-label="Main">{PAGES.filter(([to]) => to !== '/pipeline' && to !== '/investments' && to !== '/reports').map(link)}</nav>
     </div>
   );
 }
@@ -57,6 +58,7 @@ function Routing({ boot, setBoot }: { boot: Boot; setBoot: (b: Boot) => void }) 
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/pockets" element={<PocketsPage />} />
           <Route path="/investments" element={<InvestmentsPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/budget" replace />} />
