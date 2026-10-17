@@ -4,11 +4,12 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
-import { burnTime, currentSession, endSession, hashPassword, requireAuth, startSession, toUser, USER_COLS, verifyPassword } from './auth';
+import { actingBudget, burnTime, currentSession, ownerOnlyBudget, endSession, hashPassword, requireAuth, startSession, toUser, USER_COLS, verifyPassword } from './auth';
 import { bankCallback } from './banks';
 import { createRates, ECB_URL } from './rates';
 import { dataRouter } from './data';
 import { recurringRouter } from './recurring';
+import { sharingRouter } from './sharing';
 import type { Db } from './db';
 import { errorHandler, fieldError, HttpError, notFound, parse, requireJson } from './http';
 import * as s from './schemas';
@@ -52,7 +53,8 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   api.get('/health', (_req, res) => { res.json({ ok: true }); });
 
   api.get('/auth/state', (req, res) => {
-    res.json({ needsSetup: needsSetup(), user: currentSession(db, req.cookies?.tally_session)?.user ?? null });
+    const me = currentSession(db, req.cookies?.tally_session)?.user ?? null;
+    res.json({ needsSetup: needsSetup(), ...(me ? (() => { const viewing = actingBudget(db, me).viewing; return { user: { ...me, viewing }, viewing }; })() : { user: null }) });
   });
 
   api.post('/auth/setup', async (req, res) => {
@@ -92,27 +94,27 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.status(204).end();
   });
 
-  api.get('/me', (req, res) => { res.json({ user: req.user }); });
+  api.get('/me', (req, res) => { res.json({ user: { ...req.me, viewing: req.viewing }, viewing: req.viewing }); });
   api.patch('/me', (req, res) => {
     const b = parse(s.homePocket, req.body);
-    if (!db.prepare('SELECT 1 FROM pockets WHERE id = ? AND user_id = ?').get(b.homePocketId, req.user.id)) throw fieldError('homePocketId', 'Choose a pocket.');
-    db.prepare('UPDATE users SET home_pocket_id = ? WHERE id = ?').run(b.homePocketId, req.user.id);
-    res.json({ user: userById(req.user.id) });
+    if (!db.prepare('SELECT 1 FROM pockets WHERE id = ? AND user_id = ?').get(b.homePocketId, req.me.id)) throw fieldError('homePocketId', 'Choose a pocket.');
+    db.prepare('UPDATE users SET home_pocket_id = ? WHERE id = ?').run(b.homePocketId, req.me.id);
+    res.json({ user: { ...userById(req.me.id), viewing: req.viewing }, viewing: req.viewing });
   });
   api.post('/me/password', async (req, res) => {
     const b = parse(s.changePassword, req.body);
-    const { hash } = db.prepare('SELECT password_hash AS hash FROM users WHERE id = ?').get(req.user.id) as { hash: string };
+    const { hash } = db.prepare('SELECT password_hash AS hash FROM users WHERE id = ?').get(req.me.id) as { hash: string };
     if (!(await verifyPassword(b.currentPassword, hash))) throw fieldError('currentPassword', 'That is not your current password.');
     const next = await hashPassword(b.newPassword);
     db.transaction(() => {
-      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(next, req.user.id);
-      db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').run(req.user.id, req.sessionHash);
+      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(next, req.me.id);
+      db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').run(req.me.id, req.sessionHash);
     })();
     res.status(204).end();
   });
 
   const ownerOnly: express.RequestHandler = (req, _res, next) =>
-    next(req.user.isOwner ? undefined : new HttpError(403, 'forbidden', 'Only the owner can do that.'));
+    next(req.me.isOwner ? undefined : new HttpError(403, 'forbidden', 'Only the owner can do that.'));
   api.get('/users', ownerOnly, (_req, res) => {
     res.json({ users: db.prepare(`SELECT ${USER_COLS} FROM users ORDER BY id`).all().map(toUser) });
   });
@@ -120,6 +122,8 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.status(201).json({ user: await addUser(parse(s.newAccount, req.body), false) });
   });
 
+  api.use(sharingRouter(db));
+  api.use(['/banks', '/brokers'], ownerOnlyBudget);
   api.use('/imports', express.json({ limit: '25mb' }));
   api.use(dataRouter(db, rates, now, bank, { url: t212Url, now, sleep }));
   api.use(recurringRouter(db, now));

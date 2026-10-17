@@ -10,3 +10,6 @@ export function useAuth(): Auth {
   if (!a) throw new Error('useAuth outside the signed-in app');
   return a;
 }
+
+/** The budget's base currency: the owner's while viewing a shared budget. */
+export const baseCurrency = (u: User) => u.viewing?.baseCurrency ?? u.baseCurrency;

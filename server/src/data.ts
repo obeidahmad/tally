@@ -21,7 +21,8 @@ const SUB = `SELECT id, section_id AS sectionId, name, position, kind, budget_ki
   keep, cap_minor AS capMinor FROM subsections`;
 const TX = `SELECT id, date, kind, amount_minor AS amountMinor, pocket_id AS pocketId, subsection_id AS subsectionId, source_id AS sourceId,
   base_amount_minor AS baseAmountMinor, to_pocket_id AS toPocketId, to_amount_minor AS toAmountMinor,
-  payee, note, source FROM transactions`;
+  payee, note, source, COALESCE(created_by, user_id) AS createdBy,
+  (SELECT display_name FROM users WHERE id = COALESCE(created_by, user_id)) AS createdByName FROM transactions`;
 
 const HOLD = `SELECT id, name, pocket_id AS pocketId, subsection_id AS subsectionId, paid_minor AS paidMinor, worth_minor AS worthMinor,
   worth_currency AS worthCurrency, worth_date AS worthDate, sold_date AS soldDate, source FROM holdings`;
@@ -378,9 +379,9 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   r.post('/transactions', (req, res) => {
     const t = checked(req.user, req.body);
     const { lastInsertRowid } = db
-      .prepare(`INSERT INTO transactions (user_id, date, kind, amount_minor, base_amount_minor, pocket_id, subsection_id, source_id, to_pocket_id, to_amount_minor, payee, note)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(req.user.id, t.date, t.kind, t.amountMinor, baseOf(req.user, t), t.pocketId, t.subsectionId, t.sourceId, t.toPocketId, t.toAmountMinor, t.payee, t.note);
+      .prepare(`INSERT INTO transactions (user_id, date, kind, amount_minor, base_amount_minor, pocket_id, subsection_id, source_id, to_pocket_id, to_amount_minor, payee, note, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(req.user.id, t.date, t.kind, t.amountMinor, baseOf(req.user, t), t.pocketId, t.subsectionId, t.sourceId, t.toPocketId, t.toAmountMinor, t.payee, t.note, req.me.id);
     res.status(201).json({ transaction: txOf(req.user.id, Number(lastInsertRowid)) });
   });
   r.patch('/transactions/:id', (req, res) => {
@@ -901,10 +902,10 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
       if (gain === 0) return null;
       const amountMinor = Math.abs(gain);
       const { lastInsertRowid } = db
-        .prepare(`INSERT INTO transactions (user_id, date, kind, amount_minor, base_amount_minor, pocket_id, subsection_id, source_id, payee, note)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?)`)
+        .prepare(`INSERT INTO transactions (user_id, date, kind, amount_minor, base_amount_minor, pocket_id, subsection_id, source_id, payee, note, created_by)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`)
         .run(uid, b.date, gain > 0 ? 'income' : 'expense', amountMinor, baseOf(req.user, { amountMinor, currency, date: b.date }), cur.pocketId,
-          gain > 0 ? null : cur.subsectionId, gain > 0 ? b.sourceId : null, `Sale of ${cur.name}`);
+          gain > 0 ? null : cur.subsectionId, gain > 0 ? b.sourceId : null, `Sale of ${cur.name}`, req.me.id);
       return Number(lastInsertRowid);
     })();
     res.json({ holding: holdingOf(uid, cur.id), transaction: id === null ? null : txOf(uid, id) });
@@ -1007,9 +1008,9 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
         const rule = ruleFor(rules, kind, x.payee);
         const subsectionId = kind === 'expense' ? rule?.subsectionId ?? null : null;
         const sourceId = kind === 'income' ? rule?.sourceId ?? null : null;
-        db.prepare(`INSERT INTO transactions (user_id, date, kind, amount_minor, base_amount_minor, pocket_id, subsection_id, source_id, payee, note, source)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'import')`)
-          .run(uid, x.date, kind, amountMinor, baseOf(req.user, { amountMinor, currency: pocket.currency, date: x.date }), b.pocketId, subsectionId, sourceId, x.payee, x.note);
+        db.prepare(`INSERT INTO transactions (user_id, date, kind, amount_minor, base_amount_minor, pocket_id, subsection_id, source_id, payee, note, source, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'import', ?)`)
+          .run(uid, x.date, kind, amountMinor, baseOf(req.user, { amountMinor, currency: pocket.currency, date: x.date }), b.pocketId, subsectionId, sourceId, x.payee, x.note, req.me.id);
         out.added++;
         if (!rule) out.unsorted++;
       }

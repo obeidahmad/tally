@@ -305,7 +305,7 @@ test('a position that disappears is marked sold: it moves under "Sold" with no t
   await fakeSet(w.key, { positions: [VUSA, AAPL] });
   await page.goto('/settings');
   await card(page).getByRole('button', { name: 'Sync now' }).click();
-  await expect.poll(async () => (await holdingsApi(page)).find((h) => h.name === 'Microsoft')?.soldDate, { timeout: 30_000 }).toBe(todayIso());
+  await expect.poll(async () => (await holdingsApi(page)).find((h) => h.name === 'Microsoft')?.soldDate, { timeout: 30_000 }).toBe(new Date().toLocaleDateString('en-CA'));
   await page.goto('/investments');
   await expect(page.getByRole('heading', { name: 'Sold', exact: true })).toBeVisible();
   await expect(page.getByText('Microsoft').first()).toBeVisible();

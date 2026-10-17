@@ -5,7 +5,7 @@ import { api, ApiError, useLoad, type Budget, type Holding, type Rates, type Bud
 import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dates';
 import { CloseDialog, endKey, MoveDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
 import { formatMinor, percentText } from '../money';
-import { useAuth } from '../auth';
+import { baseCurrency, useAuth } from '../auth';
 import { EmptyCard, Load, StatePill, Topbar, useRescueFocus, useToast } from '../ui';
 import { pick } from '../pick';
 
@@ -179,11 +179,11 @@ export default function BudgetPage() {
       <Load state={state}>
         {({ budget, months, pockets, sections, sources, moves, holdings, rates }) => {
           // in the base currency at today's rate (the rates are units per 1 base)
-          const perBase = (c: string) => (c === user.baseCurrency ? 1 : Number(rates.currencies.find((x) => x.currency === c)?.rate));
+          const perBase = (c: string) => (c === baseCurrency(user) ? 1 : Number(rates.currencies.find((x) => x.currency === c)?.rate));
           const heldNote = (id: number) => {
             const hs = holdings.filter((x) => x.subsectionId === id);
             if (hs.length === 0) return undefined;
-            const cur = (pid: number) => pockets.find((p) => p.id === pid)?.currency ?? user.baseCurrency;
+            const cur = (pid: number) => pockets.find((p) => p.id === pid)?.currency ?? baseCurrency(user);
             const paid = hs.reduce((t, x) => t + x.paidMinor / perBase(cur(x.pocketId)), 0);
             const worth = hs.reduce((t, x) => t + x.worthMinor / perBase(x.worthCurrency), 0);
             return Number.isFinite(paid + worth) ? `paid ${formatMinor(Math.round(paid))} · worth ${formatMinor(Math.round(worth))}` : undefined;
@@ -228,14 +228,14 @@ export default function BudgetPage() {
               </div>
             )}
             {dialog?.t === 'close' && months.toClose && <CloseDialog month={months.toClose} sections={budget.sections} onClose={close} />}
-            {dialog?.t === 'move' && <MoveDialog month={month} sections={budget.sections} from={dialog.from} currency={user.baseCurrency} onClose={close} />}
-            {dialog?.t === 'tx' && <TransactionDialog kind={dialog.kind} pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
+            {dialog?.t === 'move' && <MoveDialog month={month} sections={budget.sections} from={dialog.from} currency={baseCurrency(user)} onClose={close} />}
+            {dialog?.t === 'tx' && <TransactionDialog kind={dialog.kind} pockets={pockets} sections={sections} sources={sources} currency={baseCurrency(user)} onClose={close} />}
           </>
           );
         }}
       </Load>
       {dialog?.t === 'section' && <SectionDialog section={dialog.section} onMove={() => setDialog({ t: 'move', from: { sectionId: dialog.section!.id } })} onClose={close} />}
-      {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub} position={dialog.position} count={dialog.count} currency={user.baseCurrency} onMove={() => setDialog({ t: 'move', from: { subsectionId: dialog.sub!.id } })} onClose={close} />}
+      {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub} position={dialog.position} count={dialog.count} currency={baseCurrency(user)} onMove={() => setDialog({ t: 'move', from: { subsectionId: dialog.sub!.id } })} onClose={close} />}
     </>
   );
 }

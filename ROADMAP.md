@@ -138,7 +138,7 @@ Taken from the three apps, after the phases above:
 - Rules that categorise transactions automatically.
 - Detection of subscriptions and recurring bills (`specs/18-recurring.md`).
 - Reports and charts: spending by section over time, cash flow.
-- Sharing one budget between partners.
+- Sharing one budget between partners (`specs/20-sharing.md`).
 
 ## Not planned
 

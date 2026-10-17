@@ -5,7 +5,7 @@ import { bankByPocket, countsLine, loadConnections, syncedLine, useAutoSync } fr
 import { loadT212Pocket, useT212Sync } from '../trading212';
 import { PocketDialog, TransactionDialog } from '../dialogs';
 import { formatMinor } from '../money';
-import { useAuth } from '../auth';
+import { baseCurrency, useAuth } from '../auth';
 import { pick } from '../pick';
 import { EmptyCard, Load, Topbar, useRescueFocus } from '../ui';
 
@@ -97,7 +97,7 @@ export default function PocketsPage() {
       <div className="ty-month__top">
         <div>
           <div className="ty-label">Net worth</div>
-          <div className="num-hero">{state.data ? formatMinor(state.data.net.totalMinor) : '–'}<span className="ty-cur">{user.baseCurrency}</span></div>
+          <div className="num-hero">{state.data ? formatMinor(state.data.net.totalMinor) : '–'}<span className="ty-cur">{baseCurrency(user)}</span></div>
           {state.data && <div className="ty-cap">{netLine(state.data.net)}</div>}
         </div>
         <span className="ty-grow" />
@@ -116,7 +116,7 @@ export default function PocketsPage() {
               <div className="ty-grid">
                 {pockets.map((p) => {
                   const paid = held.filter((x) => x.pocketId === p.id).reduce((t, x) => t + x.paidMinor, 0);
-                  const converted = p.currency === user.baseCurrency ? '' : p.baseValueMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseValueMinor)} ${user.baseCurrency}`;
+                  const converted = p.currency === baseCurrency(user) ? '' : p.baseValueMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseValueMinor)} ${baseCurrency(user)}`;
                   const broker = banks.get(p.id) === 'Trading212'; // its figure is synced cash plus holdings, which the server already adds
                   const shown = p.syncedAt && !broker ? p.syncedBalanceMinor ?? p.valueMinor : p.valueMinor;
                   const sub = [converted, held.some((x) => x.pocketId === p.id) && `paid ${formatMinor(paid)} ${p.currency}`].filter(Boolean).join(' · ') || ' ';
@@ -138,8 +138,8 @@ export default function PocketsPage() {
               </div>
             )}
             <WhereTable where={where} sections={sections} />
-            {dialog?.transfer && <TransactionDialog kind="transfer" pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
-            {dialog && !dialog.transfer && <PocketDialog pocket={dialog.pocket} currency={user.baseCurrency} onClose={close} />}
+            {dialog?.transfer && <TransactionDialog kind="transfer" pockets={pockets} sections={sections} sources={sources} currency={baseCurrency(user)} onClose={close} />}
+            {dialog && !dialog.transfer && <PocketDialog pocket={dialog.pocket} currency={baseCurrency(user)} onClose={close} />}
           </>
         )}
       </Load>

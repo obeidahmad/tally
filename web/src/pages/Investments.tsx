@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, fieldError, useForm, useLoad, type Holding, type Pocket, type Rates, type Section, type Source } from '../api';
-import { useAuth } from '../auth';
+import { baseCurrency, useAuth } from '../auth';
 import { today } from '../dates';
 import { Foot } from '../dialogs';
 import { formatMinor, minorToInput, parseAmount } from '../money';
@@ -161,7 +161,7 @@ export default function InvestmentsPage() {
       <Load state={state}>
         {({ holdings, pockets, sections, rates, t212 }) => {
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
-          const perBase = (c: string) => (c === user.baseCurrency ? 1 : Number(rates.currencies.find((x) => x.currency === c)?.rate));
+          const perBase = (c: string) => (c === baseCurrency(user) ? 1 : Number(rates.currencies.find((x) => x.currency === c)?.rate));
           const held = holdings.filter((h) => !h.soldDate);
           const sold = holdings.filter((h) => h.soldDate);
           const row = (h: Holding, pocket: Pocket) => {
@@ -220,7 +220,7 @@ export default function InvestmentsPage() {
                   </>)}
                 </div>
               )}
-              {dialog?.t === 'edit' && <HoldingDialog holding={dialog.holding} focusWorth={dialog.worth} pockets={pockets} sections={sections} base={user.baseCurrency} onClose={close} />}
+              {dialog?.t === 'edit' && <HoldingDialog holding={dialog.holding} focusWorth={dialog.worth} pockets={pockets} sections={sections} base={baseCurrency(user)} onClose={close} />}
               {dlgHolding && <SellDialog holding={dlgHolding} pocket={pockets.find((p) => p.id === dlgHolding.pocketId)!} sectionOf={sectionOf} onClose={close} />}
             </>
           );

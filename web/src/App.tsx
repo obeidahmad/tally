@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from 'react-router-dom';
 import { api, setUnauthenticatedHandler, type User } from './api';
-import { AuthCtx, useAuth } from './auth';
+import { AuthCtx, baseCurrency, useAuth } from './auth';
 import BudgetPage from './pages/Budget';
 import { SetupPage, SignInPage } from './pages/Entry';
 import InvestmentsPage from './pages/Investments';
@@ -11,6 +11,7 @@ import RecurringPage from './pages/Recurring';
 import ReportsPage from './pages/Reports';
 import SettingsPage from './pages/Settings';
 import TransactionsPage from './pages/Transactions';
+import { BudgetSwitcher } from './sharing';
 import { Load, ToastProvider } from './ui';
 
 const PAGES = [['/budget', 'Budget'], ['/pipeline', 'Pipeline'], ['/transactions', 'Transactions'], ['/recurring', 'Recurring'], ['/pockets', 'Pockets'], ['/investments', 'Investments'], ['/reports', 'Reports'], ['/settings', 'Settings']] as const;
@@ -23,9 +24,10 @@ function Shell() {
     <div className="ty-shell">
       <aside className="ty-side">
         <div className="ty-word">Tally</div>
+        <div className="app-switch"><BudgetSwitcher /></div>
         <nav className="ty-nav" aria-label="Main">{PAGES.map(link)}</nav>
         <div className="ty-side__foot ty-cap">
-          Signed in as {user.displayName}<br />Base currency {user.baseCurrency}
+          Signed in as {user.displayName}{user.viewing && ` · viewing the budget of ${user.viewing.displayName}`}<br />Base currency {baseCurrency(user)}
           <div><button className="ty-btn ty-btn--quiet app-signout" onClick={signOut}>Sign out</button></div>
         </div>
       </aside>

@@ -6,7 +6,7 @@ import { currentMonth, dayHeading, monthTitle, shiftMonth } from '../dates';
 import { TransactionDialog } from '../dialogs';
 import { ImportDialog } from '../import';
 import { formatMinor } from '../money';
-import { useAuth } from '../auth';
+import { baseCurrency, useAuth } from '../auth';
 import { pick } from '../pick';
 import { EmptyCard, Field, Load, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
 
@@ -117,14 +117,15 @@ export default function TransactionsPage() {
                         const where = unsorted ? '' : sub?.name ?? (transfer ? '' : 'Income');
                         const p = pocketById.get(t.pocketId);
                         const pocket = p && <><span className="ty-emoji">{p.emoji}</span> {p.name}</>;
-                        const code = p?.currency ?? user.baseCurrency;
+                        const code = p?.currency ?? baseCurrency(user);
                         const to = t.toPocketId === null ? undefined : pocketById.get(t.toPocketId);
                         const moved = to && to.currency !== code
                           ? `Transfer · ${formatMinor(t.amountMinor)} ${code} became ${formatMinor(t.toAmountMinor ?? 0)} ${to.currency} at ${(Number(t.toAmountMinor) / t.amountMinor).toFixed(4)}`
                           : `Transfer · ${formatMinor(t.amountMinor)} ${code}`;
-                        const abroad = !transfer && code !== user.baseCurrency;
+                        const origin = t.createdBy !== user.id && t.source === 'manual' ? `entered by ${t.createdByName}` : ORIGIN[t.source];
+                        const abroad = !transfer && code !== baseCurrency(user);
                         const amount = abroad
-                          ? <div className="ty-right"><div className={`ty-num${t.kind === 'income' ? ' ty-num--pos' : ''}`}>{t.kind === 'income' ? '+' : ''}{formatMinor(t.kind === 'income' ? t.amountMinor : -t.amountMinor)} {code}</div><div className="ty-cap">≈ {formatMinor(t.baseAmountMinor)} {user.baseCurrency}</div></div>
+                          ? <div className="ty-right"><div className={`ty-num${t.kind === 'income' ? ' ty-num--pos' : ''}`}>{t.kind === 'income' ? '+' : ''}{formatMinor(t.kind === 'income' ? t.amountMinor : -t.amountMinor)} {code}</div><div className="ty-cap">≈ {formatMinor(t.baseAmountMinor)} {baseCurrency(user)}</div></div>
                           : transfer ? <div className="ty-num ty-right">{formatMinor(-t.amountMinor)}</div>
                           : t.kind === 'income'
                             ? <div className="ty-num ty-right ty-num--pos">+{formatMinor(t.amountMinor)}</div>
@@ -133,7 +134,7 @@ export default function TransactionsPage() {
                           <div key={t.id} className="ty-trow app-pick" {...pick(() => setDialog({ tx: t }))}>
                             <div className="ty-trow__who">
                               <b>{transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? (t.sourceId === null ? t.payee : sourceName.get(t.sourceId)) : t.payee}</b>
-                              <span className="ty-cap">{transfer ? moved : `${t.kind === 'income' ? 'Income · ' : ''}${t.kind === 'income' ? ORIGIN[t.source] : ORIGIN[t.source][0].toUpperCase() + ORIGIN[t.source].slice(1)}`}</span>
+                              <span className="ty-cap">{(transfer ? moved : `${t.kind === 'income' ? 'Income · ' : ''}${t.kind === 'income' ? origin : origin[0].toUpperCase() + origin.slice(1)}`) + (t.createdBy !== user.id && t.source !== 'manual' ? ` · entered by ${t.createdByName}` : '')}</span>
                               <span className="ty-cap ty-trow__meta">{unsorted ? <><span className="ty-pill ty-pill--warning">Needs sorting</span> · {pocket}</> : t.kind === 'income' ? pocket : <>{where && `${where} · `}{pocket}</>}</span>
                             </div>
                             <div className="ty-tag ty-wide">
@@ -149,7 +150,7 @@ export default function TransactionsPage() {
                 </section>
               )}
               {dialog?.importing && <ImportDialog pockets={pockets} onClose={close} />}
-              {dialog && !dialog.importing && <TransactionDialog tx={dialog.tx} pockets={pockets} sections={sections} sources={sources} currency={user.baseCurrency} onClose={close} />}
+              {dialog && !dialog.importing && <TransactionDialog tx={dialog.tx} pockets={pockets} sections={sections} sources={sources} currency={baseCurrency(user)} onClose={close} />}
             </>
           );
         }}

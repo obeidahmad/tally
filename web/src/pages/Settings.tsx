@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { BankConnections } from '../bank';
 import { api, fieldError, useForm, useLoad, type Pocket, type Rule, type Section, type Source, type User } from '../api';
 import { useAuth } from '../auth';
+import { BudgetSwitcher, OwnerOnly, SharingCard } from '../sharing';
 import { Trading212 } from '../trading212';
 import { Field, Load, CurrencyField, FormError, Modal, SubsectionOptions, TextField, Topbar, useToast } from '../ui';
 
@@ -207,13 +208,16 @@ export default function SettingsPage() {
     setParams({}, { replace: true });
   }, [bank]);
   const signOut = async () => { await api('POST', '/auth/logout').catch(() => {}); setUser(null); };
-  const chain = <BankConnections then={<Trading212 then={<Rules />} />} />;
+  const chain = user.viewing
+    ? <><OwnerOnly title="Sharing" id="share-h" /><OwnerOnly title="Bank connections" id="bank-h" /><OwnerOnly title="Trading212" id="t212-h" /><Rules /></>
+    : <SharingCard then={<BankConnections then={<Trading212 then={<Rules />} />} />} />;
   return (
     <>
       <Topbar title="Settings" />
       <header className="ty-month__top ty-wide">
         <h1 className="text-display" style={{ margin: 0 }}>Settings</h1>
       </header>
+      <div className="app-phone-block"><BudgetSwitcher /></div>
       <section className="ty-card ty-stack" aria-labelledby="acct-h">
         <h2 className="text-title" id="acct-h" style={{ margin: 0 }}>Your account</h2>
         <dl className="app-facts">
@@ -221,7 +225,7 @@ export default function SettingsPage() {
           <dt className="ty-label">Username</dt><dd>{user.username}</dd>
           <dt className="ty-label">Base currency</dt><dd>{user.baseCurrency}</dd>
         </dl>
-        <HomePocket />
+        {!user.viewing && <HomePocket />}
       </section>
       <ChangePassword />
       <div><button className="ty-btn app-phone-only" onClick={signOut}>Sign out</button></div>

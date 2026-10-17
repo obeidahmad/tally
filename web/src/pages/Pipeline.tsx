@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, useLoad, type Pipeline, type PipelineBox, type Section } from '../api';
-import { useAuth } from '../auth';
+import { baseCurrency, useAuth } from '../auth';
 import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dates';
 import { RestDialog, SectionDialog, SourceDialog, StepDialog } from '../dialogs';
 import { formatMinor, percentText } from '../money';
@@ -248,7 +248,7 @@ export default function PipelinePage() {
       </div>
       {dialog?.t === 'source' && <SourceDialog source={dialog.source} boxes={state.data?.pipeline.boxes ?? []} onClose={close} />}
       {dialog?.t === 'step' && state.data && (
-        <StepDialog box={dialog.box} step={dialog.step} sections={state.data.pipeline.sections} currency={user.baseCurrency} onClose={close} />
+        <StepDialog box={dialog.box} step={dialog.step} sections={state.data.pipeline.sections} currency={baseCurrency(user)} onClose={close} />
       )}
       {dialog?.t === 'rest' && state.data && (
         <RestDialog section={state.data.pipeline.sections.find((x) => x.id === dialog.id)!} sections={state.data.pipeline.sections} onClose={close} />
