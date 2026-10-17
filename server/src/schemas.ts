@@ -62,9 +62,15 @@ export const subsection = z
     budgetMinor: z.any().optional(),
     budgetBasisPoints: z.any().optional(),
     capMinor: z.any().optional(),
+    emoji: z.enum(EMOJI, { error: 'Choose an emoji.' }).nullable().optional(),
+    targetMonth: z.any().optional(),
   })
   .superRefine((b, ctx) => {
     const bad = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
+    if (b.targetMonth != null) {
+      if (b.kind !== 'goal') bad('targetMonth', 'Only a savings goal has a target date.');
+      else if (typeof b.targetMonth !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(b.targetMonth)) bad('targetMonth', 'Choose a month.');
+    }
     if (b.budgetKind === 'amount' && !whole(b.budgetMinor, 0, MAX)) bad('budgetMinor', 'Enter an amount, 0 or more.');
     if (b.budgetKind === 'percent' && !whole(b.budgetBasisPoints, 1, 10000)) bad('budgetBasisPoints', 'Enter a percentage above 0 and up to 100.');
     if (b.kind === 'goal' && b.keep !== 'cap') bad('keep', 'Choose what it keeps.');
@@ -76,6 +82,7 @@ export const subsection = z
     budgetMinor: b.budgetKind === 'amount' ? (b.budgetMinor as number) : 0,
     budgetBasisPoints: b.budgetKind === 'percent' ? (b.budgetBasisPoints as number) : null,
     capMinor: b.keep === 'cap' ? (b.capMinor as number) : null,
+    emoji: b.emoji ?? null, targetMonth: (b.targetMonth as string | null | undefined) ?? null,
   }));
 export const subsectionPosition = z.number({ error: 'Choose a position.' }).int('Choose a position.');
 

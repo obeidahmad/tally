@@ -18,7 +18,7 @@ const POCKET = `SELECT p.id, p.name, p.kind, p.emoji, p.currency, p.opening_bala
   FROM pockets p`;
 const SUB = `SELECT id, section_id AS sectionId, name, position, kind, budget_kind AS budgetKind,
   CASE WHEN budget_kind = 'amount' THEN budget_minor END AS budgetMinor, budget_basis_points AS budgetBasisPoints,
-  keep, cap_minor AS capMinor FROM subsections`;
+  keep, cap_minor AS capMinor, emoji, target_month AS targetMonth FROM subsections`;
 const TX = `SELECT id, date, kind, amount_minor AS amountMinor, pocket_id AS pocketId, subsection_id AS subsectionId, source_id AS sourceId,
   base_amount_minor AS baseAmountMinor, to_pocket_id AS toPocketId, to_amount_minor AS toAmountMinor,
   payee, note, source, COALESCE(created_by, user_id) AS createdBy,
@@ -277,15 +277,17 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
       'SELECT id, budget_basis_points AS bp FROM subsections WHERE section_id = ? AND user_id = ? AND id IS NOT ? ORDER BY position, id', sectionId, uid, id);
     if (b.budgetKind === 'percent' && others.reduce((a, x) => a + (x.bp ?? 0), 0) + b.budgetBasisPoints! > 10000)
       throw fieldError('budgetBasisPoints', 'The percentages in one section can add up to at most 100.');
+    const before = id === null ? null : (one('SELECT target_month AS t FROM subsections WHERE id = ?', id).t as string | null);
+    if (b.targetMonth && b.targetMonth !== before && b.targetMonth < today().slice(0, 7)) throw fieldError('targetMonth', 'Choose this month or later.');
     const pos = input.position ?? keepPosition ?? others.length + 1;
     if (!s.subsectionPosition.safeParse(pos).success || pos < 1 || pos > others.length + 1) throw fieldError('position', 'Choose a position.');
     return db.transaction(() => {
-      const cols = [b.name, b.kind, b.budgetKind, b.budgetMinor, b.budgetBasisPoints, b.keep, b.capMinor];
+      const cols = [b.name, b.kind, b.budgetKind, b.budgetMinor, b.budgetBasisPoints, b.keep, b.capMinor, b.emoji, b.targetMonth];
       if (id === null)
-        id = Number(db.prepare(`INSERT INTO subsections (user_id, section_id, name, kind, budget_kind, budget_minor, budget_basis_points, keep, cap_minor, position)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`).run(uid, sectionId, ...cols).lastInsertRowid);
+        id = Number(db.prepare(`INSERT INTO subsections (user_id, section_id, name, kind, budget_kind, budget_minor, budget_basis_points, keep, cap_minor, emoji, target_month, position)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`).run(uid, sectionId, ...cols).lastInsertRowid);
       else
-        db.prepare('UPDATE subsections SET name = ?, kind = ?, budget_kind = ?, budget_minor = ?, budget_basis_points = ?, keep = ?, cap_minor = ? WHERE id = ? AND user_id = ?')
+        db.prepare('UPDATE subsections SET name = ?, kind = ?, budget_kind = ?, budget_minor = ?, budget_basis_points = ?, keep = ?, cap_minor = ?, emoji = ?, target_month = ? WHERE id = ? AND user_id = ?')
           .run(...cols, id, uid);
       const order = others.map((x) => x.id);
       order.splice(pos - 1, 0, id);
@@ -297,6 +299,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   const withDefaults = (base: any, body: any) => {
     const m = { ...base, ...body };
     if (body.keep === undefined && m.kind === 'goal') m.keep = 'cap';
+    if (m.kind === 'spending' && body.targetMonth === undefined) m.targetMonth = null; // a goal turned spending loses its date
     return m;
   };
   r.post('/sections/:id/subsections', (req, res) => {
@@ -631,6 +634,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
       leftOverMinor: f.leftOverMinor,
     };
 
+    let underfunded = 0;
     const sections = secs.map((sec) => {
       let claimed = 0, overspent = 0, carried = 0, moved = 0;
       const budgetedMinor = pipeline.sections.find((x) => x.id === sec.id)!.receivedMinor;
@@ -645,8 +649,18 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
         carried += carriedMinor;
         moved += movedMinor;
         overspent += Math.max(0, spentMinor - budgetMinor - carriedMinor - movedMinor);
+        // A goal with a date: what each remaining month (this one included) must add to reach the target.
+        const held = budgetMinor + carriedMinor + movedMinor - spentMinor;
+        const [ty, tm] = (x.targetMonth ?? '0-0').split('-').map(Number) as [number, number];
+        const [cy, cm] = month.split('-').map(Number) as [number, number];
+        const left = ty * 12 + tm - (cy * 12 + cm) + 1;
+        const dated = x.kind === 'goal' && x.targetMonth && x.capMinor;
+        const neededMinor: number | null = dated ? Math.max(0, Math.ceil((x.capMinor - carriedMinor) / Math.max(1, left))) : null;
+        const goalStatus = x.kind === 'goal' && x.capMinor && held >= x.capMinor ? 'done'
+          : !dated ? null : left < 1 ? 'past' : budgetMinor >= neededMinor! ? 'on_track' : 'behind';
+        if (goalStatus === 'behind' || goalStatus === 'past') underfunded += Math.max(0, neededMinor! - budgetMinor);
         return {
-          id: x.id, name: x.name, kind: x.kind, budgetKind: x.budgetKind, budgetMinor, budgetBasisPoints: x.budgetBasisPoints,
+          id: x.id, name: x.name, emoji: x.emoji, kind: x.kind, targetMonth: x.targetMonth, neededMinor, goalStatus, budgetKind: x.budgetKind, budgetMinor, budgetBasisPoints: x.budgetBasisPoints,
           keep: x.keep, capMinor: x.capMinor, carriedMinor, movedMinor, spentMinor, availableMinor: budgetMinor + carriedMinor + movedMinor - spentMinor,
         };
       });
@@ -663,6 +677,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
     const budget = {
       month, currency: user.baseCurrency, closed,
       unsortedCount: one(`SELECT COUNT(*) AS n FROM transactions WHERE user_id = ? AND substr(date, 1, 7) = ? AND ${UNSORTED}`, uid, month).n as number,
+      underfundedMinor: underfunded,
       totals: {
         incomeMinor: txIncome + carry.income, budgetedMinor, spentMinor,
         availableMinor: sections.reduce((a, x) => a + x.availableMinor, 0), leftOverMinor: f.leftOverMinor,
@@ -675,7 +690,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   // A closed month answers with the figures stored when it closed.
   const answer = (user: Who, month: string, which: 'budget' | 'pipeline') => {
     const stored = one('SELECT budget, pipeline FROM closed_months WHERE user_id = ? AND month = ?', user.id, month);
-    return stored ? (which === 'budget' ? { unsortedCount: 0, ...JSON.parse(stored.budget) } : JSON.parse(stored.pipeline)) : live(user, month)[which];
+    return stored ? (which === 'budget' ? { unsortedCount: 0, underfundedMinor: 0, ...JSON.parse(stored.budget) } : JSON.parse(stored.pipeline)) : live(user, month)[which];
   };
   r.get('/pipeline', (req, res) => {
     res.json(answer(req.user, parse(s.monthQuery, req.query).month, 'pipeline'));
