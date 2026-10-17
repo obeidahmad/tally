@@ -144,12 +144,12 @@ Taken from the three apps, after the phases above:
 
 The pipeline stays Tally's main distinction, but Tally also offers what Monarch, YNAB and Rocket Money offer, and looks as calm and dense as Monarch.
 
-- : a smaller type and spacing scale, Monarch-like cards, and the Budget page as one table with a column per figure.
-- : search and filters, split transactions, tags, editing many at once, receipts.
-- : credit cards, loans and property; assets and debts; reconciling a pocket with the bank.
-- : an emoji per subsection; goals with a date, the amount needed a month, and on track or behind.
-- : a bills calendar, paid, due or missed, and price rises.
-- : a Home page, a Sankey of where the month's money went through the pipeline, top payees, and age of money.
+- `specs/21-compact-look.md`: a smaller type and spacing scale, Monarch-like cards, and the Budget page as one table with a column per figure.
+- `specs/22-transactions-plus.md`: search and filters, split transactions, tags, editing many at once, receipts.
+- `specs/23-debts-property-reconcile.md`: credit cards, loans and property; assets and debts; reconciling a pocket with the bank.
+- `specs/24-emojis-and-goal-dates.md`: an emoji per subsection; goals with a date, the amount needed a month, and on track or behind.
+- `specs/25-recurring-calendar.md`: a bills calendar, paid, due or missed, and price rises.
+- `specs/26-home-flow-age-of-money.md`: a Home page, a Sankey of where the month's money went through the pipeline, top payees, and age of money.
 
 ## Not planned
 
