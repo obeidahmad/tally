@@ -41,15 +41,27 @@ export const EMOJI = [
   0x1f381, 0x1f393, 0x1f476, 0x2764, 0x2b50, 0x2602, 0x1f6d2, 0x1f4bc,
   0x1f4f1, 0x1f30d, 0x1f3d6, 0x1f6e0, 0x1f3af, 0x1f9fe, 0x1f932, 0x1f54c,
 ].map((c) => String.fromCodePoint(c)) as [string, ...string[]];
-export const DEFAULT_EMOJI = { bank: 0x1f3e6, cash: 0x1f4b5, fund: 0x1f331, broker: 0x1f4c8 };
+export const DEFAULT_EMOJI = { bank: 0x1f3e6, cash: 0x1f4b5, fund: 0x1f331, broker: 0x1f4c8, credit: 0x1f4b3, loan: 0x1f9fe, property: 0x1f3e0 };
 
-export const pocket = z.object({
-  name,
-  kind: z.enum(['bank', 'cash', 'fund', 'broker'], { error: 'Choose a kind.' }),
-  emoji: z.enum(EMOJI, { error: 'Choose an emoji.' }).optional(),
-  currency: z.string({ error: 'Choose a currency.' }).optional(),
-  openingBalanceMinor: minor(-MAX, 'Enter a whole number of minor units.'),
-});
+export const pocket = z
+  .object({
+    name,
+    kind: z.enum(['bank', 'cash', 'fund', 'broker', 'credit', 'loan', 'property'], { error: 'Choose a kind.' }),
+    emoji: z.enum(EMOJI, { error: 'Choose an emoji.' }).optional(),
+    currency: z.string({ error: 'Choose a currency.' }).optional(),
+    openingBalanceMinor: z.unknown().optional(),
+    valueMinor: z.unknown().optional(),
+  })
+  .superRefine((p, ctx) => {
+    const v = p.openingBalanceMinor;
+    if (p.kind !== 'property' && !(Number.isInteger(v) && Math.abs(v as number) <= MAX))
+      ctx.addIssue({ code: 'custom', path: ['openingBalanceMinor'], message: 'Enter a whole number of minor units.' });
+  })
+  // A debt is owed as a positive amount and kept negative; a property holds values, not an opening balance.
+  .transform((p) => ({
+    ...p,
+    openingBalanceMinor: p.kind === 'property' ? 0 : p.kind === 'credit' || p.kind === 'loan' ? -Math.abs(p.openingBalanceMinor as number) : (p.openingBalanceMinor as number),
+  }));
 export const section = z.object({ name });
 const whole = (v: unknown, min: number, max: number) => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 // Money and percentage fields are checked by hand: which rule applies depends on kind, budgetKind and keep.
@@ -130,6 +142,8 @@ export const transaction = z
   });
 
 export const rateQuery = z.object({ date: date.optional() });
+export const pocketValue = z.object({ valueMinor: minor(0, 'Enter an amount, 0 or more.'), date });
+export const reconcile = z.object({ balanceMinor: minor(-MAX, 'Enter a whole number of minor units.'), date });
 
 export const source = z.object({ name });
 const POS = 'Choose a position.';
@@ -159,7 +173,18 @@ export const percentStep = z.object({
 export const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use a month like 2026-10.');
 const id = z.string().regex(/^\d+$/, 'Use a whole number.').transform(Number);
 export const monthQuery = z.object({ month });
-export const txQuery = z.object({ month: month.optional(), pocketId: id.optional(), subsectionId: id.optional(), unsorted: z.enum(['0', '1']).optional() });
+const ids = (msg: string) => z.union([id, z.array(id)], { error: msg }).transform((v) => (Array.isArray(v) ? v : [v]));
+export const txQuery = z.object({
+  month: month.optional(),
+  pocketId: ids('Choose a pocket.').optional(),
+  subsectionId: ids('Choose a subsection.').optional(),
+  unsorted: z.enum(['0', '1']).optional(),
+  kind: z.enum(['expense', 'income', 'transfer'], { error: 'Choose expense, income or transfer.' }).optional(),
+  from: date.optional(),
+  to: date.optional(),
+  q: z.string({ error: 'Enter text to search for.' }).max(200, 'Use 200 characters or fewer.').optional(),
+  tag: z.string({ error: 'Choose a tag.' }).trim().min(1, 'Choose a tag.').max(30, 'Choose a tag.').optional(),
+});
 
 export const importText = z.object({
   pocketId: z.number({ error: 'Choose a pocket.' }).int('Choose a pocket.'),

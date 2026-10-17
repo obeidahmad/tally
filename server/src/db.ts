@@ -14,12 +14,15 @@ export function openDb(file: string): Db {
   const done = new Set(db.prepare('SELECT name FROM migrations').pluck().all() as string[]);
   const pending = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort().filter((f) => !done.has(f));
   if (done.size && pending.length) backup(db, file, pending[0]);
+  // A table rebuild must not cascade: foreign keys are off while migrating (the pragma is a no-op inside a transaction).
+  db.pragma('foreign_keys = OFF');
   for (const name of pending) {
     db.transaction(() => {
       db.exec(fs.readFileSync(path.join(MIGRATIONS, name), 'utf8'));
       db.prepare('INSERT INTO migrations (name) VALUES (?)').run(name);
     })();
   }
+  db.pragma('foreign_keys = ON');
   return db;
 }
 

@@ -164,7 +164,8 @@ export function bankRouter(db: Db, cfg: BankConfig, deps: SyncDeps): Router {
     const acc = one(`${ACCOUNT} JOIN bank_connections c ON c.id = a.connection_id WHERE a.uid = ? AND c.user_id = ?`, req.params.uid, uid);
     if (!acc) throw notFound();
     if (pocketId !== null) {
-      const p = one('SELECT currency FROM pockets WHERE id = ? AND user_id = ?', pocketId, uid);
+      const p = one('SELECT currency, kind FROM pockets WHERE id = ? AND user_id = ?', pocketId, uid);
+      if (p?.kind === 'property') throw fieldError('pocketId', 'A property pocket holds a value, not transactions.');
       if (!p || p.currency !== acc.currency) throw fieldError('pocketId', `Choose a pocket in ${acc.currency}.`);
       if (one('SELECT 1 FROM bank_accounts WHERE pocket_id = ? AND uid != ?', pocketId, acc.uid))
         throw fieldError('pocketId', 'That pocket is already linked to another account.');
