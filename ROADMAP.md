@@ -140,6 +140,17 @@ Taken from the three apps, after the phases above:
 - Reports and charts: spending by section over time, cash flow.
 - Sharing one budget between partners (`specs/20-sharing.md`).
 
+## Phase 4: Everything the three apps do well
+
+The pipeline stays Tally's main distinction, but Tally also offers what Monarch, YNAB and Rocket Money offer, and looks as calm and dense as Monarch.
+
+- : a smaller type and spacing scale, Monarch-like cards, and the Budget page as one table with a column per figure.
+- : search and filters, split transactions, tags, editing many at once, receipts.
+- : credit cards, loans and property; assets and debts; reconciling a pocket with the bank.
+- : an emoji per subsection; goals with a date, the amount needed a month, and on track or behind.
+- : a bills calendar, paid, due or missed, and price rises.
+- : a Home page, a Sankey of where the month's money went through the pipeline, top payees, and age of money.
+
 ## Not planned
 
 - A hosted service for the public. It would need a paid bank-data agreement and the legal duties of holding other people's financial data.
