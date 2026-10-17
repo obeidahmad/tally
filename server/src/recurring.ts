@@ -70,8 +70,9 @@ export function recurringRouter(db: Db, now: () => number): Router {
     const d = new Date(now());
     const today = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY);
     const since = dayStr(today - 800);
-    const rows = db.prepare(`SELECT date, base_amount_minor AS baseAmountMinor, subsection_id AS subsectionId, payee FROM transactions
-      WHERE user_id = ? AND kind = 'expense' AND date >= ? ORDER BY date, id`).all(uid, since) as Row[];
+    const rows = db.prepare(`SELECT date, base_amount_minor AS baseAmountMinor, payee,
+      COALESCE(subsection_id, (SELECT subsection_id FROM transaction_splits p WHERE p.transaction_id = transactions.id ORDER BY amount_minor DESC, id LIMIT 1)) AS subsectionId FROM transactions
+      WHERE user_id = ? AND kind = 'expense' AND source != 'adjustment' AND date >= ? ORDER BY date, id`).all(uid, since) as Row[];
     const dismissed = new Set(db.prepare('SELECT key FROM recurring_dismissed WHERE user_id = ?').pluck().all(uid) as string[]);
     return { found: detect(rows, today), dismissed, today };
   };
