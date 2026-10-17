@@ -136,3 +136,24 @@ Owner: `tester`. Paths: `e2e/**`.
 3. With 5 sections and 23 subsections, the Budget table at 1280 wide is at most about 1.3 screens tall (40px rows).
 4. Light mode reads like Monarch: soft grey page, white cards without outlines, soft shadow. Dark mode is coherent with it.
 5. The design system in `design/` matches the app, and every existing behaviour still works.
+
+## Decisions after the first test round
+
+These replace the matching lines above.
+
+- **Fewer rows:**
+  - There is no "Add subsection" row. The section row carries two icon buttons after the name: a pencil "Edit {section}" and a plus "Add subsection to {section}", each with an accessible name and a 28px icon (44px hit area on touch).
+  - The Rest row stays.
+  - Acceptance criterion 3 becomes: the table holds only the header, section rows, subsection rows and Rest rows, each 40px tall (44px on phones). With 5 sections and 23 subsections that is 34 rows.
+- **No meter on Budget rows at all, goals included.** A goal's progress is the "· 42%" in its Rule cell. Meters stay on Home's goals card (spec 26) and in Reports.
+- **Held holdings:** "paid {x} · worth {y}" for a subsection holding investments shows in the subsection dialog, beside where its money sits, and in the Rule cell's `title`.
+- **The aside** appears from a 1464px viewport, so a 1280 laptop gets every column. The stat label is "Spent" in both the aside and the stats row.
+- **The page content** is at most 1264px wide, which leaves room for the aside.
+- **The light page background** is `bg` `#f3f5f1`. The sunken surface failed the 3:1 contrast checks for buttons on the page.
+- **Header labels** fit on one line. "From last month" is labelled "Carried" in the header, with `title` "From last month".
+- **The Available pill** shows the amount only. Its accessible name and `title` read "{amount} left" or "{amount} over". A positive Rest pill uses the positive state.
+- **A row height includes its separator:** 40px or 44px in total, the 1px line included.
+- **No filler second lines anywhere:**
+  - A transaction row has a second line only for a note, a conversion, or where it came from when it was imported or synced ("From Revolut", "Imported 16 Oct"). "Entered by hand" is never shown on a row.
+  - The same goes for pocket rows.
+- **Phones:** a section row never clips its name. The name takes the free width and the icon buttons stay icon-only.
