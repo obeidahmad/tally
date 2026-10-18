@@ -106,3 +106,10 @@ Screenshots light and dark, desktop and phone, of Home and of the flow diagram.
 2. Home's figures equal the Budget, Reports, Recurring and Pockets pages' figures for the same day.
 3. In the flow, each section's outgoing links add up to what it received.
 4. The backend tests cover every rule in the contract.
+
+## Notes from the build
+
+- **Flow node ids:** `box-{id}`, `section-{id}`, `subsection-{id}`, `left-over`, `kept` and `carried`.
+  - "Kept" is one node shared by every section.
+  - `carried` ("From last month", kind `other`) sits in the source column. It links to each section for what the previous close carried into it, so every section's incoming equals its outgoing.
+- **`underfundedMinor`** (spec 24) counts goals that are `behind` or `past`.
