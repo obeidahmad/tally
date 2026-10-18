@@ -235,7 +235,7 @@ test('rows needing sorting show the "Needs sorting" Pill, and the "Needs sorting
   await rulesApi(page, { match: 'LIDL Limassol', subsectionId: w.food.id }); // 3 sorted, 3 left
   await page.reload();
   const control = await chooseNeedsSorting(page);
-  await expect(control).toContainText(/\b3\b/);
+  if ((await control.evaluate((e) => e.tagName)) === "INPUT") await expect(control).toHaveAccessibleName(/\b3\b/); else await expect(control).toContainText(/\b3\b/); // a checkbox chip carries its count in its name
   await expect(row(page, /Netflix/)).toBeVisible();
   await expect(row(page, /Kiosk Larnaca/)).toBeVisible();
   await expect(row(page, /ACME Salary/)).toBeVisible();
