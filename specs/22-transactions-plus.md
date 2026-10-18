@@ -139,3 +139,8 @@ Screenshots light and dark, desktop and phone, of the filter row, the selection 
 - **Search and tags span every month.** When `q` or `tag` is set, the month filter is disabled and not sent (as with From, To and "Needs sorting"), so a search finds matches in any month. The selected month also lives in the URL (`month=`), so a reload keeps it.
 - Bulk `subsection` also refuses income and adjustments (they have no subsection).
 - **On phones** the filter row puts search full width, then the short controls (Type, From, To, Tag, Subsection, Pocket) two per row.
+- **The filter row is one compact row,** like Monarch's:
+  - **Controls:** 36px tall with no visible labels; each has an accessible name ("Month", "Search", "Subsection", "Pocket", "Type", "Tag"). In order: Month, Search (it takes the free width), Subsection, Pocket, Type, Tag, the "Needs sorting (n)" chip, and a "Dates" toggle chip.
+  - **Dates:** the toggle shows From and To in the same row when on, and is on by itself when either is set in the URL.
+  - **"Clear filters":** a quiet link at the end when any filter is set.
+  - **Phones:** search full width, then the rest two per row, with "Select" last.
