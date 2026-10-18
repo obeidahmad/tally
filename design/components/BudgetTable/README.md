@@ -1,0 +1,12 @@
+# BudgetTable
+
+The Budget page's table: one card holding every section, with a column for every figure. It replaces the old BudgetRow and SectionGroup. Provide each section (name, colour slot, rows) and, for each row, the figures below.
+
+- **Column header** (`ty-btable__head`): one row at the top of the card, in `ty-label`, sticky when the page scrolls (under the top bar on phones). The labels never wrap. Columns: Subsection, Rule, Carried (`title` "From last month"), Moved, Budgeted, Spent, Available.
+- **Rule** is `ink-muted`: "44.45%" or "Fixed" for a spending subsection, "Goal 15,000.00 · 42%" for a savings goal (its progress; no row has a meter). "paid x · worth y" for held investments is in the title too. The longer rule ("rolls over up to 100.00", "does not roll over", "fills to 15,000.00") is the cell's `title`.
+- **Carried** is the carried amount, negative for a debt, "—" when 0. **Moved** is shown only when the month has a move (add `ty-btable--moved` to the table), "—" when 0.
+- **Available** is Budgeted + from last month + moved − spent, as a Pill showing the amount only, with the accessible name and `title` "{amount} left" or "{amount} over": positive, warning when more than 90% is used, neutral at 0, negative when over. For a savings goal it is the saved amount.
+- **A section row** (`ty-btable__sec`) starts with a disclosure chevron button (`ty-chev`, `aria-expanded`, labelled "Needs subsections") that collapses the section, then the section dot, the name in `text-heading` and two 28px icon buttons (`ty-btn--sm ty-btn--icon`, 44px hit area): a pencil "Edit {section}" and a plus "Add subsection to {section}". There is no "Add subsection" row. Its totals sit in each figure column in 600 weight on `surface-sunken`.
+- **Rest row**: the last row of each section, "Rest". The Rule column says where the rest goes ("to next month's income", "kept in Needs"), the Available column holds the rest as a Pill (positive above zero, neutral at 0, warning below).
+- A row is 40px tall (44px on phones and on coarse pointers), separator included. Rows that open a dialog are `role="button"` and darken on hover and press. A row has no meter and no empty line.
+- **Phones and narrow tables.** When the table is narrower than 640px (a container query, not the window) only Subsection, Spent and Available remain: add `ty-x` to every cell that hides, and `ty-m` to the Moved cell. The dropped figures are in the subsection dialog.

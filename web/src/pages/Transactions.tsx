@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAutoSync } from '../bank';
 import { api, useLoad, type Pocket, type Section, type Source, type Transaction } from '../api';
-import { currentMonth, dayHeading, monthTitle, shiftMonth } from '../dates';
+import { currentMonth, dayLabel, monthTitle, shiftMonth } from '../dates';
 import { TransactionDialog } from '../dialogs';
 import { ImportDialog } from '../import';
 import { formatMinor } from '../money';
@@ -11,7 +11,7 @@ import { pick } from '../pick';
 import { EmptyCard, Field, Load, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
 
 const MONTHS_BACK = 36;
-const ORIGIN: Record<Transaction['source'], string> = { manual: 'entered by hand', import: 'from a statement', bank: 'from your bank', broker: 'from Trading212' };
+const ORIGIN: Record<Transaction['source'], string> = { manual: '', import: 'from a statement', bank: 'from your bank', broker: 'from Trading212' };
 const UNSORTED = 'unsorted'; // the Subsection filter's "Needs sorting" choice
 
 export default function TransactionsPage() {
@@ -108,7 +108,7 @@ export default function TransactionsPage() {
                 <section className="ty-section" aria-label="Transactions">
                   {days.map(([date, list]) => (
                     <div key={date}>
-                      <div className="ty-day ty-label">{dayHeading(date)}</div>
+                      <div className="ty-day ty-label">{dayLabel(date)}</div>
                       {list.map((t) => {
                         const sub = t.subsectionId === null ? undefined : subs.get(t.subsectionId);
                         const transfer = t.kind === 'transfer';
@@ -122,7 +122,8 @@ export default function TransactionsPage() {
                         const moved = to && to.currency !== code
                           ? `Transfer · ${formatMinor(t.amountMinor)} ${code} became ${formatMinor(t.toAmountMinor ?? 0)} ${to.currency} at ${(Number(t.toAmountMinor) / t.amountMinor).toFixed(4)}`
                           : `Transfer · ${formatMinor(t.amountMinor)} ${code}`;
-                        const origin = t.createdBy !== user.id && t.source === 'manual' ? `entered by ${t.createdByName}` : ORIGIN[t.source];
+                        // a second line only for a conversion, an import or sync source, another person, or a note
+                        const second = [transfer && to && to.currency !== code && moved, !transfer && t.source !== 'manual' && ORIGIN[t.source], t.createdBy !== user.id && `entered by ${t.createdByName}`, t.note].filter(Boolean).join(' · ');
                         const abroad = !transfer && code !== baseCurrency(user);
                         const amount = abroad
                           ? <div className="ty-right"><div className={`ty-num${t.kind === 'income' ? ' ty-num--pos' : ''}`}>{t.kind === 'income' ? '+' : ''}{formatMinor(t.kind === 'income' ? t.amountMinor : -t.amountMinor)} {code}</div><div className="ty-cap">≈ {formatMinor(t.baseAmountMinor)} {baseCurrency(user)}</div></div>
@@ -134,7 +135,7 @@ export default function TransactionsPage() {
                           <div key={t.id} className="ty-trow app-pick" {...pick(() => setDialog({ tx: t }))}>
                             <div className="ty-trow__who">
                               <b>{transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? (t.sourceId === null ? t.payee : sourceName.get(t.sourceId)) : t.payee}</b>
-                              <span className="ty-cap">{(transfer ? moved : `${t.kind === 'income' ? 'Income · ' : ''}${t.kind === 'income' ? origin : origin[0].toUpperCase() + origin.slice(1)}`) + (t.createdBy !== user.id && t.source !== 'manual' ? ` · entered by ${t.createdByName}` : '')}</span>
+                              {second && <span className="ty-cap">{second[0].toUpperCase() + second.slice(1)}</span>}
                               <span className="ty-cap ty-trow__meta">{unsorted ? <><span className="ty-pill ty-pill--warning">Needs sorting</span> · {pocket}</> : t.kind === 'income' ? pocket : <>{where && `${where} · `}{pocket}</>}</span>
                             </div>
                             <div className="ty-tag ty-wide">

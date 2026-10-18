@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, row, pillOf, chip, group, fillExpense, seedBudget } from '../support/fixtures';
+import { test, expect, dialog, toast, row, pillOf, chip, group, fillExpense, seedBudget, srow, cell } from '../support/fixtures';
 import {
   MINUS, sepName, octName, novName, sepTitle, octTitle, sepIso, octIso, sepDay, REMINDER, CLOSED_NOTICE, CLOSE_BTN, IN_CLOSED, TX_CLOSED,
   USED_IN_PIPELINE, LEFTOVERS, norm, budgetUrl, pipelineUrl, monthsApi, closeApi, reopenApi, putRest, getJson, seedExample, titlePill, notices,
@@ -133,9 +133,10 @@ for (const [size, viewport] of [['desktop', desktop], ['phone', phone]] as const
       await page.goto(budgetUrl(sepIso));
       await expect(notices(page).filter({ hasText: CLOSED_NOTICE })).toBeVisible();
       await expect(page.getByText('Food').first()).toBeVisible();
-      for (const name of ['Add income', 'Add transaction', 'Add', 'Edit', 'Add subsection']) {
+      for (const name of ['Add income', 'Add transaction', 'Add']) {
         await expect(page.getByRole('button', { name, exact: true }), name).toHaveCount(0);
       }
+      for (const name of [/^Edit /, /^Add subsection/]) await expect(page.getByRole('button', { name }), String(name)).toHaveCount(0);
       await page.getByText('Food', { exact: true }).first().click();
       await page.getByText('Rent', { exact: true }).first().click();
       await expect(dialog(page)).toHaveCount(0);
@@ -186,17 +187,17 @@ test('a transaction of a closed September cannot be deleted: it stays in the lis
 });
 
 // ============ criterion 6: October after the close ============
-test('October shows Food with "+49.99 from September" and 199.98 available, Savings with 430.01 budgeted, and Income −67.60', async ({ page, me }) => {
+test('October shows Food with 49.99 in From last month and 199.98 available, Savings with 430.01 budgeted, and Income −67.60', async ({ page, me }) => {
   await seedExample(page, me.seed);
   await closeApi(page);
   await page.goto('/budget');
-  const food = row(page, /Food/);
-  await expect(food).toContainText(`+49.99 from ${sepName}`);
+  const food = srow(page, /Food/);
+  await expect(await cell(page, food, 'From last month')).toContainText('49.99');
   await expect(pillOf(food)).toContainText('199.98');
   await expect(bsection(page, 'Savings')).toContainText('430.01');
   await expect(stat(page, 'Income')).toContainText(`${MINUS}67.60`);
   await expect(stat(page, 'Left over')).toContainText(`${MINUS}67.60`);
-  await expect(row(page, /Rent/)).not.toContainText('from');
+  await expect(await cell(page, srow(page, /Rent/), 'From last month')).toHaveText('—');
   await expect(titlePill(page)).toHaveText('Open');
 });
 
@@ -435,12 +436,12 @@ test('"Reopen" brings back "Open", the buttons and the reminder; October loses t
   await expect(page.getByText(CLOSED_NOTICE)).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Add income', exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add transaction', exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Edit', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Edit / }).first()).toBeVisible();
   await expect(notices(page).filter({ hasText: REMINDER })).toBeVisible();
   expect(await monthsApi(page)).toEqual({ lastClosed: null, toClose: sepIso });
 
   await page.goto('/budget');
-  await expect(row(page, /Food/)).not.toContainText('from');
+  await expect(await cell(page, srow(page, /Food/), 'From last month')).toHaveText('—');
   await expect(notices(page).filter({ hasText: REMINDER })).toBeVisible();
   await expect(stat(page, 'Income')).toContainText('0.00');
   await expect(stat(page, 'Income')).not.toContainText(MINUS);
@@ -582,7 +583,7 @@ test('deleting a section that only a rest rule uses shows the new sentence in th
   const b = await me.seed.section('Fun');
   await putRest(page, a.id, { shares: [{ sectionId: b.id, basisPoints: 10000 }], overspent: 'income' });
   await page.goto('/budget');
-  await bsection(page, 'Fun').getByRole('button', { name: 'Edit', exact: true }).click();
+  await bsection(page, 'Fun').getByRole('button', { name: /^Edit / }).click();
   const d = dialog(page);
   await d.getByRole('button', { name: 'Delete' }).click();
   await expect(d.getByText(USED_IN_PIPELINE)).toBeVisible();
@@ -611,7 +612,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(titlePill(page)).toHaveText('Closed');
       await snap(page, `spec09-budget-closed-desktop-${scheme}`);
       await page.goto('/budget');
-      await expect(row(page, /Food/)).toContainText('from');
+      await expect(await cell(page, srow(page, /Food/), 'From last month')).not.toHaveText('—');
       await snap(page, `spec09-budget-after-close-desktop-${scheme}`);
       await gotoPipeline(page);
       await expect(node(page, `Savings, ${novName}`)).toBeVisible();

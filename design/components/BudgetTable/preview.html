@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>BudgetTable</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<body>
+<div class="ty-demo ty-demo--col"><div class="ty-btable ty-btable--moved">
+<div class="ty-btable__head ty-label"><span>Subsection</span><span class="ty-x">Rule</span><span class="ty-x ty-right" title="From last month">Carried</span><span class="ty-x ty-m ty-right">Moved</span><span class="ty-x ty-right">Budgeted</span><span class="ty-right">Spent</span><span class="ty-right">Available</span></div>
+<section class="ty-btable__sect" aria-label="Needs">
+<div class="ty-btable__sec">
+  <div class="ty-btable__name"><button class="ty-chev" aria-expanded="true" aria-label="Needs subsections"></button><span class="ty-dot ty-dot--1"></span><b class="text-heading">Needs</b><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Edit Needs" title="Edit Needs">✎</button><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Add subsection to Needs" title="Add subsection to Needs">+</button></div>
+  <span class="ty-x"></span>
+  <div class="ty-num ty-right ty-x">49.99</div>
+  <div class="ty-num ty-right ty-x ty-m">20.00</div>
+  <div class="ty-num ty-right ty-x">1,100.00</div>
+  <div class="ty-num ty-right ty-sp">990.15</div>
+  <div class="ty-num ty-right">254.84</div>
+</div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Mortgage</span></div>
+  <div class="ty-btable__rule ty-x" title="Does not roll over">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">600.00</div>
+  <div class="ty-num ty-right">600.00</div>
+  <div class="ty-right"><span class="ty-pill" role="img" aria-label="0.00 left" title="0.00 left">0.00</span></div>
+</div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Food</span></div>
+  <div class="ty-btable__rule ty-x" title="rolls over up to 100.00">Fixed</div>
+  <div class="ty-num ty-right ty-x">49.99</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">300.00</div>
+  <div class="ty-num ty-right">212.40</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="137.59 left" title="137.59 left">137.59</span></div>
+</div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Utilities</span></div>
+  <div class="ty-btable__rule ty-x" title="Does not roll over">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">20.00</div>
+  <div class="ty-num ty-right ty-x">120.00</div>
+  <div class="ty-num ty-right">131.75</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--warning" role="img" aria-label="8.25 left" title="8.25 left">8.25</span></div>
+</div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Transport</span></div>
+  <div class="ty-btable__rule ty-x" title="rolls over up to 50.00">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">80.00</div>
+  <div class="ty-num ty-right">46.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="34.00 left" title="34.00 left">34.00</span></div>
+</div>
+<div class="ty-btable__row">
+  <div class="ty-btable__name"><span class="ty-btable__text">Rest</span></div>
+  <div class="ty-btable__rule ty-x" title="kept in Needs">kept in Needs</div>
+  <span class="ty-x"></span><span class="ty-x ty-m"></span><span class="ty-x"></span><span></span>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive">75.00</span></div>
+</div>
+</section>
+<section class="ty-btable__sect" aria-label="Savings">
+<div class="ty-btable__sec">
+  <div class="ty-btable__name"><button class="ty-chev" aria-expanded="true" aria-label="Savings subsections"></button><span class="ty-dot ty-dot--3"></span><b class="text-heading">Savings</b><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Edit Savings" title="Edit Savings">✎</button><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Add subsection to Savings" title="Add subsection to Savings">+</button></div>
+  <span class="ty-x"></span>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">785.00</div>
+  <div class="ty-num ty-right ty-sp">0.00</div>
+  <div class="ty-num ty-right">11,041.80</div>
+</div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Car</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 15,000.00">Goal 15,000.00 · 42%</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">300.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill">6,300.00</span></div>
+</div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Emergencies</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 3,000.00">Goal 3,000.00 · 80%</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">200.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill">2,400.00</span></div>
+</div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Long-term investing</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 20,000.00">Goal 20,000.00 · 6%</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">200.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill">1,200.00</span></div>
+</div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Parents</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 2,000.00">Goal 2,000.00 · 57%</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">85.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill">1,240.00<span class="ty-cur">USD</span></span></div>
+</div>
+<div class="ty-btable__row">
+  <div class="ty-btable__name"><span class="ty-btable__text">Rest</span></div>
+  <div class="ty-btable__rule ty-x" title="kept in Savings">kept in Savings</div>
+  <span class="ty-x"></span><span class="ty-x ty-m"></span><span class="ty-x"></span><span></span>
+  <div class="ty-right"><span class="ty-pill">0.00</span></div>
+</div>
+</section>
+</div></div>
+</body>
+</html>

@@ -200,3 +200,72 @@ export async function seedPipeline(s: Seed) {
   ]);
   return { zakat, family, needs, wants, savings, pocket, paycheck, second, fund, steps: [s1, s2, s3] };
 }
+
+// ---- spec 21: the Budget table, the summary and the Pockets rows ----
+// The table is the design's BudgetTable (design/components/BudgetTable): a card with a header row (ty-btable__head), then per section
+// a section row (ty-btable__sec, with a chevron button that has aria-expanded), subsection rows (ty-btable__row, role=button),
+// a Rest row (a ty-btable__row that is not a button) and an Add subsection row (ty-btable__add). Cells are the children of a row, in column order.
+
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** A pocket's row on the Pockets page: the tappable row that holds its name. */
+export const pocketRow = (scope: Page | Locator, name: string) => scope.getByRole('button', { name: new RegExp(esc(name), 'i') }).first();
+/** Every pocket row of the Pockets page (a button that holds a pocket emoji). */
+export const pocketRows = (page: Page) => page.getByRole('button').filter({ has: page.locator('.ty-emoji') });
+
+export const btable = (page: Page) => page.locator('.ty-btable').first();
+/** The row of a subsection in the Budget table (the rows that open a dialog), found by the text it holds. */
+export const srow = (page: Page, name: string | RegExp): Locator => page.locator('.ty-btable__row[role="button"]').filter({ hasText: name }).first();
+/** The row of a section: the table's section row that holds the section's name. */
+export const bsection = (page: Page, name: string): Locator =>
+  page.locator('.ty-btable__sec').filter({ has: page.getByText(name, { exact: true }) }).first();
+/** The "Rest" row that closes a section: the first row after the section row that is not a button. */
+export const restRow = (page: Page, sectionName: string): Locator =>
+  bsection(page, sectionName).locator('xpath=following::*[contains(@class,"ty-btable__row") and not(@role="button")][1]');
+/** The chevron button of a section row. */
+export const collapse = (page: Page, sectionName: string) => bsection(page, sectionName).locator('button[aria-expanded]');
+/** The "Add subsection" button that closes a section (the first one after the section row). */
+export const addSubBtn = (page: Page, sectionName: string): Locator =>
+  bsection(page, sectionName).getByRole('button', { name: `Add subsection to ${sectionName}` });
+
+/** All header labels in column order (also the ones a narrow table hides). */
+export const allHeads = async (page: Page) => (await page.locator('.ty-btable__head > *').first().waitFor(), await page.locator('.ty-btable__head > *').allTextContents()).map((t) => t.replace(/\s+/g, ' ').trim());
+/** The header labels that are shown. */
+export const shownHeads = async (page: Page) => {
+  await page.locator('.ty-btable__head > *').first().waitFor();
+  return page.locator('.ty-btable__head > *').evaluateAll((els) =>
+    els.filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }).map((e) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()));
+}
+/** The cell of `r` under the column header `column` ("Rule", "From last month", "Moved", "Budgeted", "Spent", "Available"). */
+export async function cell(page: Page, r: Locator, column: string): Promise<Locator> {
+  const heads = await allHeads(page);
+  const want = column.toLowerCase() === 'from last month' ? 'carried' : column.toLowerCase();
+  const i = heads.findIndex((h) => h.toLowerCase() === want || h.toLowerCase() === column.toLowerCase());
+  expect(i, `column "${column}" in ${JSON.stringify(heads)}`).toBeGreaterThanOrEqual(0);
+  return r.locator(':scope > *').nth(i);
+}
+export const ruleCell = (page: Page, name: string | RegExp) => cell(page, srow(page, name), 'Rule');
+/** The text a cell carries as a tooltip, on itself or on a child. */
+export const titleOf = (c: Locator) => c.evaluate((el) => el.getAttribute('title') ?? el.querySelector('[title]')?.getAttribute('title') ?? '');
+/** Names of the subsection rows of a section, in order. */
+export const subNames = (page: Page, sectionName: string) =>
+  page.evaluate((name) => {
+    const rows = [...document.querySelectorAll('.ty-btable__sec, .ty-btable__row[role="button"]')];
+    const start = rows.findIndex((r) => r.matches('.ty-btable__sec') && (r.textContent ?? '').includes(name));
+    const out: string[] = [];
+    for (const r of rows.slice(start + 1)) {
+      if (r.matches('.ty-btable__sec')) break;
+      out.push(((r.querySelector('.ty-btable__text') ?? r.firstElementChild)?.textContent ?? '').trim());
+    }
+    return out;
+  }, sectionName);
+
+/** One figure of the month summary (Income, Budgeted, Spent, Left over): the row or tile of its label. */
+export const stat = (page: Page, label: string): Locator =>
+  page.locator('.ty-sumrow, .ty-stat').filter({ has: page.getByText(label === 'Spent' ? /^Spent( so far)?$/ : label, { exact: label !== 'Spent' }) }).first();
+/** The whole month summary: the nearest block that holds both "Income" and "Left over". */
+export const summary = (page: Page): Locator =>
+  page.getByText('Income', { exact: true }).first().locator('xpath=ancestor::*[.//text()[normalize-space()="Left over"]][1]');
+
+/** A date header of the Transactions list, e.g. "FRI 16 OCT", matched without regard to case. */
+export const dayHeadingRe = (d = new Date()) =>
+  new RegExp(`${d.toLocaleString('en-GB', { weekday: 'short', timeZone: 'UTC' })}\\w*\\.?,?\\s+${d.getUTCDate()}\\s+${d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}`, 'i');

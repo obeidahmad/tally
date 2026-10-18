@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, dialog, toast, shot, pocketsApi, selectLike, currencyPocket, type Seed } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, pocketsApi, selectLike, currencyPocket, type Seed, pocketRow } from '../support/fixtures';
 import { seedImport, rulesApi, unsortedApi } from '../support/importing';
 import { notices } from '../support/closing';
 import {
@@ -217,10 +217,10 @@ test('a linked pocket\'s card shows the bank\'s balance, "Tally counts ..." when
   await page.getByRole('button', { name: 'Sync now', exact: true }).click();
   await expect.poll(async () => (await txApi(page)).length).toBe(4);
   await page.goto('/pockets');
-  const card = page.locator('.ty-pocket', { hasText: 'Revolut' });
+  const card = pocketRow(page, 'Revolut');
   await expect(card).toContainText('1,234.56');
-  await expect(card.locator('.ty-cap', { hasText: `Tally counts ${TALLY_FIGURE}.` })).toBeVisible();
-  await expect(card.locator('.ty-cap', { hasText: /^Synced .+ from Bank of Cyprus$/ })).toBeVisible();
+  await expect(card).toContainText(`Tally counts ${TALLY_FIGURE}.`);
+  await expect(card).toContainText(/Synced .+ from Bank of Cyprus/);
   await expect(card).not.toContainText('Entered by hand');
   await shot(page, 'pockets-synced-desktop-light');
 });
@@ -231,13 +231,13 @@ test('when the bank\'s balance equals Tally\'s own figure, the card does not say
   await page.getByRole('button', { name: 'Sync now', exact: true }).click();
   await expect.poll(async () => (await txApi(page)).length).toBe(4);
   await page.goto('/pockets');
-  const card = page.locator('.ty-pocket', { hasText: 'Revolut' });
+  const card = pocketRow(page, 'Revolut');
   await expect(card).toContainText(TALLY_FIGURE);
   await expect(card).toContainText(/Synced .+ from Bank of Cyprus/);
   await expect(card).not.toContainText('Tally counts');
 });
 
-test('a pocket that is not linked stays "Entered by hand" and an unlinked account imports nothing', async ({ page, me }) => {
+test('a pocket that is not linked shows no sync line and an unlinked account imports nothing', async ({ page, me }) => {
   await seedImport(me.seed);
   const app = await fakeApp();
   await register(page, app);
@@ -245,7 +245,7 @@ test('a pocket that is not linked stays "Entered by hand" and an unlinked accoun
   await expect(toast(page)).toHaveText('Bank connected.');
   await page.getByRole('button', { name: 'Sync now', exact: true }).click();
   await page.goto('/pockets');
-  await expect(page.locator('.ty-pocket', { hasText: 'Revolut' })).toContainText('Entered by hand');
+  await expect(pocketRow(page, 'Revolut')).not.toContainText(/Entered by hand|Synced/);
   expect((await txApi(page)).length).toBe(0);
 });
 
@@ -262,7 +262,7 @@ test('a linked connection that never synced syncs on its own when the Pockets pa
   const app = await fakeApp({ balanceMinor: 123456 });
   await linked(page, me, app);
   await page.goto('/pockets');
-  await expect(page.locator('.ty-pocket', { hasText: 'Revolut' })).toContainText('1,234.56', { timeout: 15_000 });
+  await expect(pocketRow(page, 'Revolut')).toContainText('1,234.56', { timeout: 15_000 });
 });
 
 test('Disconnect forgets the connection and keeps the imported transactions', async ({ page, me }) => {
@@ -356,7 +356,7 @@ for (const [size, viewport] of [['desktop', { width: 1280, height: 800 }], ['pho
       await shot(page, `dialog-connect-bank-${size}-${scheme}`);
       await page.keyboard.press('Escape');
       await page.goto('/pockets');
-      await expect(page.locator('.ty-pocket', { hasText: 'Revolut' })).toContainText('1,234.56');
+      await expect(pocketRow(page, 'Revolut')).toContainText('1,234.56');
       await shot(page, `pockets-synced-${size}-${scheme}`);
       await page.goto('/budget');
       await expect(notices(page).filter({ hasText: BANK })).toBeVisible();

@@ -1,7 +1,6 @@
 import type { Page } from '@playwright/test';
 import {
-  test, expect, dialog, shot, row, chip, group, selectLike, createPerson, signInByApi, currencyPocket, todayIso,
-} from '../support/fixtures';
+  test, expect, dialog, shot, row, chip, group, selectLike, createPerson, signInByApi, currencyPocket, todayIso, pocketRow, summary, srow } from '../support/fixtures';
 
 // Spec 12: currencies and transfers. Browser acceptance criteria 2 to 7.
 // Fixture rates (e2e/rates-fixture.xml): from 2026-01-05 USD 1.0860 and GBP 0.8650 per euro, from 2026-01-02 USD 1.1000 and GBP 0.8700.
@@ -11,7 +10,7 @@ const desktop = { width: 1280, height: 900 };
 test.use({ viewport: desktop });
 
 const MINUS = '−';
-const card = (page: Page, name: string) => page.locator('.ty-pocket', { hasText: name });
+const card = (page: Page, name: string) => pocketRow(page, name);
 const addBtn = (page: Page) => page.getByRole('button', { name: 'Add transaction' }).first();
 
 /** Two pockets and one subsection: "Bank of Cyprus" in EUR (1,000.00), "Revolut USD" in USD, and Needs / Food (300.00). */
@@ -62,15 +61,13 @@ test('the Pocket dialog offers Currency after Kind: base first, then the rest al
   await expect(d).toBeHidden();
   const c = card(page, 'Revolut USD');
   await expect(c).toContainText('1,086.00');
-  await expect(c.locator('.num-lg .ty-cur')).toHaveText('USD');
-  await expect(c.locator('.ty-pill')).toHaveText('USD');
+  await expect(c).toContainText('USD'); // the row has no currency pill (spec 21); the currency stays in the row
   await expect(c).toContainText('≈ 1,000.00 EUR');
 });
 
-test('a pocket in the base currency shows its pill and no "≈" line', async ({ page, me }) => {
+test('a pocket in the base currency shows no "≈" line', async ({ page, me }) => {
   await me.seed.pocket('Wallet', 5000, 'cash');
   await page.goto('/pockets');
-  await expect(card(page, 'Wallet').locator('.ty-pill')).toHaveText('EUR');
   await expect(card(page, 'Wallet')).not.toContainText('≈');
 });
 
@@ -181,7 +178,7 @@ test('85.00 EUR becoming 92.31 USD: the dialog says "Rate 1.0860", balances move
   void food;
   await page.goto('/budget');
   await expect(row(page, /Food/)).toBeVisible();
-  const budgetBefore = { stats: await page.locator('.ty-stats').first().innerText(), food: await row(page, /Food/).innerText() };
+  const budgetBefore = { stats: await summary(page).innerText(), food: await srow(page, /Food/).innerText() };
 
   const d = await openTransfer(page);
   await chip(d, 'From', /Bank of Cyprus/).check();
@@ -218,8 +215,8 @@ test('85.00 EUR becoming 92.31 USD: the dialog says "Rate 1.0860", balances move
   // Budget unchanged
   await page.getByRole('link', { name: 'Budget' }).first().click();
   await expect(row(page, /Food/)).toBeVisible();
-  expect(await page.locator('.ty-stats').first().innerText()).toBe(budgetBefore.stats);
-  expect(await row(page, /Food/).innerText()).toBe(budgetBefore.food);
+  expect(await summary(page).innerText()).toBe(budgetBefore.stats);
+  expect(await srow(page, /Food/).innerText()).toBe(budgetBefore.food);
 });
 
 test('the Transactions page Pocket filter shows a transfer for either of its pockets', async ({ page, me }) => {
@@ -260,7 +257,8 @@ test('a transfer in one currency has no "Amount received" and reads "Transfer ·
   await submit(d).click();
   await expect(d).toBeHidden();
   const r = row(page, /Moved to Wallet/);
-  await expect(r).toContainText('Transfer · 25.00 EUR');
+  await expect(r).not.toContainText('Transfer ·'); // spec 21: no same-currency transfer line
+  await expect(r).toContainText('25.00');
   await expect(r).not.toContainText('became');
   await page.getByRole('link', { name: 'Pockets' }).first().click();
   await expect(card(page, 'Bank of Cyprus')).toContainText('975.00');
@@ -272,7 +270,7 @@ test('a 10.00 expense from the USD pocket counts in the budget at 9.21 EUR and s
   await seedTwo(page, me, 108600);
   await page.goto('/budget');
   await expect(row(page, /Food/)).toBeVisible();
-  const food = () => row(page, /Food/).locator('.ty-pill');
+  const food = () => srow(page, /Food/).locator('.ty-pill');
   await expect(food()).toHaveText('300.00');
 
   await page.goto('/transactions');
@@ -332,7 +330,7 @@ test('a pocket with transactions shows Currency disabled with the reason; one wi
   await d.getByLabel('Currency').selectOption({ label: 'GBP · British Pound' });
   await d.getByRole('button', { name: 'Save' }).click();
   await expect(d).toBeHidden();
-  await expect(card(page, 'Bank of Cyprus').locator('.ty-pill')).toHaveText('GBP');
+  await expect(card(page, 'Bank of Cyprus')).toContainText('GBP');
 });
 
 test('a pocket is refused an unknown currency with "Choose a currency."', async ({ page, me }) => {

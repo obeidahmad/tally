@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, shot, row, chip, em, EMOJI, seedBudget, monthTitle, fillExpense } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, row, chip, em, EMOJI, seedBudget, monthTitle, fillExpense, bsection } from '../support/fixtures';
 import type { Page } from '@playwright/test';
 
 const heading = (page: Page) => page.getByRole('heading', { level: 1 }).first();
@@ -57,13 +57,13 @@ test('Transactions: adding the first transaction from the empty card leaves focu
 test('Budget: deleting the last section and then Undo both leave focus on the heading', async ({ page, me }) => {
   await me.seed.section('Savings');
   await page.goto('/budget');
-  await page.locator('.ty-section', { hasText: 'Savings' }).getByRole('button', { name: 'Edit', exact: true }).click();
+  await bsection(page, 'Savings').getByRole('button', { name: /^Edit / }).click();
   await dialog(page).getByRole('button', { name: 'Delete' }).click();
   await expect(dialog(page)).toBeHidden();
   await expect(page.getByText('No sections yet', { exact: false })).toBeVisible();
   await onHeading(page, 'after deleting the last section');
   await toast(page).getByRole('button', { name: 'Undo' }).click();
-  await expect(page.locator('.ty-section', { hasText: 'Savings' })).toBeVisible();
+  await expect(bsection(page, 'Savings')).toBeVisible();
   await onHeading(page, 'after Undo');
 });
 
@@ -120,7 +120,7 @@ test('Transactions: a filter or the month changed to a result with no rows keeps
 test('the emoji face paints only shades of grey: a colour emoji font would ignore the fill colour', async ({ page, me }) => {
   await me.seed.pocket('Revolut', 0, 'bank');
   await page.goto('/pockets');
-  const mark = page.locator('.ty-pocket .ty-emoji').first();
+  const mark = page.locator('.ty-emoji').first();
   await expect(mark).toBeVisible();
   const result = await mark.evaluate(async (el, cps) => {
     const family = getComputedStyle(el).fontFamily; // the app's own stack, so a missing face falls back to the device's
@@ -228,8 +228,7 @@ test.describe('phone rows', () => {
     const inc = row(page, /Bonus/);
     await expect(inc).toBeVisible();
     const text = (await inc.innerText()).replace(/\s+/g, ' ');
-    expect(text.match(/Income/g) ?? [], text).toHaveLength(1); // the second line only
-    expect(text).toContain('Income · entered by hand');
+    expect(text).not.toMatch(/entered by hand/i); // spec 21: no filler line
     const meta = inc.locator('.ty-trow__meta');
     await expect(meta).toBeVisible();
     expect((await meta.innerText()).replace(/\s+/g, ' ').trim()).toBe(`${em('Banknote')} Wallet`);

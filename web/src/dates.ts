@@ -1,4 +1,5 @@
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const pad = (n: number) => String(n).padStart(2, '0');
 
 export const today = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -15,6 +16,9 @@ export const monthTitle = (month: string) => `${MONTHS[Number(month.slice(5)) - 
 
 /** "2026-10-11" -> "11 October" */
 export const dayHeading = (date: string) => `${Number(date.slice(8))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
+
+/** "2026-10-16" -> "Fri 16 Oct" (the design sets it in capitals) */
+export const dayLabel = (date: string) => `${WEEK[new Date(Date.UTC(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8))).getUTCDay()]} ${Number(date.slice(8))} ${MONTHS[Number(date.slice(5, 7)) - 1].slice(0, 3)}`;
 
 /** "2026-10" -> "October" */
 export const monthName = (month: string) => MONTHS[Number(month.slice(5)) - 1];

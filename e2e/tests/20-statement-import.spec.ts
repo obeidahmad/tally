@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, row, chip, group, shot, pocketsApi } from '../support/fixtures';
+import { test, expect, dialog, toast, row, chip, group, shot, pocketsApi, srow } from '../support/fixtures';
 import { openCloseDialog, closeApi, sepDay, stat, notices } from '../support/closing';
 import {
   seedImport, rulesApi, unsortedApi, chooseNeedsSorting, sortedPills, importFile, toMapping, sel, checkedText, csv, day1, SORT_MSG, UNSORTED_CLOSE,
@@ -107,7 +107,7 @@ test('rows that match hand-entered transactions of the pocket (same date, amount
   await expect(d).toContainText('4 need a subsection or source.');
   await d.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(row(page, /Netflix/)).toHaveCount(1);
-  await expect(row(page, /Netflix/)).toContainText('Entered by hand');
+  await expect(row(page, /Netflix/)).not.toContainText('Entered by hand');
 });
 
 test('rows dated in a closed month are skipped and the summary says how many were in a closed month', async ({ page, me }) => {
@@ -218,7 +218,7 @@ test('a rule for a source sorts an imported income', async ({ page, me }) => {
   expect(r.sorted).toBe(1);
   await page.reload();
   await expect(sortedPills(page)).toHaveCount(5);
-  await expect(row(page, /Paycheck.*2,000.00/)).toContainText('from a statement');
+  await expect(row(page, /Paycheck.*2,000.00/)).toContainText(/from a statement/i);
 });
 
 // ============ criterion 5: rows needing sorting ============
@@ -230,7 +230,7 @@ test('rows needing sorting show the "Needs sorting" Pill, and the "Needs sorting
   await page.reload();
   await expect(sortedPills(page)).toHaveCount(6);
   await expect(sortedPills(page).first()).toHaveClass(/ty-pill--warning/);
-  await expect(row(page, /Hand entered coffee/)).toContainText('Entered by hand');
+  await expect(row(page, /Hand entered coffee/)).not.toContainText('Entered by hand');
   await expect(row(page, /Hand entered coffee/)).toContainText('Food');
   await rulesApi(page, { match: 'LIDL Limassol', subsectionId: w.food.id }); // 3 sorted, 3 left
   await page.reload();
@@ -262,12 +262,12 @@ test('unsorted transactions count in no budget figure until sorted; the pocket b
   const w = await seedImport(me.seed);
   await page.goto('/budget');
   await expect(row(page, /Food/)).toBeVisible();
-  const foodBefore = (await row(page, /Food/).innerText()).replace(/\s+/g, ' ');
+  const foodBefore = (await srow(page, /Food/).innerText()).replace(/\s+/g, ' ');
   const incomeBefore = (await stat(page, 'Income').innerText()).replace(/\s+/g, ' ');
   const d = await importFile(page, 'lidl-semicolon.csv');
   await d.getByRole('button', { name: 'Done', exact: true }).click();
   await page.goto('/budget');
-  expect((await row(page, /Food/).innerText()).replace(/\s+/g, ' ')).toBe(foodBefore);
+  expect((await srow(page, /Food/).innerText()).replace(/\s+/g, ' ')).toBe(foodBefore);
   expect((await stat(page, 'Income').innerText()).replace(/\s+/g, ' ')).toBe(incomeBefore);
   await expect(page.getByText('2,000.00')).toHaveCount(0);
   expect((await pocketsApi(page))[0].balanceMinor).toBe(193821);
@@ -275,7 +275,7 @@ test('unsorted transactions count in no budget figure until sorted; the pocket b
   await rulesApi(page, { match: 'LIDL', subsectionId: w.food.id });
   await rulesApi(page, { match: 'ACME', sourceId: w.paycheck.id });
   await page.goto('/budget');
-  await expect(row(page, /Food/)).toContainText('43.60');
+  await expect(srow(page, /Food/)).toContainText('43.60');
   await expect(stat(page, 'Income')).toContainText('2,000.00');
   await expect(page.getByText(SORT_MSG)).toBeVisible(); // Netflix and Kiosk are still waiting
 });

@@ -85,7 +85,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
       const t = (await track(d, legend).boundingBox())!;
       const r = (await reference.boundingBox())!;
       expect(Math.abs(t.width - r.width), `${what}: as wide as its form (${t.width} vs ${r.width})`).toBeLessThanOrEqual(1);
-      if (viewport.width > 640) expect(Math.abs(t.height - 40), `${what}: 40px tall (${t.height})`).toBeLessThanOrEqual(0.5);
+      if (viewport.width > 640) expect(Math.abs(t.height - 36), `${what}: 36px tall (${t.height})`).toBeLessThanOrEqual(0.5);
       else expect(t.height, `${what}: at least 44px tall`).toBeGreaterThanOrEqual(44);
       const boxes = await segments(d, legend).evaluateAll((ls) => ls.map((l) => { const b = l.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height }; }));
       expect(boxes.length).toBeGreaterThanOrEqual(2);

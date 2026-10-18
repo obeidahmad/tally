@@ -1,4 +1,4 @@
-import { test, expect, dialog, shot, row, pillOf, chip, group, seedBudget, type Seed } from '../support/fixtures';
+import { test, expect, dialog, shot, row, srow, shownHeads, allHeads, pillOf, chip, group, seedBudget, ruleCell, cell, titleOf, subNames, addSubBtn, restRow, type Seed } from '../support/fixtures';
 import { MINUS, octName, sepName, norm, octIso, seedExample, closeApi, openCloseDialog, CLOSE_BTN, bsection, stat, getJson } from '../support/closing';
 import type { Page, Locator } from '@playwright/test';
 
@@ -41,11 +41,8 @@ const findNamed = (v: unknown, name: string): Record<string, unknown> | undefine
 // ---- subsection dialog finders ----
 /** A text field by label; the Budget control's "Percentage" radio has the same name as the field. */
 const field = (d: Locator, label: string) => d.locator('input:not([type=radio]):not([type=checkbox])').and(d.getByLabel(label, { exact: true }));
-const note = (r: Locator) => r.locator('.ty-brow__title .ty-cap');
-const titles = (scope: Locator) => scope.locator('.ty-brow .ty-brow__title > span:first-child');
 const openAdd = async (page: Page, sectionName?: string) => {
-  const scope = sectionName ? bsection(page, sectionName) : page;
-  await scope.getByRole('button', { name: 'Add subsection', exact: true }).first().click();
+  await (sectionName ? addSubBtn(page, sectionName) : page.getByRole('button', { name: /^Add subsection/ }).first()).click();
   const d = dialog(page);
   await expect(d.getByRole('heading', { name: 'Add subsection' })).toBeVisible();
   return d;
@@ -58,20 +55,20 @@ const openEdit = async (page: Page, name: RegExp | string) => {
 };
 
 // ============ criterion 2: the percentage example ============
-test('1,000.01 received with A fixed 60.00, B 60% and C 40% shows B 564.00, C 376.00, "Rest 0.01" and B\'s note', async ({ page, me }) => {
+test('1,000.01 received with A fixed 60.00, B 60% and C 40% shows B 564.00, C 376.00, a Rest row of 0.01 and B\'s Rule', async ({ page, me }) => {
   const { section } = await funded(page, me.seed, 'Pool', 100001);
   await addSub(page, section.id, { name: 'Alpha', budgetMinor: 6000 });
   await addSub(page, section.id, { name: 'Bravo', budgetKind: 'percent', budgetBasisPoints: 6000 });
   await addSub(page, section.id, { name: 'Charlie', budgetKind: 'percent', budgetBasisPoints: 4000 });
   await page.goto('/budget');
   await expect(row(page, /Bravo/)).toBeVisible();
-  await expect(row(page, /Alpha/)).toContainText('60.00');
-  await expect(row(page, /Bravo/)).toContainText('564.00');
-  await expect(row(page, /Charlie/)).toContainText('376.00');
-  await expect(bsection(page, 'Pool')).toContainText('Rest 0.01');
-  await expect(note(row(page, /Bravo/))).toHaveText('60% of what is left');
-  await expect(note(row(page, /Charlie/))).toHaveText('40% of what is left');
-  await expect(note(row(page, /Alpha/))).toHaveText('');
+  await expect(srow(page, /Alpha/)).toContainText('60.00');
+  await expect(srow(page, /Bravo/)).toContainText('564.00');
+  await expect(srow(page, /Charlie/)).toContainText('376.00');
+  await expect(restRow(page, 'Pool')).toContainText('0.01');
+  await expect(await ruleCell(page, /Bravo/)).toContainText('60%');
+  await expect(await ruleCell(page, /Charlie/)).toContainText('40%');
+  await expect(await ruleCell(page, /Alpha/)).toContainText('Fixed');
   const b = findNamed(await getJson(page, `/api/budget?month=${octIso}`), 'Bravo')!;
   expect(b.budgetMinor).toBe(56400);
   expect(b.budgetKind).toBe('percent');
@@ -84,8 +81,8 @@ test('percentages get 0.00 when the fixed amounts claim everything', async ({ pa
   await addSub(page, section.id, { name: 'Bravo', budgetKind: 'percent', budgetBasisPoints: 5000 });
   await page.goto('/budget');
   await expect(row(page, /Bravo/)).toBeVisible();
-  await expect(pillOf(row(page, /Bravo/))).toContainText('0.00');
-  await expect(row(page, /Bravo/)).not.toContainText('50.00');
+  await expect(pillOf(srow(page, /Bravo/))).toContainText('0.00');
+  await expect(srow(page, /Bravo/)).not.toContainText('50.00');
 });
 
 // ============ criterion 3: the subsection dialog ============
@@ -140,14 +137,16 @@ test('adding a percentage subsection that keeps up to 50.00 shows both notes and
   await field(d, 'Keep up to').fill('50');
   await d.getByRole('button', { name: 'Add subsection', exact: true }).click();
   await expect(d).toBeHidden();
-  const r = row(page, /Bravo/);
-  await expect(note(r)).toHaveText('25% of what is left · rolls over up to 50.00');
+  const r = srow(page, /Bravo/);
+  const rule = await ruleCell(page, /Bravo/);
+  await expect(rule).toContainText('25%');
+  expect(await titleOf(rule)).toContain('rolls over up to 50.00');
   await expect(r).toContainText('200.00'); // 25% of 800.00
   const b = findNamed(await getJson(page, `/api/budget?month=${octIso}`), 'Bravo')!;
   expect(b).toMatchObject({ kind: 'spending', budgetKind: 'percent', budgetBasisPoints: 2500, keep: 'cap', capMinor: 5000, budgetMinor: 20000 });
 });
 
-test('adding a savings goal and a "Nothing" subsection shows "fills to 15,000.00" and "does not roll over"', async ({ page, me }) => {
+test('adding a savings goal and a "Nothing" subsection shows "Goal 15,000.00" and a "does not roll over" tooltip', async ({ page, me }) => {
   await funded(page, me.seed, 'Pool', 100000);
   await page.goto('/budget');
   let d = await openAdd(page, 'Pool');
@@ -157,7 +156,7 @@ test('adding a savings goal and a "Nothing" subsection shows "fills to 15,000.00
   await field(d, 'Target').fill('15000');
   await d.getByRole('button', { name: 'Add subsection', exact: true }).click();
   await expect(d).toBeHidden();
-  await expect(note(row(page, /Car/))).toHaveText('fills to 15,000.00');
+  await expect(await ruleCell(page, /Car/)).toContainText('Goal 15,000.00');
 
   d = await openAdd(page, 'Pool');
   await d.getByLabel('Name', { exact: true }).fill('Fun');
@@ -165,7 +164,8 @@ test('adding a savings goal and a "Nothing" subsection shows "fills to 15,000.00
   await chip(d, 'At month end, keep', 'Nothing').check();
   await d.getByRole('button', { name: 'Add subsection', exact: true }).click();
   await expect(d).toBeHidden();
-  await expect(note(row(page, /Fun/))).toHaveText('does not roll over');
+  await expect(await ruleCell(page, /Fun/)).toContainText('Fixed');
+  expect(await titleOf(await ruleCell(page, /Fun/))).toContain('does not roll over');
 
   const api = await getJson(page, `/api/budget?month=${octIso}`);
   expect(findNamed(api, 'Car')).toMatchObject({ kind: 'goal', keep: 'cap', capMinor: 1500000 });
@@ -176,7 +176,7 @@ test('editing opens with the saved choices and switching them changes the row', 
   const { section } = await funded(page, me.seed, 'Pool', 100000);
   await addSub(page, section.id, { name: 'Gym', budgetMinor: 4000, keep: 'cap', capMinor: 1000 });
   await page.goto('/budget');
-  await expect(note(row(page, /Gym/))).toHaveText('rolls over up to 10.00');
+  expect(await titleOf(await ruleCell(page, /Gym/))).toContain('rolls over up to 10.00');
   let d = await openEdit(page, /Gym/);
   await expect(d.getByLabel('Name', { exact: true })).toHaveValue('Gym');
   await expect(chip(d, 'At month end, keep', 'Up to')).toBeChecked();
@@ -187,8 +187,8 @@ test('editing opens with the saved choices and switching them changes the row', 
   await chip(d, 'At month end, keep', 'Everything').check();
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d).toBeHidden();
-  await expect(note(row(page, /Gym/))).toHaveText('10% of what is left');
-  await expect(row(page, /Gym/)).toContainText('100.00');
+  await expect(await ruleCell(page, /Gym/)).toContainText('10%');
+  await expect(srow(page, /Gym/)).toContainText('100.00');
 
   d = await openEdit(page, /Gym/);
   await expect(chip(d, 'Budget', 'Percentage')).toBeChecked();
@@ -197,7 +197,7 @@ test('editing opens with the saved choices and switching them changes the row', 
   await field(d, 'Target').fill('500');
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d).toBeHidden();
-  await expect(note(row(page, /Gym/))).toHaveText('10% of what is left · fills to 500.00');
+  await expect(await ruleCell(page, /Gym/)).toContainText('Goal 500.00');
 });
 
 test('percentages and amounts are checked with the sentences of spec 04 before anything is sent', async ({ page, me }) => {
@@ -253,7 +253,7 @@ test('percentages adding up to more than 100 in one section show the server\'s s
   await field(d, 'Percentage').fill('40');
   await d.getByRole('button', { name: 'Add subsection', exact: true }).click();
   await expect(d).toBeHidden();
-  await expect(note(row(page, /Charlie/))).toHaveText('40% of what is left');
+  await expect(await ruleCell(page, /Charlie/)).toContainText('40%');
 });
 
 test('"Position" moves a subsection among its section\'s subsections', async ({ page, me }) => {
@@ -263,7 +263,7 @@ test('"Position" moves a subsection among its section\'s subsections', async ({ 
   for (const n of ['One', 'Two', 'Three']) await me.seed.subsection(s.id, n, 1000);
   await page.goto('/budget');
   const needs = bsection(page, 'Needs');
-  await expect(titles(needs)).toHaveText(['One', 'Two', 'Three']);
+  await expect.poll(() => subNames(page, 'Needs')).toEqual(['One', 'Two', 'Three']);
 
   // a section with one subsection offers no Position
   const solo = await openEdit(page, /Solo/);
@@ -278,75 +278,62 @@ test('"Position" moves a subsection among its section\'s subsections', async ({ 
   await pos.selectOption({ label: '1' });
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d).toBeHidden();
-  await expect(titles(needs)).toHaveText(['Three', 'One', 'Two']);
+  await expect.poll(() => subNames(page, 'Needs')).toEqual(['Three', 'One', 'Two']);
   await page.reload();
-  await expect(titles(bsection(page, 'Needs'))).toHaveText(['Three', 'One', 'Two']);
+  await expect.poll(() => subNames(page, 'Needs')).toEqual(['Three', 'One', 'Two']);
 
   const d2 = await openEdit(page, /Three/);
   await d2.getByLabel('Position', { exact: true }).selectOption({ label: '2' });
   await d2.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d2).toBeHidden();
-  await expect(titles(bsection(page, 'Needs'))).toHaveText(['One', 'Three', 'Two']);
+  await expect.poll(() => subNames(page, 'Needs')).toEqual(['One', 'Three', 'Two']);
 });
 
 // ============ criterion 4: goals ============
-test('a goal row shows This month, Saved, "42% of 700", the goal meter and "fills to 700.00"', async ({ page, me }) => {
+test('a goal row shows Goal 700.00 · 42% in Rule, the saved 300.00 as Available, and no meter', async ({ page, me }) => {
   const { section } = await funded(page, me.seed, 'Savings', 30000);
   await addSub(page, section.id, { name: 'Car', kind: 'goal', budgetMinor: 30000, keep: 'cap', capMinor: 70000 });
   await page.goto('/budget');
-  const r = row(page, /Car/);
+  const r = srow(page, /Car/);
   await expect(r).toBeVisible();
-  await expect(note(r)).toHaveText('fills to 700.00');
-  await expect(pillOf(r)).toHaveText('42% of 700');
-  const cells = r.locator('.ty-num');
-  await expect(cells.nth(0)).toHaveText('300.00'); // This month
-  await expect(cells.nth(1)).toHaveText('300.00'); // Saved
-  const meter = r.locator('.ty-meter');
-  await expect(meter).toHaveClass(/ty-meter--goal/);
-  await expect(meter).toHaveAttribute('aria-label', '300.00 of 700.00 saved');
-  const w = await meter.locator('span').evaluate((e) => e.getBoundingClientRect().width / e.parentElement!.getBoundingClientRect().width);
-  expect(w).toBeGreaterThan(0.41);
-  expect(w).toBeLessThan(0.44);
+  const rule = await ruleCell(page, /Car/);
+  await expect(rule).toContainText('Goal 700.00');
+  await expect(rule).toContainText('42%');
+  await expect(pillOf(r)).toContainText('300.00'); // the saved amount
+  await expect(await cell(page, r, 'Budgeted')).toContainText('300.00');
+  await expect(r.locator('.ty-meter')).toHaveCount(0);
+  await expect(page.locator('.ty-btable .ty-meter')).toHaveCount(0);
 });
 
-test('a goal\'s meter never goes past full', async ({ page, me }) => {
+test('a goal that is full still shows no meter, and 100% in its Rule', async ({ page, me }) => {
   const { section } = await funded(page, me.seed, 'Savings', 30000);
   await addSub(page, section.id, { name: 'Trip', kind: 'goal', budgetMinor: 30000, keep: 'cap', capMinor: 10000 });
   await page.goto('/budget');
-  const meter = row(page, /Trip/).locator('.ty-meter');
-  await expect(meter).toHaveClass(/ty-meter--goal/);
-  const w = await meter.locator('span').evaluate((e) => e.getBoundingClientRect().width / e.parentElement!.getBoundingClientRect().width);
-  expect(w).toBeLessThanOrEqual(1.001);
-  expect(w).toBeGreaterThan(0.99);
+  await expect(srow(page, /Trip/)).toBeVisible();
+  await expect(page.locator('.ty-btable .ty-meter')).toHaveCount(0);
+  await expect(await ruleCell(page, /Trip/)).toContainText(/\d+%/);
 });
 
-test('a section of goals shows "This month", "Saved" and "Target" with the first two totalled and nothing under "Target"', async ({ page, me }) => {
+test('a section of goals uses the same columns as every section and totals Budgeted and Available', async ({ page, me }) => {
   const { section } = await funded(page, me.seed, 'Savings', 50000);
   await addSub(page, section.id, { name: 'Car', kind: 'goal', budgetMinor: 30000, keep: 'cap', capMinor: 70000 });
   await addSub(page, section.id, { name: 'Trip', kind: 'goal', budgetMinor: 20000, keep: 'cap', capMinor: 100000 });
   await page.goto('/budget');
   const sec = bsection(page, 'Savings');
-  const tots = sec.locator('.ty-shead__tot');
-  await expect(tots).toHaveCount(3);
-  await expect(tots.nth(0).locator('.ty-label')).toHaveText('This month');
-  await expect(tots.nth(1).locator('.ty-label')).toHaveText('Saved');
-  await expect(tots.nth(2).locator('.ty-label')).toHaveText('Target');
-  await expect(tots.nth(0).locator('.ty-num')).toHaveText('500.00');
-  await expect(tots.nth(1).locator('.ty-num')).toHaveText('500.00');
-  expect(norm(await tots.nth(2).locator('.ty-num').innerText())).toBe('');
-  await expect(sec).not.toContainText('Budgeted');
+  expect(await shownHeads(page)).toContain('Budgeted');
+  await expect(await cell(page, sec, 'Budgeted')).toContainText('500.00');
+  await expect(await cell(page, sec, 'Available')).toContainText('500.00');
+  for (const old of ['This month', 'Saved', 'Target']) expect(await allHeads(page), old).not.toContain(old);
 });
 
 test.describe('phone', () => {
   test.use({ viewport: phone });
-  test('a goal row\'s line under the meter reads "300.00 of 700.00 saved"', async ({ page, me }) => {
+  test('on a phone a goal row keeps Spent and Available (the saved 300.00) and does not scroll sideways', async ({ page, me }) => {
     const { section } = await funded(page, me.seed, 'Savings', 30000);
     await addSub(page, section.id, { name: 'Car', kind: 'goal', budgetMinor: 30000, keep: 'cap', capMinor: 70000 });
     await page.goto('/budget');
-    const r = row(page, /Car/);
-    await expect(r.locator('.ty-brow__sub')).toHaveText('300.00 of 700.00 saved');
-    await expect(pillOf(r)).toHaveText('42% of 700');
-    await expect(note(r)).toHaveText('fills to 700.00');
+    const r = srow(page, /Car/);
+    await expect(pillOf(r)).toContainText('300.00');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), 'no sideways scroll').toBe(true);
   });
 });
@@ -360,7 +347,7 @@ test('Food at "Up to 30.00": the note, then the close dialog with 42.00 and 28.0
   await field(d0, 'Keep up to').fill('30');
   await d0.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d0).toBeHidden();
-  await expect(note(row(page, /Food/))).toHaveText('rolls over up to 30.00');
+  expect(await titleOf(await ruleCell(page, /Food/))).toContain('rolls over up to 30.00');
 
   // September is the month to close; its Food note reads the same
   const d = await openCloseDialog(page);
@@ -384,18 +371,19 @@ test('Food at "Up to 30.00": the note, then the close dialog with 42.00 and 28.0
   await expect(d).toBeHidden();
   await page.goto('/budget');
   await expect(stat(page, 'Income')).toContainText(`${MINUS}59.60`);
-  await expect(note(row(page, /Food/))).toContainText(`+30.00 from ${sepName}`);
+  await expect(await cell(page, srow(page, /Food/), 'From last month')).toContainText('30.00');
 });
 
 // ============ criterion 6: existing subsections ============
-test('a subsection made the old way keeps its budget and shows no note, and its dialog opens on Spending, Amount, Everything', async ({ page, me }) => {
+test('a subsection made the old way keeps its budget and shows Fixed as its rule, and its dialog opens on Spending, Amount, Everything', async ({ page, me }) => {
   await seedBudget(me.seed);
   await page.goto('/budget');
-  const food = row(page, /Food/);
+  const food = srow(page, /Food/);
   await expect(food).toContainText('300.00');
-  await expect(pillOf(food)).toHaveText('87.60');
-  await expect(note(food)).toHaveText('');
-  await expect(pillOf(row(page, /Utilities/))).toHaveClass(/ty-pill--negative/);
+  await expect(pillOf(food)).toContainText('87.60');
+  await expect(await ruleCell(page, /Food/)).toContainText('Fixed');
+  await expect(food.locator('.ty-meter')).toHaveCount(0);
+  await expect(pillOf(srow(page, /Utilities/))).toHaveClass(/ty-pill--negative/);
   const d = await openEdit(page, /Food/);
   await expect(chip(d, 'Kind', 'Spending')).toBeChecked();
   await expect(chip(d, 'Budget', 'Amount')).toBeChecked();
@@ -405,8 +393,8 @@ test('a subsection made the old way keeps its budget and shows no note, and its 
   await d.getByLabel('Name', { exact: true }).fill('Groceries');
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d).toBeHidden();
-  await expect(row(page, /Groceries/)).toContainText('300.00');
-  await expect(note(row(page, /Groceries/))).toHaveText('');
+  await expect(srow(page, /Groceries/)).toContainText('300.00');
+  await expect(await ruleCell(page, /Groceries/)).toContainText('Fixed');
 });
 
 test('the old body {name, budgetMinor} still makes a spending subsection with an amount budget', async ({ page, me }) => {

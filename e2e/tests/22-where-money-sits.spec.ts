@@ -1,12 +1,12 @@
 import type { Page, Locator } from '@playwright/test';
-import { test, expect, dialog, shot, row, chip, selectLike, currencyPocket, todayIso, thisMonth, group } from '../support/fixtures';
+import { test, expect, dialog, shot, row, chip, selectLike, currencyPocket, todayIso, thisMonth, group, pocketRow, srow, cell } from '../support/fixtures';
 
 // Spec 14: where money sits and investments. Browser acceptance criteria 2 to 6.
 // Fixture rates: today 1 EUR = 1.0860 USD, so 2,310.00 USD is about 2,127.07 EUR and 2,100.00 USD about 1,933.70 EUR.
 test.use({ viewport: { width: 1280, height: 900 } });
 
 const MINUS = '−';
-const card = (page: Page, name: string) => page.locator('.ty-pocket', { hasText: name });
+const card = (page: Page, name: string) => pocketRow(page, name);
 const invCard = (page: Page, name: string) => page.locator('.ty-card', { hasText: name }).filter({ hasText: /paid|No holdings/ }).first();
 const heroNum = async (page: Page) => {
   await expect(page.locator('.num-hero').first()).toContainText(/[0-9]/);
@@ -76,7 +76,7 @@ test('Car 6,000.00: after a 2,000.00 transfer tagged Car, Bank shows 4,000.00 an
   expect(await cellText(page, 'Car', 'Total in EUR')).toBe('5,900.00');
 
   await page.goto('/budget');
-  await expect(row(page, /Car/).locator('.ty-pill')).toHaveText('5,900.00');
+  await expect(srow(page, /Car/).locator('.ty-pill')).toContainText('5,900.00');
 });
 
 test('a cell with no money reads "–", a pocket nobody uses is not a column, and a row has its section dot', async ({ page, me }) => {
@@ -273,13 +273,17 @@ test('selling at cost records nothing', async ({ page, me }) => {
 });
 
 // ============ criterion 5: Budget note ============
-test('the Budget row of a subsection with a held holding reads "paid 1,200.00 · worth 1,260.00"', async ({ page, me }) => {
+test('the dialog of a subsection with a held holding reads "paid 1,200.00 · worth 1,260.00"', async ({ page, me }) => {
   const sec = await me.seed.section('Savings');
   const inv = await me.seed.subsection(sec.id, 'Long-term investing', 0);
   const pocket = await me.seed.pocket('Trading212', 500000, 'broker');
   await addHolding(page, { name: 'ETF', pocketId: pocket.id, subsectionId: inv.id, paidMinor: 120000, worthMinor: 126000 });
   await page.goto('/budget');
-  await expect(row(page, /Long-term investing/)).toContainText('paid 1,200.00 · worth 1,260.00');
+  await srow(page, /Long-term investing/).click();
+  await expect(dialog(page)).toContainText('paid 1,200.00 · worth 1,260.00');
+  await page.keyboard.press('Escape');
+  const title = await (await cell(page, srow(page, /Long-term investing/), 'Rule')).evaluate((el) => el.getAttribute('title') ?? el.querySelector('[title]')?.getAttribute('title') ?? '');
+  expect(title).toContain('paid 1,200.00 · worth 1,260.00');
 });
 
 // ============ criterion 6: home pocket ============

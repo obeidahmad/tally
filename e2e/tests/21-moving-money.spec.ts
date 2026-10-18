@@ -1,5 +1,5 @@
-import { test, expect, dialog, toast, shot, row, selectLike, type Seed } from '../support/fixtures';
-import { MINUS, octIso, octTitle, sepIso, seedExample, closeApi, bsection, getJson, norm } from '../support/closing';
+import { test, expect, dialog, toast, shot, row, srow, shownHeads, selectLike, cell, bsection, restRow, type Seed } from '../support/fixtures';
+import { MINUS, octIso, octTitle, sepIso, seedExample, closeApi, getJson, norm } from '../support/closing';
 import type { Page, Locator } from '@playwright/test';
 
 // Spec 13: moving money. Browser acceptance criteria 2 to 5.
@@ -7,7 +7,7 @@ const desktop = { width: 1280, height: 900 };
 const phone = { width: 390, height: 844 };
 test.use({ viewport: desktop });
 
-const note = (r: Locator) => r.locator('.ty-brow__title .ty-cap');
+const moved = async (page: Page, name: RegExp) => cell(page, srow(page, name), 'Moved');
 const movesApi = async (page: Page, month = octIso) => (await getJson(page, `/api/moves?month=${month}`)).moves as { id: number; reason: string; amountMinor: number }[];
 const MOVE_BTN = 'Move money';
 
@@ -61,7 +61,7 @@ test('"Move money" in Emergencies\' dialog opens the move dialog with From on Em
   expect(at.every((i) => i >= 0) && [...at].sort((a, b) => a - b).join() === at.join(), JSON.stringify(labels)).toBe(true);
 });
 
-test('moving 200.00 from Emergencies to Car shows 2,200.00 and 500.00, their notes and the move in "Moved this month"', async ({ page, me }) => {
+test('moving 200.00 from Emergencies to Car shows 2,200.00 and 500.00, their Moved cells and the move in "Moved this month"', async ({ page, me }) => {
   await seedSavings(page, me.seed);
   const d = await openMoveFromSub(page, /Emergencies/);
   await selectLike(fromTo(d).to, 'Car');
@@ -72,10 +72,10 @@ test('moving 200.00 from Emergencies to Car shows 2,200.00 and 500.00, their not
   await d.getByRole('button', { name: 'Move 200.00', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(toast(page)).toContainText('Moved 200.00');
-  await expect(row(page, /Emergencies/)).toContainText('2,200.00');
-  await expect(row(page, /Car/)).toContainText('500.00');
-  await expect(note(row(page, /Emergencies/))).toContainText(`${MINUS}200.00 moved`);
-  await expect(note(row(page, /Car/))).toContainText('+200.00 moved');
+  await expect(srow(page, /Emergencies/)).toContainText('2,200.00');
+  await expect(srow(page, /Car/)).toContainText('500.00');
+  await expect(await moved(page, /Emergencies/)).toContainText(`${MINUS}200.00`);
+  await expect(await moved(page, /Car/)).toContainText(/[+]?200[.]00/);
   await expect(page.getByText('Moved this month', { exact: true })).toBeVisible();
   await expect(page.getByText('200.00 from Emergencies to Car', { exact: true })).toBeVisible();
   await expect(page.getByText('Car repair', { exact: true })).toBeVisible();
@@ -90,10 +90,10 @@ test('the move survives a reload, and the card is absent when the month has no m
   await page.goto('/budget');
   await expect(row(page, /Emergencies/)).toBeVisible();
   await expect(page.getByText('Moved this month', { exact: true })).toHaveCount(0);
-  await expect(note(row(page, /Emergencies/))).not.toContainText('moved');
+  expect(await shownHeads(page)).not.toContain('Moved'); // shown only when the month has a move
   await addMove(page, { month: octIso, from: { subsectionId: s.emergencies.id }, to: { subsectionId: s.car.id }, amountMinor: 20000, reason: 'Car repair' });
   await page.reload();
-  await expect(row(page, /Emergencies/)).toContainText('2,200.00');
+  await expect(srow(page, /Emergencies/)).toContainText('2,200.00');
   await expect(page.getByText('200.00 from Emergencies to Car', { exact: true })).toBeVisible();
 });
 
@@ -105,7 +105,7 @@ test('the section dialog has "Move money" with From on the section\'s rest, and 
   await me.seed.income(pocket.id, 100000, src.id);
   await me.seed.amountStep(src.boxId, s.id, 100000); // rest 400.00
   await page.goto('/budget');
-  await bsection(page, 'Needs').getByRole('button', { name: 'Edit', exact: true }).click();
+  await bsection(page, 'Needs').getByRole('button', { name: /^Edit / }).click();
   const d = dialog(page);
   await d.getByRole('button', { name: MOVE_BTN, exact: true }).click();
   await expect(d.getByRole('heading', { name: `Move money in ${octTitle}` })).toBeVisible();
@@ -117,9 +117,9 @@ test('the section dialog has "Move money" with From on the section\'s rest, and 
   await d.getByRole('button', { name: 'Move 100.00', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(toast(page)).toContainText('Moved 100.00');
-  await expect(row(page, /Rent/)).toContainText('700.00');
-  await expect(note(row(page, /Rent/))).toContainText('+100.00 moved');
-  await expect(bsection(page, 'Needs')).toContainText(`${MINUS}100.00 moved`);
+  await expect(srow(page, /Rent/)).toContainText('700.00');
+  await expect(await moved(page, /Rent/)).toContainText(/[+]?100[.]00/);
+  await expect(await cell(page, bsection(page, 'Needs'), 'Moved')).toContainText(`${MINUS}100.00`);
   await expect(page.getByText('100.00 from Rest of Needs to Rent', { exact: true })).toBeVisible();
   const moves = await movesApi(page);
   expect(moves).toHaveLength(1);
@@ -163,8 +163,8 @@ test('an empty reason, too much and the same place twice are refused with their 
   expect(await movesApi(page)).toEqual([]);
   await page.keyboard.press('Escape');
   await expect(d).toBeHidden();
-  await expect(row(page, /Emergencies/)).toContainText('2,400.00');
-  await expect(row(page, /Car/)).toContainText('300.00');
+  await expect(srow(page, /Emergencies/)).toContainText('2,400.00');
+  await expect(srow(page, /Car/)).toContainText('300.00');
   await expect(page.getByText('Moved this month', { exact: true })).toHaveCount(0);
 });
 
@@ -184,13 +184,12 @@ test('"Undo" on the move puts both figures back and removes the card', async ({ 
   const s = await seedSavings(page, me.seed);
   await addMove(page, { month: octIso, from: { subsectionId: s.emergencies.id }, to: { subsectionId: s.car.id }, amountMinor: 20000, reason: 'Car repair' });
   await page.goto('/budget');
-  await expect(row(page, /Emergencies/)).toContainText('2,200.00');
-  await expect(row(page, /Car/)).toContainText('500.00');
+  await expect(srow(page, /Emergencies/)).toContainText('2,200.00');
+  await expect(srow(page, /Car/)).toContainText('500.00');
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(row(page, /Emergencies/)).toContainText('2,400.00');
-  await expect(row(page, /Car/)).toContainText('300.00');
-  await expect(note(row(page, /Emergencies/))).not.toContainText('moved');
-  await expect(note(row(page, /Car/))).not.toContainText('moved');
+  await expect(srow(page, /Emergencies/)).toContainText('2,400.00');
+  await expect(srow(page, /Car/)).toContainText('300.00');
+  expect(await shownHeads(page)).not.toContain('Moved');
   await expect(page.getByText('Moved this month', { exact: true })).toHaveCount(0);
   expect(await movesApi(page)).toEqual([]);
 });
@@ -224,7 +223,7 @@ test('an open month does show "Move money" in both dialogs', async ({ page, me }
   await expect(dialog(page).getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog(page)).toBeHidden();
-  await bsection(page, 'Savings').getByRole('button', { name: 'Edit', exact: true }).click();
+  await bsection(page, 'Savings').getByRole('button', { name: /^Edit / }).click();
   await expect(dialog(page).getByRole('button', { name: MOVE_BTN, exact: true })).toBeVisible();
 });
 
@@ -265,17 +264,14 @@ for (const scheme of ['light', 'dark'] as const) {
   }
 }
 
-// Reviewer's point: a section mixing goals and a spending subsection uses the Budgeted, Spent and Available columns, not the goal layout.
-test('in Savings (goals and a spending subsection) a goal row shows its "fills to" note under Budgeted, Spent and Available', async ({ page, me }) => {
+// Reviewer's point, kept: a section mixing goals and a spending subsection has the same columns, and each goal shows its target in Rule.
+test('in Savings (goals and a spending subsection) the columns are the same and each goal shows Goal {target} in Rule', async ({ page, me }) => {
   await seedSavings(page, me.seed);
   await page.goto('/budget');
-  const sec = bsection(page, 'Savings');
-  const tots = sec.locator('.ty-shead__tot .ty-label');
-  await expect(tots).toHaveText(['Budgeted', 'Spent', 'Available']);
-  await expect(sec).not.toContainText('This month');
-  await expect(sec).not.toContainText('Saved');
-  await expect(sec).not.toContainText('Target');
-  await expect(note(row(page, /Emergencies/))).toHaveText('fills to 3,000.00');
-  await expect(note(row(page, /Car/))).toHaveText('fills to 15,000.00');
-  await expect(row(page, /Emergencies/).locator('.ty-meter')).not.toHaveClass(/ty-meter--goal/);
+  const heads = await shownHeads(page);
+  for (const h of ['Subsection', 'Rule', 'Budgeted', 'Spent', 'Available']) expect(heads, h).toContain(h);
+  for (const old of ['This month', 'Saved', 'Target']) expect(heads, old).not.toContain(old);
+  await expect(await cell(page, srow(page, /Emergencies/), 'Rule')).toContainText('Goal 3,000.00');
+  await expect(await cell(page, srow(page, /Car/), 'Rule')).toContainText('Goal 15,000.00');
+  await expect(restRow(page, 'Savings')).toBeVisible();
 });

@@ -1,5 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
-import { test, expect, shot, selectLike, todayIso, group, createPerson, signInByApi, type Seed } from '../support/fixtures';
+import { test, expect, shot, selectLike, todayIso, group, createPerson, signInByApi, type Seed, pocketRow } from '../support/fixtures';
 import { sepDay, closeApi } from '../support/closing';
 import {
   fakeKey, fakeSet, fakeLog, connectApi, syncApi, connectionApi, holdingsApi, incomesApi, connectBody,
@@ -38,7 +38,7 @@ const card = (page: Page): Locator => page.locator('.ty-card', { has: page.getBy
 const invCard = (page: Page, name = 'Trading212') => page.locator('.ty-card', { hasText: name }).filter({ hasText: /paid|No holdings/ }).first();
 /** The row of one holding on the Investments page: the nearest ancestor of its name that also shows a worth. */
 const hrow = (page: Page, name: string) => page.getByText(name, { exact: true }).first().locator('xpath=ancestor::*[contains(., "worth ")][1]');
-const pocketCard = (page: Page, name: string) => page.locator('.ty-pocket', { hasText: name });
+const pocketCard = (page: Page, name: string) => pocketRow(page, name);
 const monthTxs = async (page: Page) => (await (await page.request.get(`/api/transactions?month=${todayIso().slice(0, 7)}`)).json()).transactions as { sourceId: number | null }[];
 const sourcesApi = async (page: Page) => (await (await page.request.get('/api/sources')).json()).sources as { id: number; name: string; boxId: number }[];
 

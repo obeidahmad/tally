@@ -1,9 +1,8 @@
 import {
-  test, expect, dialog, toast, shot, row, seedBudget, chip, group, em, pocketsApi, fillExpense, DEFAULT_EMOJI, checkedEmoji,
-} from '../support/fixtures';
+  test, expect, dialog, toast, shot, row, seedBudget, chip, group, em, pocketsApi, fillExpense, DEFAULT_EMOJI, checkedEmoji, pocketRow, stat } from '../support/fixtures';
 
 const sizes = { desktop: { width: 1280, height: 900 }, phone: { width: 390, height: 844 } } as const;
-const stat = (page: import('@playwright/test').Page) => page.locator('.ty-stat').first();
+const income$ = (page: import('@playwright/test').Page) => stat(page, 'Income');
 const kept = (page: import('@playwright/test').Page) => page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept === true);
 const mark = (page: import('@playwright/test').Page) => page.evaluate(() => ((window as unknown as { __kept: boolean }).__kept = true));
 
@@ -16,9 +15,9 @@ for (const [size, viewport] of Object.entries(sizes)) {
       await page.goto('/budget');
       await mark(page);
       // Spec 03: the button is in the title row (desktop) or under the figures (phone), not beside the Income figure.
-      const income = stat(page);
+      const income = income$(page);
       await expect(income).toContainText('Income');
-      await expect(income.locator('.num-lg')).toHaveText('0.00');
+      await expect(income).toContainText('0.00');
       await expect(income.getByRole('button')).toHaveCount(0);
       const add = page.getByRole('button', { name: 'Add income', exact: true });
       await expect(add).toBeVisible();
@@ -46,7 +45,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
 
       await expect(d).toBeHidden();
       await expect(page).toHaveURL(/\/budget/);
-      await expect(income.locator('.num-lg')).toHaveText('2,000.00');
+      await expect(income).toContainText('2,000.00');
       await expect(add).toBeVisible();
 
       // The pocket exists with an opening balance of 0 and the income in it.
@@ -55,7 +54,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
       expect(pockets[0]).toMatchObject({ name: 'Revolut', kind: 'bank', emoji: em('Bank'), openingBalanceMinor: 0, balanceMinor: 200000 });
 
       await page.getByRole('link', { name: 'Pockets' }).first().click();
-      const card = page.locator('.ty-pocket', { hasText: 'Revolut' });
+      const card = pocketRow(page, 'Revolut');
       await expect(card).toContainText('2,000.00');
       await expect(card.locator('.ty-emoji').first()).toHaveText(em('Bank'));
       await shot(page, `pockets-after-first-income-${size}-light`);
@@ -91,7 +90,7 @@ test('a pocket that cannot be created shows its errors in the panel, under "Pock
     await page.keyboard.press('Escape');
     await expect(d).toBeHidden();
   }
-  await expect(stat(page).locator('.num-lg')).toHaveText('0.00');
+  await expect(income$(page)).toContainText('0.00');
 });
 
 test('if the pocket is created and the income then fails, the new pocket stays chosen, the panel closes and the error shows; saving again does not create it twice', async ({ page, me }) => {
@@ -119,7 +118,7 @@ test('if the pocket is created and the income then fails, the new pocket stays c
   const pockets = await pocketsApi(page);
   expect(pockets).toHaveLength(1);
   expect(pockets[0].balanceMinor).toBe(5000);
-  await expect(stat(page).locator('.num-lg')).toHaveText('50.00');
+  await expect(income$(page)).toContainText('50.00');
 });
 
 // ---- criterion 5: with pockets present ----

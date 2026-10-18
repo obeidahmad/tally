@@ -1,4 +1,4 @@
-import { test, expect, dialog, shot, row, seedBudget, chip } from '../support/fixtures';
+import { test, expect, dialog, shot, row, seedBudget, chip, stat, summary } from '../support/fixtures';
 import type { Page } from '@playwright/test';
 
 // Spec 03: coloured "Add income" (green) and "Add transaction" (orange) buttons.
@@ -55,10 +55,9 @@ test.describe('desktop title row', () => {
     }, mid(b));
     expect(rightmost).toEqual(['Add transaction']);
     // No button beside the Income figure.
-    const income = page.locator('.ty-stat').first();
+    const income = stat(page, 'Income');
     await expect(income).toContainText('Income');
     await expect(income.getByRole('button')).toHaveCount(0);
-    await expect(page.locator('.ty-stat__row')).toHaveCount(0);
   });
 });
 
@@ -111,7 +110,7 @@ for (const scheme of ['light', 'dark'] as const) {
       expect(await paint(inc)).toEqual({ bg: t.income, fg: t.onMoney });
       const box = (await inc.boundingBox())!;
       expect(box.height, 'at least 44px tall').toBeGreaterThanOrEqual(44);
-      const stats = (await page.locator('.ty-stats').first().boundingBox())!;
+      const stats = (await summary(page).boundingBox())!;
       expect(Math.abs(box.width - stats.width), 'as wide as the page content (the figures)').toBeLessThanOrEqual(2);
       expect(Math.abs(box.x - stats.x)).toBeLessThanOrEqual(2);
       expect(box.y, 'under the figures').toBeGreaterThanOrEqual(stats.y + stats.height - 1);

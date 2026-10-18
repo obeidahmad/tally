@@ -227,7 +227,7 @@ export function BankConnections({ then }: { then: ReactNode }) {
   );
 }
 
-/** "Synced 2 hours ago from Revolut", or "Entered by hand". */
-export const syncedLine = (p: Pocket, bank: string | undefined) => p.syncedAt ? `Synced ${ago(p.syncedAt)} from ${bank ?? 'your bank'}` : 'Entered by hand';
+/** "Synced 2 hours ago from Revolut", or empty when entered by hand. */
+export const syncedLine = (p: Pocket, bank: string | undefined) => p.syncedAt ? `Synced ${ago(p.syncedAt)} from ${bank ?? 'your bank'}` : '';
 /** "Tally counts 1,200.00." when Tally's own figure differs from the bank's. */
 export const countsLine = (p: Pocket) => p.syncedBalanceMinor !== null && p.syncedBalanceMinor !== p.balanceMinor ? `Tally counts ${formatMinor(p.balanceMinor)}.` : null;

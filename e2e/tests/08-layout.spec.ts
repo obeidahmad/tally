@@ -1,4 +1,4 @@
-import { test, expect, dialog, shot, seedBudget } from '../support/fixtures';
+import { test, expect, dialog, shot, seedBudget, row, srow } from '../support/fixtures';
 
 const names = ['Budget', 'Transactions', 'Pockets', 'Settings']; // the phone tab bar
 const sidebar = ['Budget', 'Pipeline', 'Transactions', 'Recurring', 'Pockets', 'Investments', 'Reports', 'Settings'];
@@ -111,22 +111,18 @@ test.describe('phone', () => {
     await shot(page, 'dialog-add-transaction-phone-light');
   });
 
-  test('the Budget rows drop the Budgeted and Spent columns for one line under the meter', async ({ page, me }) => {
+  test('the Budget table keeps Subsection, Spent and Available on a phone, with a Spent figure in the row', async ({ page, me }) => {
     await seedBudget(me.seed);
     await page.goto('/budget');
-    await expect(page.getByRole('button', { name: /Food/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Food/ })).toContainText('212.40');
+    await expect(row(page, /Food/)).toBeVisible();
+    await expect(srow(page, /Food/)).toContainText('212.40');
   });
 
-  test('every section header ends with one "{spent} of {budgeted} spent" line (Spec 04)', async ({ page, me }) => {
+  test('no section header carries an "x of y spent" line (Spec 21: the columns say it)', async ({ page, me }) => {
     await seedBudget(me.seed);
     await page.goto('/budget');
-    await expect(page.getByRole('button', { name: /Food/ })).toBeVisible();
-    const subs = page.locator('.ty-shead__sub');
-    await expect(subs).toHaveCount(2);
-    await expect(subs.nth(0)).toHaveText('944.15 of 1,020.00 spent');
-    await expect(subs.nth(1)).toHaveText('38.97 of 40.00 spent');
-    await expect(subs.nth(0)).toBeVisible();
+    await expect(row(page, /Food/)).toBeVisible();
+    await expect(page.getByText(/\d of [\d,]+\.\d\d spent/)).toHaveCount(0);
   });
 });
 

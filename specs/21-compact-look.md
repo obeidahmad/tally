@@ -157,3 +157,6 @@ These replace the matching lines above.
   - A transaction row has a second line only for a note, a conversion, or where it came from when it was imported or synced ("From Revolut", "Imported 16 Oct"). "Entered by hand" is never shown on a row.
   - The same goes for pocket rows.
 - **Phones:** a section row never clips its name. The name takes the free width and the icon buttons stay icon-only.
+- **Section row totals** are the sums of the rows below them: Budgeted and Spent sum its subsections, and Available sums its subsections' available plus the Rest.
+- **Dark mode:** a section row sits one surface step above the card.
+- **Source lines:** a transaction's source line reads "From a statement", "From your bank" or "From Trading212".

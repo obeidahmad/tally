@@ -11,6 +11,7 @@ import { EmptyCard, Load, Topbar, useRescueFocus } from '../ui';
 
 /** "8,942.55 in EUR · 3,550.00 USD, worth 3,268.85 EUR at 0.9208" */
 function netLine(n: NetWorth) {
+  if (n.byCurrency.length === 1 && n.byCurrency[0].currency === n.currency && n.missingRates.length === 0) return ''; // it would only repeat the figure above
   return n.byCurrency.map((c) => {
     if (n.missingRates.includes(c.currency)) return `No exchange rate for ${c.currency} yet.`;
     if (c.currency === n.currency) return `${formatMinor(c.amountMinor)} in ${c.currency}`;
@@ -98,7 +99,7 @@ export default function PocketsPage() {
         <div>
           <div className="ty-label">Net worth</div>
           <div className="num-hero">{state.data ? formatMinor(state.data.net.totalMinor) : '–'}<span className="ty-cur">{baseCurrency(user)}</span></div>
-          {state.data && <div className="ty-cap">{netLine(state.data.net)}</div>}
+          {state.data && netLine(state.data.net) && <div className="ty-cap">{netLine(state.data.net)}</div>}
         </div>
         <span className="ty-grow" />
         <button className="ty-btn ty-wide" onClick={() => setDialog({ transfer: true })}>Transfer</button>
@@ -113,29 +114,28 @@ export default function PocketsPage() {
             {pockets.length === 0 ? (
               <EmptyCard text="No pockets yet. A pocket is where money sits: a bank account, cash, a fund." action="Add pocket" onAction={() => setDialog({})} />
             ) : (
-              <div className="ty-grid">
+              <section className="ty-section" aria-label="Pockets">
                 {pockets.map((p) => {
                   const paid = held.filter((x) => x.pocketId === p.id).reduce((t, x) => t + x.paidMinor, 0);
                   const converted = p.currency === baseCurrency(user) ? '' : p.baseValueMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseValueMinor)} ${baseCurrency(user)}`;
                   const broker = banks.get(p.id) === 'Trading212'; // its figure is synced cash plus holdings, which the server already adds
                   const shown = p.syncedAt && !broker ? p.syncedBalanceMinor ?? p.valueMinor : p.valueMinor;
-                  const sub = [converted, held.some((x) => x.pocketId === p.id) && `paid ${formatMinor(paid)} ${p.currency}`].filter(Boolean).join(' · ') || ' ';
+                  const sub = [converted, held.some((x) => x.pocketId === p.id) && `paid ${formatMinor(paid)} ${p.currency}`].filter(Boolean).join(' · ');
+                  const where = [syncedLine(p, banks.get(p.id)), !broker && countsLine(p)].filter(Boolean).join(' · ');
                   return (
-                    <article key={p.id} className="ty-card ty-pocket app-pick" {...pick(() => setDialog({ pocket: p }))}>
-                      <div className="ty-pocket__top">
-                        <div className="ty-grow"><b><span className="ty-emoji">{p.emoji}</span> {p.name}</b><span className="ty-cap">{KIND_WORDS[p.kind]}</span></div>
-                        <span className="ty-pill">{p.currency}</span>
+                    <div key={p.id} className="ty-prow app-pick" {...pick(() => setDialog({ pocket: p }))}>
+                      <div className="ty-prow__who">
+                        <span className="ty-prow__name"><span className="ty-emoji">{p.emoji}</span><b>{p.name}</b><span className="ty-cap">{KIND_WORDS[p.kind]}</span></span>
+                        {where && <span className="ty-cap">{where}</span>}
                       </div>
-                      <div>
-                        <div className={shown < 0 ? 'num-lg ty-num--neg' : 'num-lg'}>{formatMinor(shown)}<span className="ty-cur">{p.currency}</span></div>
-                        <div className="ty-cap">{sub}</div>
+                      <div className="ty-prow__bal">
+                        <span className={shown < 0 ? 'ty-num ty-num--neg' : 'ty-num'}>{formatMinor(shown)}<span className="ty-cur">{p.currency}</span></span>
+                        {sub && <span className="ty-cap">{sub}</span>}
                       </div>
-                      <div className="ty-cap">{syncedLine(p, banks.get(p.id))}</div>
-                      {!broker && countsLine(p) && <div className="ty-cap">{countsLine(p)}</div>}
-                    </article>
+                    </div>
                   );
                 })}
-              </div>
+              </section>
             )}
             <WhereTable where={where} sections={sections} />
             {dialog?.transfer && <TransactionDialog kind="transfer" pockets={pockets} sections={sections} sources={sources} currency={baseCurrency(user)} onClose={close} />}

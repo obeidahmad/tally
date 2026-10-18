@@ -82,8 +82,7 @@ export async function seedExample(page: Page, s: Seed = seed(page)) {
 // ---- finders ----
 export const titlePill = (page: Page) => page.locator('.ty-month__top .ty-pill').first();
 export const notices = (page: Page) => page.locator('.ty-inset');
-export const stat = (page: Page, label: string) => page.locator('.ty-stat').filter({ hasText: label }).first();
-export const bsection = (page: Page, name: string) => page.locator('.ty-section', { has: page.getByText(name, { exact: true }) }).first();
+export { stat, bsection } from './fixtures';
 /** A node of the Pipeline diagram, by its accessible name. */
 export const node = (page: Page, name: string) => page.locator(`.ty-pipe [aria-label="${name}"]`);
 export const restGroup = (page: Page, name: string | RegExp) => page.getByRole('button', { name });

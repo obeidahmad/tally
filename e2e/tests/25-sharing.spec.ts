@@ -1,5 +1,5 @@
 import type { Browser, BrowserContext, Page, Locator } from '@playwright/test';
-import { test as base, expect, createPerson, signInByApi, seed, shot, dialog, toast, row, chip, fillExpense, type Person, type Seed } from '../support/fixtures';
+import { test as base, expect, createPerson, signInByApi, seed, shot, dialog, toast, row, chip, fillExpense, type Person, type Seed, pocketRow, bsection } from '../support/fixtures';
 
 // Spec 20: sharing one budget between partners. Sam (EUR) owns the budget; Alex (USD) is a member and signs in with his own account.
 // Two people, two browser contexts. Every test makes its own two (or three) fresh people, so nothing is shared between tests.
@@ -176,12 +176,12 @@ test('switching to Sam reloads the page with Sam\'s data, the sidebar foot says 
   await samBudget(sam.seed);
   await alex.seed.section('Alex only');
   await alex.page.goto('/budget');
-  await expect(alex.page.locator('.ty-section', { hasText: 'Alex only' })).toBeVisible();
-  await expect(alex.page.locator('.ty-section', { hasText: 'Needs' })).toHaveCount(0);
+  await expect(bsection(alex.page, 'Alex only')).toBeVisible();
+  await expect(bsection(alex.page, 'Needs')).toHaveCount(0);
 
   await switchTo(alex.page, 'Sam');
-  await expect(alex.page.locator('.ty-section', { hasText: 'Needs' })).toBeVisible();
-  await expect(alex.page.locator('.ty-section', { hasText: 'Alex only' })).toHaveCount(0);
+  await expect(bsection(alex.page, 'Needs')).toBeVisible();
+  await expect(bsection(alex.page, 'Alex only')).toHaveCount(0);
   await expect(alex.page.locator('.ty-side')).toContainText(FOOT_VIEWING('Alex', 'Sam'));
   await expect(switcher(alex.page).locator('option:checked')).toHaveText('Sam');
   expect((await meApi(alex.page)).viewing).toMatchObject({ displayName: 'Sam', baseCurrency: 'EUR' });
@@ -190,7 +190,7 @@ test('switching to Sam reloads the page with Sam\'s data, the sidebar foot says 
   await alex.page.goto('/transactions');
   await expect(row(alex.page, /Alphamega/)).toBeVisible();
   await alex.page.goto('/pockets');
-  await expect(alex.page.locator('.ty-pocket', { hasText: 'Revolut' })).toBeVisible();
+  await expect(pocketRow(alex.page, 'Revolut')).toBeVisible();
 
   // the choice sticks across a reload
   await alex.page.reload();
@@ -198,8 +198,8 @@ test('switching to Sam reloads the page with Sam\'s data, the sidebar foot says 
 
   await switchTo(alex.page, 'Your budget');
   await alex.page.goto('/budget');
-  await expect(alex.page.locator('.ty-section', { hasText: 'Alex only' })).toBeVisible();
-  await expect(alex.page.locator('.ty-section', { hasText: 'Needs' })).toHaveCount(0);
+  await expect(bsection(alex.page, 'Alex only')).toBeVisible();
+  await expect(bsection(alex.page, 'Needs')).toHaveCount(0);
   await expect(alex.page.getByText(/viewing the budget of/)).toHaveCount(0);
   expect((await meApi(alex.page)).viewing).toBeNull();
   await close();
@@ -225,7 +225,7 @@ test('Alex switches, adds a transaction and a section; Sam sees both, the transa
 
   await alex.page.goto('/budget');
   await switchTo(alex.page, 'Sam');
-  await expect(alex.page.locator('.ty-section', { hasText: 'Needs' })).toBeVisible();
+  await expect(bsection(alex.page, 'Needs')).toBeVisible();
 
   // a transaction through the dialog
   await alex.page.goto('/transactions');
@@ -247,11 +247,11 @@ test('Alex switches, adds a transaction and a section; Sam sees both, the transa
   await dialog(alex.page).getByLabel('Name').fill('Holidays');
   await dialog(alex.page).getByRole('button', { name: 'Add section' }).click();
   await expect(dialog(alex.page)).toBeHidden();
-  await expect(alex.page.locator('.ty-section', { hasText: 'Holidays' })).toBeVisible();
+  await expect(bsection(alex.page, 'Holidays')).toBeVisible();
 
   // Sam sees both
   await sam.page.goto('/budget');
-  await expect(sam.page.locator('.ty-section', { hasText: 'Holidays' })).toBeVisible();
+  await expect(bsection(sam.page, 'Holidays')).toBeVisible();
   await sam.page.goto('/transactions');
   const seen = row(sam.page, /Corner bakery/);
   await expect(seen).toContainText('−12.50');
@@ -374,7 +374,7 @@ test('Sam removes Alex: Alex\'s next page load shows his own budget, no "viewing
   await alex.seed.section('Alex only');
   await alex.page.goto('/budget');
   await switchTo(alex.page, 'Sam');
-  await expect(alex.page.locator('.ty-section', { hasText: 'Needs' })).toBeVisible();
+  await expect(bsection(alex.page, 'Needs')).toBeVisible();
 
   await sam.page.goto('/settings');
   const c = sharingCard(sam.page);
@@ -386,8 +386,8 @@ test('Sam removes Alex: Alex\'s next page load shows his own budget, no "viewing
   expect((await sharingApi(sam.page)).members).toEqual([]);
 
   await alex.page.reload();
-  await expect(alex.page.locator('.ty-section', { hasText: 'Alex only' })).toBeVisible();
-  await expect(alex.page.locator('.ty-section', { hasText: 'Needs' })).toHaveCount(0);
+  await expect(bsection(alex.page, 'Alex only')).toBeVisible();
+  await expect(bsection(alex.page, 'Needs')).toHaveCount(0);
   await expect(alex.page.getByText(/viewing the budget of/)).toHaveCount(0);
   await expect(alex.page.getByRole('combobox', { name: 'Budget' })).toHaveCount(0);
   expect(await sharingApi(alex.page)).toEqual({ members: [], sharedWithMe: [], viewing: null });
@@ -450,8 +450,8 @@ test('a third person sees nothing of Sam\'s or Alex\'s budget, no switcher, and 
   const carl = await signedIn(browser, baseURL!, carlP, DESKTOP);
   await carl.page.goto('/budget');
   await expect(carl.page.getByRole('button', { name: 'Add section' })).toBeVisible();
-  await expect(carl.page.locator('.ty-section', { hasText: 'Needs' })).toHaveCount(0);
-  await expect(carl.page.locator('.ty-section', { hasText: 'Alex only' })).toHaveCount(0);
+  await expect(bsection(carl.page, 'Needs')).toHaveCount(0);
+  await expect(bsection(carl.page, 'Alex only')).toHaveCount(0);
   await expect(carl.page.getByRole('combobox', { name: 'Budget' })).toHaveCount(0);
   expect(await sharingApi(carl.page)).toEqual({ members: [], sharedWithMe: [], viewing: null });
   for (const id of [samId, alexId]) expect((await viewApi(carl.page, id)).status()).toBe(400);
@@ -487,7 +487,7 @@ test.describe('phone', () => {
     await sw.selectOption({ label: 'Sam' });
     await expect(alex.page.getByText(NOT_YOURS).first()).toBeVisible();
     await alex.page.getByRole('link', { name: 'Budget', exact: true }).last().click();
-    await expect(alex.page.locator('.ty-section', { hasText: 'Needs' })).toBeVisible();
+    await expect(bsection(alex.page, 'Needs')).toBeVisible();
     const hasOverflow = await alex.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(hasOverflow).toBe(false);
     await close();

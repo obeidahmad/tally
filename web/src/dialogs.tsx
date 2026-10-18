@@ -400,8 +400,8 @@ const Seg = ({ legend, name, value, options, onChange }: { legend: string; name:
   </fieldset>
 );
 
-export function SubsectionDialog({ sectionId, sub, position, count, currency, onMove, onClose }: {
-  sectionId: number; sub?: SubRules & { id: number }; position?: number; count: number; currency: string; onMove?: () => void; onClose: () => void;
+export function SubsectionDialog({ sectionId, sub, position, count, held, currency, onMove, onClose }: {
+  sectionId: number; sub?: SubRules & { id: number }; position?: number; count: number; held?: string; currency: string; onMove?: () => void; onClose: () => void;
 }) {
   const toast = useToast();
   const f = useForm();
@@ -449,6 +449,7 @@ export function SubsectionDialog({ sectionId, sub, position, count, currency, on
       <form className="ty-stack" onSubmit={save} noValidate>
         <FormError message={f.formError} />
         <TextField label="Name" value={name} onChange={setName} error={f.errors.name} />
+        {held && <div className="ty-cap">Held investments: {held}</div>}
         <Seg legend="Kind" name="kind" value={kind} onChange={(v) => setKind(v as typeof kind)} options={[['spending', 'Spending'], ['goal', 'Savings goal']]} />
         {f.errors.kind && <span className="ty-error">{f.errors.kind}</span>}
         <Seg legend="Budget" name="budgetKind" value={budgetKind} onChange={(v) => setBudgetKind(v as typeof budgetKind)} options={[['amount', 'Amount'], ['percent', 'Percentage']]} />

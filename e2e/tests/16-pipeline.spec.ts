@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, shot, row, chip, group, seedPipeline, seedBudget, WORKED, monthTitle, type Seed } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, row, chip, group, seedPipeline, seedBudget, WORKED, monthTitle, type Seed, bsection, restRow, cell, stat, summary, subNames, pillOf } from '../support/fixtures';
 import type { Page, Locator } from '@playwright/test';
 
 // Spec 06: the pipeline. Browser acceptance criteria 9 to 22 (and the screenshots of 24).
@@ -272,7 +272,7 @@ test('the Budget page follows the pipeline: a section\'s Budgeted is what the st
   await gotoPipeline(page);
   await addPercentStep(page, 'Paycheck', [['Zakat', '2.5']]);
   await page.locator('.ty-side').getByRole('link', { name: 'Budget' }).click();
-  await expect(page.locator('.ty-section', { hasText: 'Zakat' }).locator('.ty-shead__tot', { hasText: 'Budgeted' })).toContainText('25.00');
+  await expect(await cell(page, bsection(page, 'Zakat'), 'Budgeted')).toContainText('25.00');
 });
 
 // ============ criterion 13: the worked example, built through the page ============
@@ -1029,48 +1029,46 @@ test('if the source is created and the income then fails, the new source stays c
 });
 
 // ============ criterion 20: the Budget page ============
-const bsec = (page: Page, name: string) =>
-  page.locator('.ty-section').filter({ has: page.locator('.ty-shead__name b', { hasText: new RegExp(`^${name}$`) }) });
-const btotal = (s: Locator, label: 'Budgeted' | 'Spent' | 'Available') => s.locator('.ty-shead__tot', { hasText: label }).locator('.ty-num');
-const leftOverStat = (page: Page) => page.locator('.ty-stat', { hasText: 'Left over' }).locator('.num-lg');
+const btotal = async (page: Page, name: string, label: 'Budgeted' | 'Spent' | 'Available') => cell(page, bsection(page, name), label);
+const leftOverStat = (page: Page) => stat(page, 'Left over');
 
-test('Budget page: each section\'s Budgeted is its received money, every section shows a Rest pill, and no rule line shows', async ({ page, me }) => {
+test('Budget page: each section\'s Budgeted is its received money, every section ends with a Rest row, and no rule line shows', async ({ page, me }) => {
   await seedPipeline(me.seed);
   await page.goto('/budget');
   for (const [name, amount] of [['Zakat', WORKED.zakat], ['Family', WORKED.family], ['Needs', WORKED.needs], ['Wants', WORKED.wants], ['Savings', WORKED.savings]]) {
-    const s = bsec(page, name);
-    await expect(btotal(s, 'Budgeted'), name).toHaveText(amount);
-    await expect(s.locator('.ty-shead .ty-pill'), name).toHaveText(`Rest ${amount}`);
-    await expect(s.locator('.ty-shead .ty-pill'), name).not.toHaveClass(/ty-pill--(warning|negative|positive)/);
-    await expect(s.locator('.ty-shead__name .ty-cap:not(.ty-shead__sub)'), `${name}: no rule line`).toHaveCount(0);
+    await expect(await btotal(page, name, 'Budgeted'), name).toContainText(amount);
+    const rest = restRow(page, name);
+    await expect(rest, name).toBeVisible();
+    await expect(pillOf(rest), name).toContainText(amount);
+    await expect(await cell(page, rest, 'Rule'), `${name}: where the rest goes`).not.toHaveText('');
+    expect(await subNames(page, name), `${name}: no note under the name`).not.toContain('Rest');
   }
   for (const old of ['Fixed amount', 'of income after fixed sections', 'Sum of subsections']) await expect(page.getByText(old)).toHaveCount(0);
-  await expect(page.locator('.ty-stat', { hasText: 'Budgeted' }).locator('.num-lg')).toHaveText('2,600.00'); // everything the box's steps took
-  await expect(page.locator('.ty-stat', { hasText: 'Income' }).first().locator('.num-lg')).toHaveText('2,612.40');
+  await expect(stat(page, 'Budgeted')).toContainText('2,600.00'); // everything the box's steps took
+  await expect(stat(page, 'Income')).toContainText('2,612.40');
 });
 
-test('Budget page: a section whose subsections claim more than it received shows a warning Rest pill', async ({ page, me }) => {
+test('Budget page: a section whose subsections claim more than it received shows a warning Rest row', async ({ page, me }) => {
   const home = await me.seed.section('Home');
   await me.seed.subsection(home.id, 'Rent', 80000);
   await me.seed.subsection(home.id, 'Internet', 13000);
   const { source } = await oneSource(me.seed, 'Paycheck', 240000);
   await me.seed.amountStep(source.boxId, home.id, 90000);
   await page.goto('/budget');
-  const h = bsec(page, 'Home');
-  await expect(btotal(h, 'Budgeted')).toHaveText('900.00');
-  await expect(btotal(h, 'Available')).toHaveText('900.00');
-  await expect(h.locator('.ty-shead .ty-pill')).toHaveText('Rest −30.00');
-  await expect(h.locator('.ty-shead .ty-pill')).toHaveClass(/ty-pill--warning/);
+  await expect(await btotal(page, 'Home', 'Budgeted')).toContainText('900.00');
+  const rest = pillOf(restRow(page, 'Home'));
+  await expect(rest).toContainText('−30.00');
+  await expect(rest).toHaveClass(/ty-pill--(warning|negative)/);
 });
 
 test('Budget page month header: "Left over" is the fourth figure, and above zero a line with "Open the pipeline" opens the Pipeline page', async ({ page, me }) => {
   await seedPipeline(me.seed);
   await page.goto('/budget');
-  const stats = page.locator('.ty-stats').first();
+  const stats = summary(page);
   const order = (await stats.innerText()).replace(/\s+/g, ' ').toLowerCase();
-  expect(order.indexOf('spent so far')).toBeLessThan(order.indexOf('left over'));
-  await expect(stats.locator('.ty-stat')).toHaveCount(4);
-  await expect(leftOverStat(page)).toHaveText(WORKED.leftOver);
+  expect(order.indexOf('spent')).toBeLessThan(order.indexOf('left over'));
+  for (const l of ['Income', 'Budgeted', 'Spent', 'Left over']) await expect(stat(page, l), l).toBeVisible();
+  await expect(leftOverStat(page)).toContainText(WORKED.leftOver);
   const line = page.locator('.ty-cap', { hasText: 'is left over: no step in the pipeline takes it.' });
   await expect(line).toBeVisible();
   expect(norm(await line.innerText())).toContain('12.40 is left over: no step in the pipeline takes it.');
@@ -1089,7 +1087,7 @@ test('Budget page month header: with nothing left over the figure is 0.00 and th
   const s = await me.seed.section('Needs');
   await me.seed.amountStep(source.boxId, s.id, 10000);
   await page.goto('/budget');
-  await expect(leftOverStat(page)).toHaveText('0.00');
+  await expect(leftOverStat(page)).toContainText('0.00');
   await expect(page.getByText('is left over: no step in the pipeline takes it.')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Open the pipeline' })).toHaveCount(0);
 });
@@ -1100,7 +1098,7 @@ test.describe('phone', () => {
   test('Budget page on a phone shows the "Left over" figure but not the line', async ({ page, me }) => {
     await seedPipeline(me.seed);
     await page.goto('/budget');
-    await expect(leftOverStat(page)).toHaveText(WORKED.leftOver);
+    await expect(leftOverStat(page)).toContainText(WORKED.leftOver);
     await expect(page.getByText('is left over: no step in the pipeline takes it.')).toBeHidden();
     await expect(page.getByRole('link', { name: 'Open the pipeline' })).toBeHidden();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -1117,7 +1115,7 @@ test('the section dialog has only "Name", and the old budget words appear nowher
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     for (const open of ['add', 'edit'] as const) {
       if (open === 'add') await page.getByRole('button', { name: 'Add section', exact: true }).first().click();
-      else await sec(page, 'Needs').or(bsec(page, 'Needs')).getByRole('button', { name: 'Edit', exact: true }).first().click();
+      else await sec(page, 'Needs').or(bsection(page, 'Needs')).getByRole('button', { name: /^Edit/ }).first().click();
       const d = dialog(page);
       await expect(d.getByRole('heading', { name: open === 'add' ? 'Add section' : 'Edit section' })).toBeVisible();
       await expect(d.locator('input:not([type=radio])'), `${p} ${open}`).toHaveCount(1);
@@ -1154,12 +1152,12 @@ test('deleting a section that a step uses shows the sentence in the dialog, from
   await expect(sec(page, 'Zakat')).toBeVisible();
 
   await page.goto('/budget');
-  await bsec(page, 'Needs').getByRole('button', { name: 'Edit', exact: true }).click();
+  await bsection(page, 'Needs').getByRole('button', { name: /^Edit / }).click();
   d = dialog(page);
   await d.getByRole('button', { name: 'Delete' }).click();
   await expect(d.getByText(SECTION_IN_USE)).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(bsec(page, 'Needs')).toBeVisible();
+  await expect(bsection(page, 'Needs')).toBeVisible();
 });
 
 test('a section no step uses is deleted, and Undo brings it back', async ({ page, me }) => {
@@ -1259,13 +1257,13 @@ for (const scheme of ['light', 'dark'] as const) {
       const sub = await me.seed.subsection((await (await page.request.get('/api/sections')).json()).sections[2].id, 'Food', 30000);
       void sub;
       await page.goto('/budget');
-      await expect(bsec(page, 'Needs')).toBeVisible();
-      await expect(leftOverStat(page)).toHaveText(WORKED.leftOver);
+      await expect(bsection(page, 'Needs')).toBeVisible();
+      await expect(leftOverStat(page)).toContainText(WORKED.leftOver);
       await shot(page, `spec06-budget-desktop-${scheme}`);
       await page.screenshot({ path: `screenshots/spec06-budget-full-desktop-${scheme}.png`, fullPage: true });
       await page.setViewportSize(phone);
       await page.goto('/budget');
-      await expect(leftOverStat(page)).toHaveText(WORKED.leftOver);
+      await expect(leftOverStat(page)).toContainText(WORKED.leftOver);
       await shot(page, `spec06-budget-phone-${scheme}`);
       await page.screenshot({ path: `screenshots/spec06-budget-full-phone-${scheme}.png`, fullPage: true });
     });
