@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; homePocketId: number | null; viewing: { ownerId: number; displayName: string; baseCurrency: string } | null };
-export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker';
-export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number; valueMinor: number; baseValueMinor: number | null; hasTransactions: boolean; syncedBalanceMinor: number | null; syncedAt: string | null };
+export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker' | 'credit' | 'loan' | 'property';
+export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number; valueMinor: number; baseValueMinor: number | null; hasTransactions: boolean; syncedBalanceMinor: number | null; syncedAt: string | null; group: 'cash' | 'investments' | 'property' | 'debts'; reconciledAt: string | null; reconciledBalanceMinor: number | null };
 export type SubsectionRules = {
   kind: 'spending' | 'goal'; budgetKind: 'amount' | 'percent'; budgetBasisPoints: number | null;
   keep: 'all' | 'cap' | 'none'; capMinor: number | null;
@@ -20,8 +20,10 @@ export type CloseSummary = {
 export type Transaction = {
   id: number; date: string; kind: 'expense' | 'income' | 'transfer'; amountMinor: number; baseAmountMinor: number;
   pocketId: number; subsectionId: number | null; sourceId: number | null;
-  toPocketId: number | null; toAmountMinor: number | null; payee: string; note: string; source: 'manual' | 'import' | 'bank' | 'broker'; createdBy: number; createdByName: string;
+  toPocketId: number | null; toAmountMinor: number | null; payee: string; note: string; source: 'manual' | 'import' | 'bank' | 'broker' | 'adjustment'; createdBy: number; createdByName: string;
+  splits: { subsectionId: number; amountMinor: number }[] | null; tags: string[]; attachments: Attachment[];
 };
+export type Attachment = { id: number; name: string; type: string; size: number };
 export type Holding = {
   id: number; name: string; pocketId: number; subsectionId: number; paidMinor: number;
   worthMinor: number; worthCurrency: string; worthDate: string; soldDate: string | null;
@@ -34,7 +36,7 @@ export type Where = {
 export type Rule = { id: number; match: string; subsectionId: number | null; sourceId: number | null };
 export type Rates = { date: string; base: string; currencies: { currency: string; rate: string }[] };
 export type NetWorth = {
-  currency: string; totalMinor: number; missingRates: string[];
+  currency: string; totalMinor: number; assetsMinor: number; debtsMinor: number; missingRates: string[];
   byCurrency: { currency: string; amountMinor: number; baseMinor: number; rate: string | null }[];
 };
 export type GoalStatus = 'done' | 'on_track' | 'behind' | 'past';
@@ -81,9 +83,10 @@ export const EMOJIS: [string, string][] = ([
 export const DEFAULT_EMOJI: Record<PocketKind, string> = {
   bank: String.fromCodePoint(0x1F3E6), cash: String.fromCodePoint(0x1F4B5),
   fund: String.fromCodePoint(0x1F331), broker: String.fromCodePoint(0x1F4C8),
+  credit: String.fromCodePoint(0x1F4B3), loan: String.fromCodePoint(0x1F9FE), property: String.fromCodePoint(0x1F3E0),
 };
 
-export const KIND_WORDS: Record<PocketKind, string> = { bank: 'Bank account', cash: 'Cash', fund: 'Fund', broker: 'Broker' };
+export const KIND_WORDS: Record<PocketKind, string> = { bank: 'Bank account', cash: 'Cash', fund: 'Fund', broker: 'Broker', credit: 'Credit card', loan: 'Loan', property: 'Property' };
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public fields?: Record<string, string>) {
@@ -103,10 +106,11 @@ const subscribe = (fn: () => void) => { listeners.add(fn); return () => { listen
 export async function api<T = void>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
+    const file = body instanceof File; // a receipt goes up as the raw file
     res = await fetch(`/api${path}`, {
       method,
-      headers: method === 'GET' ? undefined : { 'Content-Type': 'application/json' }, // server rejects changing calls without it, even with no body
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: file ? { 'Content-Type': body.type, 'X-Filename': encodeURIComponent(body.name) } : method === 'GET' ? undefined : { 'Content-Type': 'application/json' }, // server rejects changing calls without it, even with no body
+      body: body === undefined ? undefined : file ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, 'network', "Couldn't reach Tally's server. Check that it is running.");

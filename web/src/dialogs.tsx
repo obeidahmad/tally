@@ -1,19 +1,21 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, useLoad, type Rates, type BudgetSection, type CloseSummary, type End, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
-import { currentMonth, monthName, monthTitle, shiftMonth, today } from './dates';
+import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, useLoad, type Attachment, type Rates, type BudgetSection, type CloseSummary, type End, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
+import { useAuth } from './auth';
+import { currentMonth, dayHeading, dayLabel, monthName, monthTitle, shiftMonth, today } from './dates';
 import { AMOUNT_ERROR, formatMinor, minorToInput, parseAmount, parsePercent, percentText, PERCENT_ERROR } from './money';
 import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, PocketCurrencyField, SubsectionOptions, subLabel, TextField, useToast } from './ui';
 
 const BALANCE_ERROR = 'Enter an amount, with at most two decimals.';
 
-export function Foot({ busy, onCancel, onDelete, onMove, label = 'Save', tone = 'primary' }: { busy: boolean; onCancel: () => void; onDelete?: () => void; onMove?: () => void; label?: string; tone?: 'primary' | 'income' | 'spend' }) {
+export function Foot({ busy, onCancel, onDelete, onMove, onReconcile, label = 'Save', tone = 'primary' }: { busy: boolean; onCancel: () => void; onDelete?: () => void; onMove?: () => void; onReconcile?: () => void; label?: string; tone?: 'primary' | 'income' | 'spend' }) {
   return (
     <div className="ty-dialog__foot">
-      {(onDelete || onMove) && (
+      {(onDelete || onMove || onReconcile) && (
         <span className="app-foot-start">
           {onDelete && <button type="button" className="ty-btn ty-btn--danger" disabled={busy} onClick={onDelete}>Delete</button>}
           {onMove && <button type="button" className="ty-btn ty-btn--quiet" disabled={busy} onClick={onMove}>Move money</button>}
+          {onReconcile && <button type="button" className="ty-btn ty-btn--quiet" disabled={busy} onClick={onReconcile}>Reconcile</button>}
         </span>
       )}
       <button type="button" className="ty-btn ty-btn--quiet" onClick={onCancel}>Cancel</button>
@@ -38,10 +40,14 @@ function useEmoji(initial: string | undefined, kind: PocketKind) {
 
 const TRANSFER_ERROR = 'Enter the amount that arrived.';
 
-export function TransactionDialog({ tx, kind: startKind, pockets, sections, sources: allSources, currency, onClose }: {
-  tx?: Transaction; kind?: Transaction['kind']; pockets: Pocket[]; sections: Section[]; sources: Source[]; currency: string; onClose: () => void;
+const sizeText = (n: number) => (n < 1e6 ? `${Math.max(1, Math.round(n / 1000))} KB` : `${(n / 1e6).toFixed(1)} MB`);
+
+export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, sections, sources: allSources, tags: known = [], currency, onClose }: {
+  tx?: Transaction; kind?: Transaction['kind']; pockets: Pocket[]; sections: Section[]; sources: Source[]; tags?: string[]; currency: string; onClose: () => void;
 }) {
   const toast = useToast();
+  const pockets = allPockets.filter((p) => p.kind !== 'property'); // a property holds a value, not transactions
+  const adjustment = tx?.source === 'adjustment';
   const sources = allSources.filter((x) => !x.isLeftovers); // money carried from last month is not entered by hand
   const f = useForm();
   const [kind, setKind] = useState<Transaction['kind']>(tx?.kind ?? startKind ?? 'expense');
@@ -62,8 +68,50 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
   const [newKind, setNewKind] = useState<PocketKind>('bank');
   const [newEmoji, setNewEmoji] = useEmoji(undefined, newKind);
   const [note, setNote] = useState(tx?.note ?? '');
+  const [parts, setParts] = useState<{ subsectionId: string; amount: string }[] | null>(tx?.splits?.map((s) => ({ subsectionId: String(s.subsectionId), amount: minorToInput(s.amountMinor) })) ?? null);
+  const [tagList, setTagList] = useState<string[]>(tx?.tags ?? []);
+  const [tagText, setTagText] = useState('');
+  const [files, setFiles] = useState<Attachment[]>(tx?.attachments ?? []);
+  const [fileError, setFileError] = useState('');
   const noSubsections = !sections.some((s) => s.subsections.length);
-  const title = `${tx ? 'Edit' : 'Add'} ${kind}`;
+  const title = adjustment ? 'Edit adjustment' : `${tx ? 'Edit' : 'Add'} ${kind}`;
+  const withTags = (list: string[], text: string) => {
+    const out = [...list];
+    for (const raw of text.split(',')) {
+      const name = raw.trim();
+      if (name && !out.some((x) => x.toLowerCase() === name.toLowerCase())) out.push(known.find((x) => x.toLowerCase() === name.toLowerCase()) ?? name);
+    }
+    return out;
+  };
+  const typeTag = (v: string) => {
+    const bits = v.split(',');
+    if (bits.length > 1) setTagList(withTags(tagList, bits.slice(0, -1).join(',')));
+    setTagText(bits.at(-1)!);
+  };
+  const suggestions = tagText.trim() ? known.filter((x) => x.toLowerCase().includes(tagText.trim().toLowerCase()) && !tagList.some((y) => y.toLowerCase() === x.toLowerCase())) : [];
+  const partSum = (parts ?? []).reduce((a, x) => a + (parseAmount(x.amount) ?? 0), 0);
+  const left = (parseAmount(amount) ?? 0) - partSum;
+  const attach = async (input: HTMLInputElement) => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    setFileError('');
+    try {
+      const { attachment } = await api<{ attachment: Attachment }>('POST', `/transactions/${tx!.id}/attachments`, file);
+      setFiles((x) => [...x, attachment]);
+    } catch (e) {
+      setFileError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
+    }
+  };
+  const detach = async (id: number) => {
+    setFileError('');
+    try {
+      await api('DELETE', `/attachments/${id}`);
+      setFiles((x) => x.filter((a) => a.id !== id));
+    } catch (e) {
+      setFileError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
+    }
+  };
   const codeOf = (id: string) => pockets.find((p) => String(p.id) === id)?.currency ?? currency;
   const fromCode = codeOf(pocketId);
   const toCode = codeOf(toId);
@@ -84,6 +132,21 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
     : undefined;
 
   const save = f.on(async () => {
+    const tags = withTags(tagList, tagText);
+    if (adjustment) {
+      await api('PATCH', `/transactions/${tx!.id}`, { note, tags });
+      onClose();
+      toast('Saved');
+      return;
+    }
+    // each part's amount is read here; the server checks that they add up to the transaction
+    const splits = kind === 'expense' && parts ? parts.map((x) => {
+      const amountMinor = parseAmount(x.amount);
+      if (amountMinor === null) throw fieldError('splits', AMOUNT_ERROR);
+      if (!x.subsectionId) throw fieldError('splits', 'Choose a subsection.');
+      return { subsectionId: Number(x.subsectionId), amountMinor };
+    }) : undefined;
+    const splitBody = splits ? { splits, subsectionId: null } : tx?.splits ? { splits: null, subsectionId: subsectionId ? Number(subsectionId) : null } : {};
     if (imported) {
       const chosen = kind === 'income' ? sourceId : subsectionId;
       let sorted = 0;
@@ -101,7 +164,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
         if (waiting && tx.payee.toLowerCase().includes(match.toLowerCase())) sorted = Math.max(0, sorted - 1);
       }
       await api('PATCH', `/transactions/${tx.id}`, {
-        payee, note, ...(kind === 'income' ? { sourceId: sourceId ? Number(sourceId) : null } : { subsectionId: subsectionId ? Number(subsectionId) : null }),
+        payee, note, tags, ...(kind === 'income' ? { sourceId: sourceId ? Number(sourceId) : null } : { subsectionId: subsectionId ? Number(subsectionId) : null, ...splitBody }),
       });
       onClose();
       toast(sorted > 0 ? `Saved. ${sorted} more sorted.` : 'Saved');
@@ -114,7 +177,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
       if (crossing && toAmountMinor === null) throw fieldError('toAmountMinor', TRANSFER_ERROR);
       const b = {
         date, kind, amountMinor, note, pocketId: pocketId && pocketId !== 'new' ? Number(pocketId) : null, toPocketId: toId ? Number(toId) : null,
-        ...(crossing ? { toAmountMinor } : {}), subsectionId: subsectionId ? Number(subsectionId) : null,
+        ...(crossing ? { toAmountMinor } : {}), subsectionId: subsectionId ? Number(subsectionId) : null, tags,
       };
       if (tx) await api('PATCH', `/transactions/${tx.id}`, b);
       else await api('POST', '/transactions', b);
@@ -144,6 +207,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
       pocketId: pocket,
       subsectionId: kind === 'expense' && subsectionId ? Number(subsectionId) : null,
       sourceId: kind === 'income' ? source : null,
+      tags, ...(kind === 'expense' ? splitBody : {}),
     };
     if (tx) await api('PATCH', `/transactions/${tx.id}`, b);
     else await api('POST', '/transactions', b);
@@ -153,27 +217,105 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
 
   const remove = f.on(async () => {
     await api('DELETE', `/transactions/${tx!.id}`);
-    const { id: _id, source: _source, baseAmountMinor: _base, toPocketId, toAmountMinor, ...rest } = tx!;
+    if (adjustment) { onClose(); toast('Transaction deleted'); return; } // shortcut: undoing a deleted adjustment is another reconcile, so no Undo here
+    const { id: _id, source: _source, baseAmountMinor: _base, attachments: _files, toPocketId, toAmountMinor, ...rest } = tx!;
     const again = tx!.kind === 'transfer' ? { ...rest, toPocketId, toAmountMinor } : rest;
     onClose();
     toast('Transaction deleted', () => void api('POST', '/transactions', again).catch(() => {}));
   });
 
-  const blocked = kind === 'expense' && noSubsections;
+  const blocked = !adjustment && kind === 'expense' && noSubsections;
+
+  const tagField = (
+    <div className="ty-field">
+      <label className="ty-label" htmlFor="tx-tags">Tags</label>
+      {tagList.length > 0 && (
+        <div className="app-taglist">
+          {tagList.map((x) => (
+            <span key={x} className="ty-pill app-tagpill"><span>{x}</span><button type="button" aria-label={`Remove tag ${x}`} onClick={() => setTagList(tagList.filter((y) => y !== x))}>×</button></span>
+          ))}
+        </div>
+      )}
+      <input
+        id="tx-tags" className={f.errors.tags ? 'ty-input ty-input--error' : 'ty-input'} value={tagText} autoComplete="off"
+        onChange={(e) => typeTag(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setTagList(withTags(tagList, tagText)); setTagText(''); } }}
+      />
+      {suggestions.length > 0 && (
+        <div className="ty-chips">
+          {suggestions.map((x) => <button key={x} type="button" className="ty-chip" onClick={() => { setTagList(withTags(tagList, x)); setTagText(''); }}>{x}</button>)}
+        </div>
+      )}
+      {f.errors.tags && <span className="ty-error">{f.errors.tags}</span>}
+    </div>
+  );
+
+  const receiptField = tx && (
+    <div className="ty-field">
+      <span className="ty-label">Receipts</span>
+      {files.length > 0 && (
+        <ul className="app-files">
+          {files.map((a) => (
+            <li key={a.id}>
+              <a className="app-link" href={`/api/attachments/${a.id}`} target="_blank" rel="noopener">{a.name}</a>
+              <span className="ty-cap">{sizeText(a.size)}</span>
+              <button type="button" className="ty-btn ty-btn--quiet" aria-label={`Remove ${a.name}`} onClick={() => void detach(a.id)}>Remove</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div>
+        <label className="ty-btn app-attach">
+          Attach receipt
+          <input type="file" className="app-sr-only" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => void attach(e.target)} />
+        </label>
+      </div>
+      {fileError && <span className="ty-error" role="alert">{fileError}</span>}
+    </div>
+  );
+
+  const splitUi = parts && (
+    <fieldset className="ty-fieldset">
+      <legend className="ty-label">Parts</legend>
+      <div className="app-parts">
+        {parts.map((x, i) => (
+          <div key={i} className="app-part">
+            <select className="ty-input" aria-label="Subsection" value={x.subsectionId} onChange={(e) => setParts(parts.map((y, j) => (j === i ? { ...y, subsectionId: e.target.value } : y)))}>
+              <option value="" disabled>Choose a subsection</option>
+              <SubsectionOptions sections={sections} />
+            </select>
+            <input className="ty-input ty-input--amount" aria-label="Amount" inputMode="decimal" autoComplete="off" value={x.amount} onChange={(e) => setParts(parts.map((y, j) => (j === i ? { ...y, amount: e.target.value } : y)))} />
+            <button type="button" className="ty-btn ty-btn--quiet" aria-label={`Remove part ${i + 1}`} disabled={parts.length <= 2} onClick={() => setParts(parts.filter((_, j) => j !== i))}>Remove</button>
+          </div>
+        ))}
+      </div>
+      <div className="app-partfoot">
+        <button type="button" className="ty-btn ty-btn--quiet" disabled={parts.length >= 20} onClick={() => setParts([...parts, { subsectionId: '', amount: '' }])}>+ Add part</button>
+        <span className={left < 0 ? 'ty-cap negative' : 'ty-cap'}>Left to split {formatMinor(left)}</span>
+        <button type="button" className="ty-btn ty-btn--quiet" onClick={() => { setSubsectionId(parts[0]?.subsectionId ?? ''); setParts(null); }}>Remove split</button>
+      </div>
+      {f.errors.splits && <span className="ty-error">{f.errors.splits}</span>}
+    </fieldset>
+  );
 
   return (
     <Modal title={title} onClose={onClose}>
       <form className="ty-stack" onSubmit={save} noValidate>
         <FormError message={f.formError} />
-        <fieldset className="ty-fieldset">
+        {!adjustment && <fieldset className="ty-fieldset">
           <legend className="ty-label">Type</legend>
           <div className="ty-segmented">
             <label><input type="radio" name="type" disabled={imported} checked={kind === 'expense'} onChange={() => setKind('expense')} />Expense</label>
             <label><input type="radio" name="type" disabled={imported} checked={kind === 'income'} onChange={() => setKind('income')} />Income</label>
             <label><input type="radio" name="type" disabled={imported} checked={kind === 'transfer'} onChange={() => setKind('transfer')} />Transfer</label>
           </div>
-        </fieldset>
-        {blocked ? (
+        </fieldset>}
+        {adjustment ? (
+          <>
+            <TextField label="Note (optional)" value={note} onChange={setNote} error={f.errors.note} />
+            {tagField}
+          </>
+        ) : blocked ? (
           <Blocked text="Add a subsection first" to="/budget" link="Go to Budget" onClose={onClose} />
         ) : kind === 'transfer' ? (
           <>
@@ -213,6 +355,8 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
               )}
             </Field>
             <TextField label="Note (optional)" value={note} onChange={setNote} error={f.errors.note} />
+            {tagField}
+            {receiptField}
           </>
         ) : (
           <>
@@ -242,16 +386,19 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
                 )}
               </fieldset>
             )}
-            {kind === 'expense' && (
-              <Field label="Subsection" error={f.errors.subsectionId}>
-                {(p) => (
-                  <select {...p} value={subsectionId} onChange={(e) => setSubsectionId(e.target.value)}>
-                    <option value="" disabled>Choose a subsection</option>
-                    <SubsectionOptions sections={sections} />
-                  </select>
-                )}
-              </Field>
-            )}
+            {kind === 'expense' && (parts ? splitUi : (
+              <>
+                <Field label="Subsection" error={f.errors.subsectionId}>
+                  {(p) => (
+                    <select {...p} value={subsectionId} onChange={(e) => setSubsectionId(e.target.value)}>
+                      <option value="" disabled>Choose a subsection</option>
+                      <SubsectionOptions sections={sections} />
+                    </select>
+                  )}
+                </Field>
+                <div><button type="button" className="ty-btn ty-btn--quiet" onClick={() => setParts([{ subsectionId, amount }, { subsectionId: '', amount: '' }])}>Split</button></div>
+              </>
+            ))}
             <fieldset className="ty-fieldset">
               <legend className="ty-label">Pocket</legend>
               <div className="ty-chips">
@@ -272,12 +419,14 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
                 <div className="ty-inset">
                   <TextField label="Pocket name" value={newName} onChange={setNewName} error={f.errors.name} />
                   <EmojiPicker value={newEmoji} onChange={setNewEmoji} error={f.errors.emoji} />
-                  <KindField value={newKind} onChange={setNewKind} error={f.errors.kind} />
+                  <KindField value={newKind} onChange={setNewKind} error={f.errors.kind} omit="property" />
                 </div>
               )}
             </fieldset>
             {imported && <span className="ty-cap">Imported from a statement: only its subsection or source, payee and note can change.</span>}
             <TextField label="Note (optional)" value={note} onChange={setNote} error={f.errors.note} />
+            {tagField}
+            {receiptField}
             {imported && (kind === 'income' ? sourceId : subsectionId) && payee.trim() && (
               <div className="ty-field">
                 <label><input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} /> Always use this for {payee.trim()}</label>
@@ -301,33 +450,58 @@ export function TransactionDialog({ tx, kind: startKind, pockets, sections, sour
 
 /* ---------- Pocket ---------- */
 
-export function PocketDialog({ pocket, currency, onClose }: { pocket?: Pocket; currency: string; onClose: () => void }) {
+export function PocketDialog({ pocket, pockets = [], currency, onReconcile, onClose }: { pocket?: Pocket; pockets?: Pocket[]; currency: string; onReconcile?: () => void; onClose: () => void }) {
   const toast = useToast();
+  const { user } = useAuth();
   const f = useForm();
+  const g = useForm(); // the "Update value" row has its own errors
   const [name, setName] = useState(pocket?.name ?? '');
   const [kind, setKind] = useState<PocketKind>(pocket?.kind ?? 'bank');
   const [emoji, setEmoji] = useEmoji(pocket?.emoji, kind);
-  const [opening, setOpening] = useState(minorToInput(pocket?.openingBalanceMinor ?? 0));
-  const [curr, setCurr] = useState(pocket?.currency ?? currency);
+  const debt = kind === 'credit' || kind === 'loan';
+  const property = kind === 'property';
+  const [opening, setOpening] = useState(minorToInput(pocket?.kind === 'credit' || pocket?.kind === 'loan' ? Math.abs(pocket.openingBalanceMinor) : pocket?.openingBalanceMinor ?? 0));
+  const [value, setValue] = useState('');
+  const [valueDate, setValueDate] = useState(today());
+  const [picked, setPicked] = useState(pocket?.currency);
+  const curr = picked ?? (property ? pockets.find((p) => p.id === user.homePocketId)?.currency : undefined) ?? currency;
   const locked = !!pocket?.hasTransactions;
   const offered = useLoad(() => api<Rates>('GET', '/rates'), []).data?.currencies.map((c) => c.currency) ?? [];
+  const values = useLoad(() => (pocket?.kind === 'property' ? api<{ values: { id: number; valueMinor: number; date: string }[] }>('GET', `/pockets/${pocket.id}/values`) : Promise.reject()), [pocket?.id]).data?.values;
 
   const save = f.on(async () => {
-    const openingBalanceMinor = parseAmount(opening, { allowZero: true, allowNegative: true });
-    if (openingBalanceMinor === null) throw fieldError('openingBalanceMinor', BALANCE_ERROR);
-    const b = { name, kind, emoji, openingBalanceMinor };
-    if (pocket) await api('PATCH', `/pockets/${pocket.id}`, curr === pocket.currency ? b : { ...b, currency: curr });
-    else await api('POST', '/pockets', { ...b, currency: curr });
+    const body = { name, kind, emoji };
+    if (property) {
+      const valueMinor = parseAmount(value, { allowZero: true });
+      if (!pocket && valueMinor === null) throw fieldError('valueMinor', VALUE_ERROR);
+      if (pocket) await api('PATCH', `/pockets/${pocket.id}`, curr === pocket.currency ? body : { ...body, currency: curr });
+      else await api('POST', '/pockets', { ...body, currency: curr, valueMinor });
+    } else {
+      const openingBalanceMinor = parseAmount(opening, { allowZero: true, allowNegative: true });
+      if (openingBalanceMinor === null) throw fieldError('openingBalanceMinor', BALANCE_ERROR);
+      const b = { ...body, openingBalanceMinor };
+      if (pocket) await api('PATCH', `/pockets/${pocket.id}`, curr === pocket.currency ? b : { ...b, currency: curr });
+      else await api('POST', '/pockets', { ...b, currency: curr });
+    }
     onClose();
     toast('Saved');
+  });
+
+  const update = g.on(async () => {
+    const valueMinor = parseAmount(value, { allowZero: true });
+    if (valueMinor === null) throw fieldError('valueMinor', VALUE_ERROR);
+    await api('POST', `/pockets/${pocket!.id}/values`, { valueMinor, date: valueDate });
+    setValue('');
   });
 
   const remove = f.on(async () => {
     await api('DELETE', `/pockets/${pocket!.id}`);
     const { name, kind, emoji, openingBalanceMinor, currency } = pocket!;
     onClose();
-    toast('Pocket deleted', () => void api('POST', '/pockets', { name, kind, emoji, openingBalanceMinor, currency }).catch(() => {}));
+    toast('Pocket deleted', () => void api('POST', '/pockets', { name, kind, emoji, openingBalanceMinor, currency, ...(kind === 'property' ? { valueMinor: pocket!.valueMinor } : {}) }).catch(() => {}));
   });
+
+  const canReconcile = pocket && onReconcile && ['bank', 'cash', 'credit', 'loan'].includes(pocket.kind) && pocket.syncedBalanceMinor === null;
 
   return (
     <Modal title={pocket ? 'Edit pocket' : 'Add pocket'} onClose={onClose}>
@@ -336,9 +510,67 @@ export function PocketDialog({ pocket, currency, onClose }: { pocket?: Pocket; c
         <TextField label="Name" value={name} onChange={setName} error={f.errors.name} />
         <EmojiPicker value={emoji} onChange={setEmoji} error={f.errors.emoji} />
         <KindField value={kind} onChange={setKind} error={f.errors.kind} />
-        <PocketCurrencyField value={curr} onChange={setCurr} error={f.errors.currency} offered={offered} base={currency} locked={locked} />
-        <AmountField label="Opening balance" value={opening} onChange={setOpening} error={f.errors.openingBalanceMinor} currency={curr} />
-        <Foot busy={f.busy} onCancel={onClose} onDelete={pocket && remove} label={pocket ? 'Save' : 'Add pocket'} />
+        <PocketCurrencyField value={curr} onChange={setPicked} error={f.errors.currency} offered={offered} base={currency} locked={locked} />
+        {property ? (
+          !pocket && <AmountField label="Value" value={value} onChange={setValue} error={f.errors.valueMinor} currency={curr} />
+        ) : (
+          <AmountField label={debt ? 'Owed now' : 'Opening balance'} value={opening} onChange={setOpening} error={f.errors.openingBalanceMinor} currency={curr} />
+        )}
+        {property && pocket && (
+          <div className="ty-inset">
+            <div className="app-value">
+              <span className="ty-label">Current value</span>
+              <span className="ty-num">{formatMinor(values?.[0]?.valueMinor ?? pocket.valueMinor)}<span className="ty-cur">{pocket.currency}</span></span>
+            </div>
+            <FormError message={g.formError} />
+            <div className="app-valuerow">
+              <AmountField label="Value" value={value} onChange={setValue} error={g.errors.valueMinor} currency={pocket.currency} />
+              <TextField label="Date" type="date" value={valueDate} onChange={setValueDate} error={g.errors.date} />
+              <button type="button" className="ty-btn" disabled={g.busy} onClick={update}>Update value</button>
+            </div>
+            {values && values.length > 0 && (
+              <ul className="app-files">
+                {values.map((v) => (
+                  <li key={v.id}>
+                    <span>{dayHeading(v.date)}</span>
+                    <span className="ty-num">{formatMinor(v.valueMinor)}</span>
+                    <button type="button" className="ty-btn ty-btn--quiet" aria-label={`Remove the value of ${dayHeading(v.date)}`} onClick={() => void api('DELETE', `/pocket-values/${v.id}`).catch(() => {})}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        <Foot busy={f.busy} onCancel={onClose} onDelete={pocket && remove} onReconcile={canReconcile ? onReconcile : undefined} label={pocket ? 'Save' : 'Add pocket'} />
+      </form>
+    </Modal>
+  );
+}
+
+const VALUE_ERROR = 'Enter an amount, 0 or more, with at most two decimals.';
+
+/** Tell Tally what the bank shows; if it differs, Tally adds an adjustment. A debt is asked as what is owed and sent negative. */
+export function ReconcileDialog({ pocket, onClose }: { pocket: Pocket; onClose: () => void }) {
+  const toast = useToast();
+  const f = useForm();
+  const debt = pocket.kind === 'credit' || pocket.kind === 'loan';
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(today());
+  const save = f.on(async () => {
+    const shown = parseAmount(amount, { allowZero: true, allowNegative: !debt });
+    if (shown === null) throw fieldError('balanceMinor', BALANCE_ERROR);
+    const { adjustment } = await api<{ adjustment: Transaction | null }>('POST', `/pockets/${pocket.id}/reconcile`, { balanceMinor: debt ? -shown : shown, date });
+    onClose();
+    if (!adjustment) toast(date === today() ? 'Matches. Reconciled today.' : `Matches. Reconciled ${dayLabel(date).slice(4)}.`);
+    else toast(`Added an adjustment of ${adjustment.kind === 'income' ? '+' : '−'}${formatMinor(adjustment.amountMinor)}.`, () => void api('DELETE', `/transactions/${adjustment.id}`).catch(() => {}));
+  });
+  return (
+    <Modal title={debt ? `How much does ${pocket.name} say you owe?` : `What does ${pocket.name} show today?`} onClose={onClose}>
+      <form className="ty-stack" onSubmit={save} noValidate>
+        <FormError message={f.formError} />
+        <AmountField label={debt ? 'Owed' : 'Balance'} value={amount} onChange={setAmount} error={f.errors.balanceMinor} currency={pocket.currency} />
+        <TextField label="Date" type="date" value={date} onChange={setDate} error={f.errors.date} />
+        <Foot busy={f.busy} onCancel={onClose} label="Reconcile" />
       </form>
     </Modal>
   );

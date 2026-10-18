@@ -19,9 +19,6 @@
 /* Sidebar foot */
 .app-signout { margin-top: var(--space-3); margin-left: calc(-1 * var(--space-4)); }
 
-/* Transactions filters */
-.app-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 14rem)); gap: var(--space-4); }
-
 /* Settings */
 .app-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-5); margin: 0; }
 .app-facts dd { margin: 0; }
@@ -40,7 +37,6 @@
   .app-phone-only { display: inline-flex; }
   .app-phone-card { display: block; }
   .app-phone-block { display: block; }
-  .app-filters { grid-template-columns: minmax(0, 1fr); }
   .app-auth { padding-top: var(--space-5); }
   /* the bottom sheet: pinned to the bottom edge, full width */
   .ty-dialog { margin: auto 0 0; max-width: 100%; }
@@ -127,3 +123,53 @@
 .rp-nodeamt { fill: var(--ink-muted); font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .rp-flowtitle { flex: 1 1 100%; } }
 .rp-labelbg { fill: var(--surface); fill-opacity: 0.92; pointer-events: none; }
+
+/* Transactions: filter row (replaces the 3-column grid above), selection bar, selectable rows */
+.app-filters { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3) var(--space-4); }
+.app-filters .ty-field { flex: 1 1 9rem; max-width: 14rem; }
+.app-filters__chip { flex: none; }
+.app-selbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: 3.5rem; padding: var(--space-2) var(--space-4); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
+.app-sel { display: flex; align-items: center; border-top: 1px solid var(--line); }
+.app-sel .ty-trow { flex: 1; min-width: 0; border-top: 0; }
+.app-sel input[type="checkbox"] { flex: none; width: 1.125rem; height: 1.125rem; margin: 0 0 0 var(--space-4); accent-color: var(--action); }
+.app-sel--head { gap: var(--space-3); min-height: 2rem; border-top: 0; background: var(--surface-sunken); }
+.app-payee { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.app-payee b { min-width: 0; }
+.app-clip { flex: none; color: var(--ink-muted); }
+.app-tags { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.ty-trow__meta .app-tags { margin-left: var(--space-2); vertical-align: middle; }
+.negative { color: var(--negative); }
+
+/* Transaction dialog: split parts, tags, receipts */
+.app-parts { display: grid; gap: var(--space-2); }
+.app-part { display: grid; grid-template-columns: minmax(0, 1fr) 7rem auto; gap: var(--space-2); align-items: center; }
+.app-partfoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.app-taglist { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.app-tagpill { gap: var(--space-1); }
+.app-tagpill button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.app-tagpill button:focus-visible, .app-attach:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.app-files { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.app-files li { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.app-files li > :first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Pockets: assets and debts under net worth, property values */
+.app-nw { display: flex; gap: var(--space-6); margin-top: var(--space-2); }
+.app-value { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.app-valuerow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--space-3); align-items: end; }
+
+@media (max-width: 640px) {
+  .app-filters .ty-field { flex-basis: 100%; max-width: none; }
+  .app-selbar { gap: var(--space-1); }
+  /* on a phone the checkboxes appear once a long press starts selecting */
+  .app-sel .app-sel__box, .app-sel--head { display: none; }
+  .app-sel--on .app-sel__box { display: block; }
+  .app-sel--on .app-sel--head { display: flex; }
+  .app-valuerow { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* review fixes: search grows, rows resist the touch menu, tag pills stay legible, dialog scrolls clear of its footer */
+.app-filters .ty-field:has(input[type="search"]) { flex: 3 1 16rem; max-width: none; }
+.app-sel .ty-trow { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.app-tags .ty-pill, .app-tagpill { color: var(--ink); }
+.ty-dialog { scroll-padding-bottom: 6rem; }
+.app-attach { scroll-margin-bottom: 6rem; }
