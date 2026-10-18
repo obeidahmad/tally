@@ -81,7 +81,7 @@ function Row({ sub, from, held, onOpen }: { sub: BudgetSubsection; from: string;
       <div className="ty-btable__rule ty-x" title={title}>{rule}</div>
       <div className="ty-num ty-right ty-x">{dash(carried)}</div>
       <div className="ty-num ty-right ty-x ty-m">{dash(moved)}</div>
-      <div className={behind ? 'ty-num ty-right ty-x app-warn' : 'ty-num ty-right ty-x'} title={behind ? `Needs ${formatMinor(sub.neededMinor ?? 0)} a month to reach ${formatMinor(target)} by ${by}` : undefined}>{formatMinor(sub.budgetMinor)}</div>
+      <div className={behind ? 'ty-num ty-right ty-x ty-warn' : 'ty-num ty-right ty-x'} title={behind ? `Needs ${formatMinor(sub.neededMinor ?? 0)} a month to reach ${formatMinor(target)} by ${by}` : undefined}>{formatMinor(sub.budgetMinor)}</div>
       <div className="ty-num ty-right">{formatMinor(sub.spentMinor)}</div>
       <div className="ty-right">{sub.goalStatus === 'done' ? <span className="ty-pill ty-pill--positive">Reached</span> : sub.goalStatus === 'past' ? <span className="ty-pill ty-pill--warning">Date passed</span> : isGoal ? <span className="ty-pill">{formatMinor(saved)}</span> : <span className={s.pill} role="img" aria-label={say} title={say}>{formatMinor(left)}</span>}</div>
     </div>
@@ -156,7 +156,7 @@ export default function BudgetPage() {
   const leftOver = state.data && state.data.budget.totals.leftOverMinor > 0 && (
     <div className="ty-cap ty-wide">
       {formatMinor(state.data.budget.totals.leftOverMinor)} is left over: no step in the pipeline takes it.{' '}
-      <Link className="app-link" to={month === now ? '/pipeline' : `/pipeline?month=${month}`}>Open the pipeline</Link>
+      <Link className="ty-link" to={month === now ? '/pipeline' : `/pipeline?month=${month}`}>Open the pipeline</Link>
     </div>
   );
 
@@ -198,7 +198,7 @@ export default function BudgetPage() {
           {state.data.budget.unsortedCount > 0 && (
             <div className="ty-inset">
               <span>{state.data.budget.unsortedCount} imported {state.data.budget.unsortedCount === 1 ? 'transaction needs' : 'transactions need'} a subsection or source.</span>
-              <div><Link className="app-link" to="/transactions?unsorted=1">Sort them</Link></div>
+              <div><Link className="ty-link" to="/transactions?unsorted=1">Sort them</Link></div>
             </div>
           )}
           {state.data.connections.map((c) => <EndingNotice key={c.id} connection={c} />)}

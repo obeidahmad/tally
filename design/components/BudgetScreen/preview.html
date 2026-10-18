@@ -5,7 +5,7 @@
 <div class="ty-shell">
 <aside class="ty-side">
   <div class="ty-word">Tally</div>
-  <nav class="ty-nav" aria-label="Main"><a href="#" aria-current="page">Budget</a><a href="#">Pipeline</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Settings</a></nav>
+  <nav class="ty-nav" aria-label="Main"><a href="#">Home</a><a href="#" aria-current="page">Budget</a><a href="#">Pipeline</a><a href="#">Transactions</a><a href="#">Recurring</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Reports</a><a href="#">Settings</a></nav>
   <div class="ty-side__foot ty-cap">Signed in as Sam<br>Base currency EUR</div>
 </aside>
 <main class="ty-main">
@@ -56,12 +56,12 @@
   <span class="ty-x"></span>
   <div class="ty-num ty-right ty-x">49.99</div>
   <div class="ty-num ty-right ty-x ty-m">20.00</div>
-  <div class="ty-num ty-right ty-x">1,100.00</div>
+  <div class="ty-num ty-right ty-x">1,175.00</div>
   <div class="ty-num ty-right ty-sp">990.15</div>
   <div class="ty-num ty-right">254.84</div>
 </div>
 <div class="ty-btable__row" role="button" tabindex="0">
-  <div class="ty-btable__name"><span class="ty-btable__text">Mortgage</span></div>
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🏠</span> Mortgage</span></div>
   <div class="ty-btable__rule ty-x" title="Does not roll over">Fixed</div>
   <div class="ty-num ty-right ty-x">—</div>
   <div class="ty-num ty-right ty-x ty-m">—</div>
@@ -70,7 +70,7 @@
   <div class="ty-right"><span class="ty-pill" role="img" aria-label="0.00 left" title="0.00 left">0.00</span></div>
 </div>
 <div class="ty-btable__row" role="button" tabindex="0">
-  <div class="ty-btable__name"><span class="ty-btable__text">Food</span></div>
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🛒</span> Food</span></div>
   <div class="ty-btable__rule ty-x" title="rolls over up to 100.00">Fixed</div>
   <div class="ty-num ty-right ty-x">49.99</div>
   <div class="ty-num ty-right ty-x ty-m">—</div>
@@ -88,7 +88,7 @@
   <div class="ty-right"><span class="ty-pill ty-pill--warning" role="img" aria-label="8.25 left" title="8.25 left">8.25</span></div>
 </div>
 <div class="ty-btable__row" role="button" tabindex="0">
-  <div class="ty-btable__name"><span class="ty-btable__text">Transport</span></div>
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🚗</span> Transport</span></div>
   <div class="ty-btable__rule ty-x" title="rolls over up to 50.00">Fixed</div>
   <div class="ty-num ty-right ty-x">—</div>
   <div class="ty-num ty-right ty-x ty-m">—</div>
@@ -141,7 +141,7 @@
   <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="100.00 left" title="100.00 left">100.00</span></div>
 </div>
 <div class="ty-btable__row" role="button" tabindex="0">
-  <div class="ty-btable__name"><span class="ty-btable__text">Gifts</span></div>
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🎁</span> Gifts</span></div>
   <div class="ty-btable__rule ty-x" title="40% of what is left">40%</div>
   <div class="ty-num ty-right ty-x">—</div>
   <div class="ty-num ty-right ty-x ty-m">—</div>
@@ -167,17 +167,17 @@
   <div class="ty-num ty-right">11,041.80</div>
 </div>
 <div class="ty-btable__row" role="button" tabindex="0">
-  <div class="ty-btable__name"><span class="ty-btable__text">Car</span></div>
-  <div class="ty-btable__rule ty-x" title="Fills to 15,000.00">Goal 15,000.00 · 42%</div>
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🚗</span> Car</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 15,000.00 · 42% saved">15,000.00 by Jun 2027</div>
   <div class="ty-num ty-right ty-x">—</div>
   <div class="ty-num ty-right ty-x ty-m">—</div>
-  <div class="ty-num ty-right ty-x">300.00</div>
+  <div class="ty-num ty-right ty-x ty-warn" title="Needs 842.50 a month to reach 15,000.00 by Jun 2027">300.00</div>
   <div class="ty-num ty-right">0.00</div>
   <div class="ty-right"><span class="ty-pill">6,300.00</span></div>
 </div>
 <div class="ty-btable__row" role="button" tabindex="0">
   <div class="ty-btable__name"><span class="ty-btable__text">Emergencies</span></div>
-  <div class="ty-btable__rule ty-x" title="Fills to 3,000.00">Goal 3,000.00 · 80%</div>
+  <div class="ty-btable__rule ty-x" title="Fills to 3,000.00 · 80% saved">3,000.00 by Dec 2027</div>
   <div class="ty-num ty-right ty-x">—</div>
   <div class="ty-num ty-right ty-x ty-m">—</div>
   <div class="ty-num ty-right ty-x">200.00</div>
@@ -225,7 +225,7 @@
   </aside>
 </div>
 </main>
-<nav class="ty-tabs" aria-label="Main"><a href="#" aria-current="page">Budget</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">More</a></nav>
+<nav class="ty-tabs" aria-label="Main"><a href="#">Home</a><a href="#" aria-current="page">Budget</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">Settings</a></nav>
 </div>
 </body>
 </html>

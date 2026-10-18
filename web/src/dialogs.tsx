@@ -26,7 +26,7 @@ export function Foot({ busy, onCancel, onDelete, onMove, onReconcile, label = 'S
 
 const Blocked = ({ text, to, link, onClose }: { text: string; to: string; link: string; onClose: () => void }) => (
   <div className="ty-stack">
-    <div>{text}. <Link className="app-link" to={to} onClick={onClose}>{link}</Link></div>
+    <div>{text}. <Link className="ty-link" to={to} onClick={onClose}>{link}</Link></div>
   </div>
 );
 
@@ -230,9 +230,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
     <div className="ty-field">
       <label className="ty-label" htmlFor="tx-tags">Tags</label>
       {tagList.length > 0 && (
-        <div className="app-taglist">
+        <div className="ty-taglist">
           {tagList.map((x) => (
-            <span key={x} className="ty-pill app-tagpill"><span>{x}</span><button type="button" aria-label={`Remove tag ${x}`} onClick={() => setTagList(tagList.filter((y) => y !== x))}>×</button></span>
+            <span key={x} className="ty-pill ty-tagpill"><span>{x}</span><button type="button" aria-label={`Remove tag ${x}`} onClick={() => setTagList(tagList.filter((y) => y !== x))}>×</button></span>
           ))}
         </div>
       )}
@@ -254,10 +254,10 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
     <div className="ty-field">
       <span className="ty-label">Receipts</span>
       {files.length > 0 && (
-        <ul className="app-files">
+        <ul className="ty-files">
           {files.map((a) => (
             <li key={a.id}>
-              <a className="app-link" href={`/api/attachments/${a.id}`} target="_blank" rel="noopener">{a.name}</a>
+              <a className="ty-link" href={`/api/attachments/${a.id}`} target="_blank" rel="noopener">{a.name}</a>
               <span className="ty-cap">{sizeText(a.size)}</span>
               <button type="button" className="ty-btn ty-btn--quiet" aria-label={`Remove ${a.name}`} onClick={() => void detach(a.id)}>Remove</button>
             </li>
@@ -265,7 +265,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
         </ul>
       )}
       <div>
-        <label className="ty-btn app-attach">
+        <label className="ty-btn ty-attach">
           Attach receipt
           <input type="file" className="app-sr-only" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e) => void attach(e.target)} />
         </label>
@@ -277,9 +277,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
   const splitUi = parts && (
     <fieldset className="ty-fieldset">
       <legend className="ty-label">Parts</legend>
-      <div className="app-parts">
+      <div className="ty-parts">
         {parts.map((x, i) => (
-          <div key={i} className="app-part">
+          <div key={i} className="ty-part">
             <select className="ty-input" aria-label="Subsection" value={x.subsectionId} onChange={(e) => setParts(parts.map((y, j) => (j === i ? { ...y, subsectionId: e.target.value } : y)))}>
               <option value="" disabled>Choose a subsection</option>
               <SubsectionOptions sections={sections} />
@@ -289,9 +289,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
           </div>
         ))}
       </div>
-      <div className="app-partfoot">
+      <div className="ty-partfoot">
         <button type="button" className="ty-btn ty-btn--quiet" disabled={parts.length >= 20} onClick={() => setParts([...parts, { subsectionId: '', amount: '' }])}>+ Add part</button>
-        <span className={left < 0 ? 'ty-cap negative' : 'ty-cap'}>Left to split {formatMinor(left)}</span>
+        <span className={left < 0 ? 'ty-cap ty-num--neg' : 'ty-cap'}>Left to split {formatMinor(left)}</span>
         <button type="button" className="ty-btn ty-btn--quiet" onClick={() => { setSubsectionId(parts[0]?.subsectionId ?? ''); setParts(null); }}>Remove split</button>
       </div>
       {f.errors.splits && <span className="ty-error">{f.errors.splits}</span>}
@@ -518,18 +518,18 @@ export function PocketDialog({ pocket, pockets = [], currency, onReconcile, onCl
         )}
         {property && pocket && (
           <div className="ty-inset">
-            <div className="app-value">
+            <div className="ty-value">
               <span className="ty-label">Current value</span>
               <span className="ty-num">{formatMinor(values ? values.find((v) => v.date <= today())?.valueMinor ?? 0 : pocket.valueMinor)}<span className="ty-cur">{pocket.currency}</span></span>
             </div>
             <FormError message={g.formError} />
-            <div className="app-valuerow">
+            <div className="ty-valuerow">
               <AmountField label="Value" value={value} onChange={setValue} error={g.errors.valueMinor} currency={pocket.currency} />
               <TextField label="Date" type="date" max={today()} value={valueDate} onChange={setValueDate} error={g.errors.date} />
               <button type="button" className="ty-btn" disabled={g.busy} onClick={update}>Update value</button>
             </div>
             {values && values.length > 0 && (
-              <ul className="app-files">
+              <ul className="ty-files">
                 {values.map((v) => (
                   <li key={v.id}>
                     <span>{dayHeading(v.date)}</span>

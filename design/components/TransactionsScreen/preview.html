@@ -5,62 +5,63 @@
 <div class="ty-shell">
 <aside class="ty-side">
   <div class="ty-word">Tally</div>
-  <nav class="ty-nav" aria-label="Main"><a href="#">Budget</a><a href="#">Pipeline</a><a href="#" aria-current="page">Transactions</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Settings</a></nav>
+  <nav class="ty-nav" aria-label="Main"><a href="#">Home</a><a href="#">Budget</a><a href="#">Pipeline</a><a href="#" aria-current="page">Transactions</a><a href="#">Recurring</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Reports</a><a href="#">Settings</a></nav>
   <div class="ty-side__foot ty-cap">Signed in as Sam<br>Base currency EUR</div>
 </aside>
 <main class="ty-main">
 <header class="ty-month__top"><h1 class="text-display">Transactions</h1><span class="ty-grow"></span><button class="ty-btn">Import a statement</button><button class="ty-btn ty-btn--spend">Add transaction</button></header>
-<div class="ty-month__top"><div class="ty-field" style="width:260px"><label class="ty-label" for="q">Search</label><input class="ty-input" id="q" placeholder="Payee or note"></div><div class="ty-field" style="width:200px"><label class="ty-label" for="fs">Subsection</label><select class="ty-input" id="fs"><option>All subsections</option></select></div><div class="ty-field" style="width:200px"><label class="ty-label" for="fp">Pocket</label><select class="ty-input" id="fp"><option>All pockets</option></select></div><div class="ty-field" style="width:160px"><label class="ty-label" for="fm">Month</label><select class="ty-input" id="fm"><option>October 2026</option></select></div></div>
+<div class="ty-filters">
+  <div class="ty-field"><label class="ty-label" for="ff-m">Month</label><select class="ty-input" id="ff-m"><option>October 2026</option></select></div>
+  <div class="ty-field"><label class="ty-label" for="ff-q">Search</label><input class="ty-input" id="ff-q" type="search" placeholder="Search payee or note"></div>
+  <div class="ty-field"><label class="ty-label" for="ff-s">Subsection</label><select class="ty-input" id="ff-s"><option>All subsections</option></select></div>
+  <div class="ty-field"><label class="ty-label" for="ff-p">Pocket</label><select class="ty-input" id="ff-p"><option>All pockets</option></select></div>
+  <div class="ty-field"><label class="ty-label" for="ff-t">Tag</label><select class="ty-input" id="ff-t"><option>All tags</option></select></div>
+  <label class="ty-chip ty-filters__chip"><input type="checkbox">Needs sorting (3)</label>
+  <button class="ty-btn ty-btn--quiet">Clear filters</button>
+</div>
 <section class="ty-section" aria-label="Transactions">
-<div class="ty-day ty-label">11 October</div>
-<div class="ty-trow">
-  <div class="ty-trow__who"><b>Alphamega</b><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Food · <span class="ty-emoji">💳</span> Revolut</span></div>
-  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Food</div>
-  <div class="ty-wide"><span class="ty-emoji">💳</span> Revolut</div>
-  <div class="ty-num ty-right">−48.20</div>
+<label class="ty-sel ty-sel--head"><input type="checkbox"><span class="ty-label">Select all shown</span></label>
+<div class="ty-day ty-label">Fri 16 Oct</div>
+<div class="ty-sel">
+  <input type="checkbox" class="ty-sel__box" aria-label="Select Alphamega">
+  <div class="ty-trow" role="button" tabindex="0">
+    <div class="ty-trow__who"><span class="ty-payee"><b>Alphamega</b><svg class="ty-clip" viewBox="0 0 16 16" role="img" aria-label="Has receipt" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7.5 7.8 12.7a3 3 0 0 1-4.2-4.2l5.5-5.5a2 2 0 0 1 2.8 2.8L6.5 11.2a1 1 0 0 1-1.4-1.4L10 5"/></svg></span><span class="ty-cap ty-trow__meta">Food · <span class="ty-emoji">💳</span> Revolut</span></div>
+    <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Food</div>
+    <div class="ty-wide"><span class="ty-emoji">💳</span> Revolut</div>
+    <div class="ty-num ty-right">−48.20</div>
+  </div>
 </div>
-<div class="ty-trow">
-  <div class="ty-trow__who"><b>Netflix</b><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Subscriptions · <span class="ty-emoji">💳</span> Revolut</span></div>
-  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--2"></span>Subscriptions</div>
-  <div class="ty-wide"><span class="ty-emoji">💳</span> Revolut</div>
-  <div class="ty-num ty-right">−13.99</div>
+<div class="ty-sel">
+  <input type="checkbox" class="ty-sel__box" aria-label="Select Ryanair">
+  <div class="ty-trow" role="button" tabindex="0">
+    <div class="ty-trow__who"><span class="ty-payee"><b>Ryanair</b><span class="ty-tags ty-wide"><span class="ty-pill">holiday</span><span class="ty-pill">cyprus</span></span></span><span class="ty-cap">From a statement</span><span class="ty-cap ty-trow__meta">Wants · <span class="ty-emoji">💳</span> Revolut</span></div>
+    <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--2"></span>Wants</div>
+    <div class="ty-wide"><span class="ty-emoji">💳</span> Revolut</div>
+    <div class="ty-num ty-right">−212.00</div>
+  </div>
 </div>
-<div class="ty-day ty-label">10 October</div>
-<div class="ty-trow">
-  <div class="ty-trow__who"><b>Daily income fund payout</b><span class="ty-cap">Income · entered by hand</span><span class="ty-cap ty-trow__meta">Fund income · <span class="ty-emoji">🌱</span> Daily income fund</span></div>
-  <div class="ty-tag ty-wide"><span class="ty-dot"></span>Fund income</div>
-  <div class="ty-wide"><span class="ty-emoji">🌱</span> Daily income fund</div>
-  <div class="ty-num ty-right ty-num--pos">+0.41</div>
+<div class="ty-sel">
+  <input type="checkbox" class="ty-sel__box" aria-label="Select Lidl">
+  <div class="ty-trow" role="button" tabindex="0">
+    <div class="ty-trow__who"><span class="ty-payee"><b>Lidl</b></span><span class="ty-cap ty-trow__meta">Split · 2 subsections · <span class="ty-emoji">💵</span> Cash</span></div>
+    <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Split · 2 subsections</div>
+    <div class="ty-wide"><span class="ty-emoji">💵</span> Cash</div>
+    <div class="ty-num ty-right">−38.20</div>
+  </div>
 </div>
-<div class="ty-day ty-label">9 October</div>
-<div class="ty-trow">
-  <div class="ty-trow__who"><b>EAC electricity</b><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Utilities · <span class="ty-emoji">🏦</span> Bank of Cyprus</span></div>
-  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Utilities</div>
-  <div class="ty-wide"><span class="ty-emoji">🏦</span> Bank of Cyprus</div>
-  <div class="ty-num ty-right">−131.75</div>
-</div>
-<div class="ty-trow">
-  <div class="ty-trow__who"><b>Moved to Revolut USD</b><span class="ty-cap">Transfer · 85.00 EUR became 92.31 USD at 1.0860</span><span class="ty-cap ty-trow__meta">Parents · <span class="ty-emoji">🏦</span> Bank of Cyprus</span></div>
-  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--3"></span>Parents</div>
-  <div class="ty-wide"><span class="ty-emoji">🏦</span> Bank of Cyprus</div>
-  <div class="ty-num ty-right">−85.00</div>
-</div>
-<div class="ty-day ty-label">1 October</div>
-<div class="ty-trow">
-  <div class="ty-trow__who"><b>Paycheck</b><span class="ty-cap">Income · from your bank</span><span class="ty-cap ty-trow__meta">Paycheck · <span class="ty-emoji">🏦</span> Bank of Cyprus</span></div>
-  <div class="ty-tag ty-wide"><span class="ty-dot"></span>Paycheck</div>
-  <div class="ty-wide"><span class="ty-emoji">🏦</span> Bank of Cyprus</div>
-  <div class="ty-num ty-right ty-num--pos">+2,000.00</div>
-</div>
-<div class="ty-trow">
-  <div class="ty-trow__who"><b>Mortgage</b><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Mortgage · <span class="ty-emoji">🏦</span> Bank of Cyprus</span></div>
-  <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Mortgage</div>
-  <div class="ty-wide"><span class="ty-emoji">🏦</span> Bank of Cyprus</div>
-  <div class="ty-num ty-right">−600.00</div>
+<div class="ty-day ty-label">Thu 15 Oct</div>
+<div class="ty-sel">
+  <input type="checkbox" class="ty-sel__box" aria-label="Select Netflix">
+  <div class="ty-trow" role="button" tabindex="0">
+    <div class="ty-trow__who"><span class="ty-payee"><b>Netflix</b></span><span class="ty-cap">From your bank</span><span class="ty-cap ty-trow__meta">Subscriptions · <span class="ty-emoji">💳</span> Revolut</span></div>
+    <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--2"></span>Subscriptions</div>
+    <div class="ty-wide"><span class="ty-emoji">💳</span> Revolut</div>
+    <div class="ty-num ty-right">−13.99</div>
+  </div>
 </div>
 </section>
 </main>
-<nav class="ty-tabs" aria-label="Main"><a href="#">Budget</a><a href="#" aria-current="page">Transactions</a><a href="#">Pockets</a><a href="#">More</a></nav>
+<nav class="ty-tabs" aria-label="Main"><a href="#">Home</a><a href="#">Budget</a><a href="#" aria-current="page">Transactions</a><a href="#">Pockets</a><a href="#">Settings</a></nav>
 </div>
 </body>
 </html>

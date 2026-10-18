@@ -1,3 +1,3 @@
 # PocketsScreen
 
-The Pockets page: net worth in the base currency in `num-hero`, the pockets as one card of 48px rows, and a table of where each subsection's money sits.
+The Pockets page: net worth in `num-hero` with Assets and Debts, the pockets in one card per group (PocketGroups), and a table of where each subsection's money sits.

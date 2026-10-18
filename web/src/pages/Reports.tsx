@@ -69,21 +69,21 @@ function Plot({ children }: { children: (w: number, mark: Mark) => ReactNode }) 
   });
   const left = tip ? tip.x > w / 2 : false;
   return (
-    <div className="rp-plot" ref={box}>
+    <div className="ty-chart-plot" ref={box}>
       <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`} onPointerDown={(e) => { if (e.target === e.currentTarget) hide(); }}>
         {children(w, mark)}
       </svg>
       {tip && (
-        <div className="rp-tip" role="tooltip" style={{ left: tip.x, transform: `translateX(${left ? 'calc(-100% - 0.75rem)' : '0.75rem'})` }}>
-          <div className="rp-tip__title">{tip.title}</div>
+        <div className="ty-chart-tip" role="tooltip" style={{ left: tip.x, transform: `translateX(${left ? 'calc(-100% - 0.75rem)' : '0.75rem'})` }}>
+          <div className="ty-chart-tip__title">{tip.title}</div>
           {tip.rows.map((r) => (
-            <div key={r.label} className="rp-tip__row">
-              <span className="rp-tip__key" style={{ background: r.colour }} />
-              <span className="rp-tip__val">{r.value}</span>
+            <div key={r.label} className="ty-chart-tip__row">
+              <span className="ty-chart-tip__key" style={{ background: r.colour }} />
+              <span className="ty-chart-tip__val">{r.value}</span>
               <span className="ty-cap">{r.label}</span>
             </div>
           ))}
-          {tip.foot && <div className="rp-tip__row rp-tip__foot"><span className="rp-tip__val">{tip.foot.value}</span><span className="ty-cap">{tip.foot.label}</span></div>}
+          {tip.foot && <div className="ty-chart-tip__row ty-chart-tip__foot"><span className="ty-chart-tip__val">{tip.foot.value}</span><span className="ty-cap">{tip.foot.label}</span></div>}
         </div>
       )}
     </div>
@@ -94,10 +94,10 @@ function Plot({ children }: { children: (w: number, mark: Mark) => ReactNode }) 
 function Axes({ w, months, ticks, y, band }: { w: number; months: string[]; ticks: number[]; y: (v: number) => number; band: number }) {
   const every = Math.ceil(34 / band);
   return (
-    <g className="rp-axis">
+    <g className="ty-chart-axis">
       {ticks.map((t) => (
         <g key={t}>
-          <line x1={M.left} x2={w} y1={y(t)} y2={y(t)} className="rp-grid" />
+          <line x1={M.left} x2={w} y1={y(t)} y2={y(t)} className="ty-chart-grid" />
           <text x={M.left - 8} y={y(t)} textAnchor="end" dominantBaseline="middle">{compact(t)}</text>
         </g>
       ))}
@@ -121,7 +121,7 @@ function Card({ title, head, empty, legend, chart, table, note }: {
       {empty ? <div className="ty-cap">Nothing to show yet.</div> : (
         <>
           {!asTable && legend}
-          {asTable ? <div className="rp-table">{table}</div> : chart}
+          {asTable ? <div className="ty-chart-table">{table}</div> : chart}
           {note}
         </>
       )}
@@ -142,7 +142,7 @@ function SpendingCard({ r, sections }: { r: Reports; sections: Section[] }) {
   return (
     <Card
       title="Spending by section" empty={empty}
-      legend={<ul className="rp-legend">{ids.map((id) => <li key={id} className="ty-cap"><span className={dot(info(id).slot)} />{info(id).name}</li>)}</ul>}
+      legend={<ul className="ty-chart-legend">{ids.map((id) => <li key={id} className="ty-cap"><span className={dot(info(id).slot)} />{info(id).name}</li>)}</ul>}
       chart={
         <Plot>{(w, mark) => {
           const band = (w - M.left) / months.length, bw = Math.min(24, band * 0.6);
@@ -160,17 +160,17 @@ function SpendingCard({ r, sections }: { r: Reports; sections: Section[] }) {
                   foot: { label: 'Total', value: formatMinor(s.totalMinor) },
                 };
                 return (
-                  <g key={s.month} className="rp-col">
+                  <g key={s.month} className="ty-chart-col">
                     {shown.map((b, k) => {
                       const y1 = y(acc + b.minor), y0 = y(acc);
                       acc += b.minor;
                       const h = Math.max(y0 - y1 - (k === 0 ? 0 : 2), 1); // a 2px surface gap under every segment above the first
                       return k === shown.length - 1
-                        ? <path key={b.sectionId} className="rp-seg" d={topRound(x, y1, bw, h)} fill={info(b.sectionId).colour} />
-                        : <rect key={b.sectionId} className="rp-seg" x={x} y={y1} width={bw} height={h} fill={info(b.sectionId).colour} />;
+                        ? <path key={b.sectionId} className="ty-chart-seg" d={topRound(x, y1, bw, h)} fill={info(b.sectionId).colour} />
+                        : <rect key={b.sectionId} className="ty-chart-seg" x={x} y={y1} width={bw} height={h} fill={info(b.sectionId).colour} />;
                     })}
-                    {band >= 36 && s.totalMinor > 0 && <text className="rp-total" x={x + bw / 2} y={y(s.totalMinor) - 6} textAnchor="middle">{compact(s.totalMinor)}</text>}
-                    <rect className="rp-hit" x={M.left + band * i} y={M.top} width={band} height={H - M.top - M.bottom} fill="transparent"
+                    {band >= 36 && s.totalMinor > 0 && <text className="ty-chart-total" x={x + bw / 2} y={y(s.totalMinor) - 6} textAnchor="middle">{compact(s.totalMinor)}</text>}
+                    <rect className="ty-chart-hit" x={M.left + band * i} y={M.top} width={band} height={H - M.top - M.bottom} fill="transparent"
                       {...mark(tip, `${tip.title}: ${tip.rows.map((t) => `${t.label} ${t.value}`).join(', ')}, total ${tip.foot!.value}`)} />
                   </g>
                 );
@@ -199,7 +199,7 @@ function CashflowCard({ r }: { r: Reports }) {
   return (
     <Card
       title="Cash flow" empty={income === 0 && spending === 0}
-      legend={<ul className="rp-legend">{series.map(([name, , colour]) => <li key={name} className="ty-cap"><span className="ty-dot" style={{ background: colour }} />{name}</li>)}</ul>}
+      legend={<ul className="ty-chart-legend">{series.map(([name, , colour]) => <li key={name} className="ty-cap"><span className="ty-dot" style={{ background: colour }} />{name}</li>)}</ul>}
       chart={
         <Plot>{(w, mark) => {
           const band = (w - M.left) / months.length, bw = Math.min(24, band * 0.3);
@@ -213,9 +213,9 @@ function CashflowCard({ r }: { r: Reports }) {
                     const v = c[key], x = M.left + band * (i + 0.5) + (k === 0 ? -bw - 1 : 1), h = y(0) - y(v);
                     const tip: Tip = { x: x + bw / 2, title: monthTitle(c.month), rows: [{ label: name, value: formatMinor(v), colour }] };
                     return (
-                      <g key={name} className="rp-col">
-                        {v > 0 && <path className="rp-seg" d={topRound(x, y(v), bw, h)} fill={colour} />}
-                        <rect className="rp-hit" x={x - 1} y={M.top} width={bw + 2} height={H - M.top - M.bottom} fill="transparent" {...mark(tip, `${tip.title}, ${name} ${tip.rows[0].value}`)} />
+                      <g key={name} className="ty-chart-col">
+                        {v > 0 && <path className="ty-chart-seg" d={topRound(x, y(v), bw, h)} fill={colour} />}
+                        <rect className="ty-chart-hit" x={x - 1} y={M.top} width={bw + 2} height={H - M.top - M.bottom} fill="transparent" {...mark(tip, `${tip.title}, ${name} ${tip.rows[0].value}`)} />
                       </g>
                     );
                   })}
@@ -254,17 +254,17 @@ function NetWorthCard({ r }: { r: Reports }) {
           return (
             <>
               <Axes w={inner} months={months} ticks={ticks} y={y} band={band} />
-              <polyline className="rp-line" points={r.networth.map((n, i) => `${px(i)},${y(n.minor)}`).join(' ')} fill="none" />
+              <polyline className="ty-chart-line" points={r.networth.map((n, i) => `${px(i)},${y(n.minor)}`).join(' ')} fill="none" />
               {r.networth.map((n, i) => {
                 const tip: Tip = { x: px(i), title: monthTitle(n.month), rows: [{ label: 'Net worth', value: formatMinor(n.minor), colour: 'var(--ink)' }] };
                 return (
-                  <g key={n.month} className="rp-col">
-                    <circle className="rp-dot" cx={px(i)} cy={y(n.minor)} r={4} />
-                    <rect className="rp-hit" x={px(i) - Math.max(band, 24) / 2} y={M.top} width={Math.max(band, 24)} height={H - M.top - M.bottom} fill="transparent" {...mark(tip, `${tip.title}: ${tip.rows[0].value}`)} />
+                  <g key={n.month} className="ty-chart-col">
+                    <circle className="ty-chart-dot" cx={px(i)} cy={y(n.minor)} r={4} />
+                    <rect className="ty-chart-hit" x={px(i) - Math.max(band, 24) / 2} y={M.top} width={Math.max(band, 24)} height={H - M.top - M.bottom} fill="transparent" {...mark(tip, `${tip.title}: ${tip.rows[0].value}`)} />
                   </g>
                 );
               })}
-              <text className="rp-total" x={px(last) + 10} y={y(vals[last])} dominantBaseline="middle">{formatMinor(vals[last])}</text>
+              <text className="ty-chart-total" x={px(last) + 10} y={y(vals[last])} dominantBaseline="middle">{formatMinor(vals[last])}</text>
             </>
           );
         }}</Plot>
@@ -335,7 +335,7 @@ function FlowCard({ sections }: { sections: Section[] }) {
   const sectionColour = (id: string) => slotColour(secById.get(Number(id.slice(8)))?.colorSlot ?? 0);
   const head = (
     <div className="ty-month__top">
-      <h2 className="text-heading rp-flowtitle" style={{ margin: 0 }}>Where {monthName(month)}'s money went</h2>
+      <h2 className="text-heading ty-flowtitle" style={{ margin: 0 }}>Where {monthName(month)}'s money went</h2>
       <span className="ty-grow" />
       <button className="ty-btn ty-btn--icon" aria-label="Previous month" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
       <span className="text-body" style={{ fontWeight: 600 }}>{monthTitle(month)}</span>
@@ -359,8 +359,8 @@ function FlowCard({ sections }: { sections: Section[] }) {
     <Card
       title="Where the money went" head={head} empty={flow.links.length === 0}
       chart={
-        <div className="rp-flowbox">
-          <div className="rp-plot" ref={box} style={{ minWidth: 640 }}>
+        <div className="ty-flowbox">
+          <div className="ty-chart-plot" ref={box} style={{ minWidth: 640 }}>
             <svg width={width} height={g.height} viewBox={`0 0 ${width} ${g.height}`} onPointerDown={(e) => { if (e.target === e.currentTarget) setTip(undefined); }}>
               <g transform="translate(4,0)">
                 {g.links.map((l) => {
@@ -370,7 +370,7 @@ function FlowCard({ sections }: { sections: Section[] }) {
                   const text = `${label(l.from)} → ${label(l.to)}: ${formatMinor(l.minor)}`;
                   const at = { x: xm + 4, y: (l.y0 + l.y1 + (t0 + t1) / 2) / 2, text };
                   return (
-                    <path key={`${l.from}>${l.to}`} className="rp-flow rp-hit" d={d} fill={linkColour(l)} tabIndex={0} role="img" aria-label={text}
+                    <path key={`${l.from}>${l.to}`} className="ty-flow ty-chart-hit" d={d} fill={linkColour(l)} tabIndex={0} role="img" aria-label={text}
                       onPointerEnter={() => setTip(at)} onFocus={() => setTip(at)} onClick={() => setTip(at)} onBlur={() => setTip(undefined)}
                       onPointerLeave={(e) => { if (e.pointerType === 'mouse') setTip(undefined); }}
                       onKeyDown={(e) => { if (e.key === 'Escape') setTip(undefined); }} />
@@ -381,9 +381,9 @@ function FlowCard({ sections }: { sections: Section[] }) {
                   return (
                     <g key={n.id}>
                       <rect x={n.x} y={n.y} width={NODE_W} height={n.h} fill={nodeColour(n)} rx={2} />
-                      {n.col < 2 && <rect className="rp-labelbg" x={n.x + NODE_W + 3} y={n.y + n.h / 2 - 9} width={(n.label.length + formatMinor(n.value).length + 1) * 6.4 + 10} height={18} rx={4} />}
-                      <text className="rp-nodelabel" x={n.x + NODE_W + 6} y={n.y + n.h / 2} dominantBaseline="middle">
-                        {emoji && <tspan className="ty-emoji">{emoji} </tspan>}{n.label}<tspan className="rp-nodeamt" dx={6}>{formatMinor(n.value)}</tspan>
+                      {n.col < 2 && <rect className="ty-labelbg" x={n.x + NODE_W + 3} y={n.y + n.h / 2 - 9} width={(n.label.length + formatMinor(n.value).length + 1) * 6.4 + 10} height={18} rx={4} />}
+                      <text className="ty-nodelabel" x={n.x + NODE_W + 6} y={n.y + n.h / 2} dominantBaseline="middle">
+                        {emoji && <tspan className="ty-emoji">{emoji} </tspan>}{n.label}<tspan className="ty-nodeamt" dx={6}>{formatMinor(n.value)}</tspan>
                       </text>
                     </g>
                   );
@@ -391,8 +391,8 @@ function FlowCard({ sections }: { sections: Section[] }) {
               </g>
             </svg>
             {tip && (
-              <div className="rp-tip" role="tooltip" style={{ left: tip.x, top: tip.y, transform: `translate(${tip.x > width / 2 ? 'calc(-100% - 0.75rem)' : '0.75rem'}, -50%)` }}>
-                <div className="rp-tip__val">{tip.text}</div>
+              <div className="ty-chart-tip" role="tooltip" style={{ left: tip.x, top: tip.y, transform: `translate(${tip.x > width / 2 ? 'calc(-100% - 0.75rem)' : '0.75rem'}, -50%)` }}>
+                <div className="ty-chart-tip__val">{tip.text}</div>
               </div>
             )}
           </div>
@@ -413,7 +413,7 @@ function PayeesCard({ r }: { r: Reports }) {
     <section className="ty-card ty-stack" aria-label="Top payees">
       <h2 className="text-heading" style={{ margin: 0 }}>Top payees</h2>
       {r.payees.length === 0 ? <div className="ty-cap">Nothing to show yet.</div> : (
-        <div className="rp-table">
+        <div className="ty-chart-table">
           <table className="ty-table">
             <thead><tr><th>Payee</th><th>Payments</th><th>Amount</th></tr></thead>
             <tbody>{r.payees.map((p) => <tr key={p.payee}><td>{p.payee}</td><td>{p.count}</td><td>{formatMinor(p.minor)}</td></tr>)}</tbody>

@@ -17,7 +17,7 @@ const FILTERS = ['q', 'subsectionId', 'pocketId', 'kind', 'from', 'to', 'tag', '
 const HOLD_MS = 500; // a long press on a phone starts selecting
 
 const Clip = () => (
-  <svg className="app-clip" viewBox="0 0 16 16" role="img" aria-label="Has receipt" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg className="ty-clip" viewBox="0 0 16 16" role="img" aria-label="Has receipt" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <title>Has receipt</title>
     <path d="M13 7.5 7.8 12.7a3 3 0 0 1-4.2-4.2l5.5-5.5a2 2 0 0 1 2.8 2.8L6.4 11.3a1 1 0 0 1-1.4-1.4L10 5" />
   </svg>
@@ -86,7 +86,7 @@ export default function TransactionsPage() {
       </header>
       <div><button className="app-phone-only ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button></div>
       {showBar ? (
-        <div className="app-selbar" role="toolbar" aria-label="Selected transactions">
+        <div className="ty-selbar" role="toolbar" aria-label="Selected transactions">
           <b>{selected.size} selected</b>
           <span className="ty-grow" />
           <button className="ty-btn" disabled={!selected.size} onClick={() => setBulk('subsection')}>Change subsection</button>
@@ -96,7 +96,7 @@ export default function TransactionsPage() {
           <button className="ty-btn ty-btn--quiet" onClick={stop}>Cancel</button>
         </div>
       ) : (
-        <div className="app-filters">
+        <div className="ty-filters">
           <Field label="Month">
             {(p) => (
               <select {...p} value={month} disabled={unsortedView || range} onChange={(e) => set('month', e.target.value)}>
@@ -143,7 +143,7 @@ export default function TransactionsPage() {
               </select>
             )}
           </Field>
-          <label className="ty-chip app-filters__chip">
+          <label className="ty-chip ty-filters__chip">
             <input type="checkbox" checked={unsortedView} onChange={(e) => set('unsorted', e.target.checked ? '1' : '')} />Needs sorting{state.data && state.data.unsortedCount > 0 ? ` (${state.data.unsortedCount})` : ''}
           </label>
           {anyFilter && <button className="ty-btn ty-btn--quiet" onClick={() => { setSelected(new Set()); setParams(params.get('month') ? { month } : {}, { replace: true }); }}>Clear filters</button>}
@@ -168,8 +168,8 @@ export default function TransactionsPage() {
                   ? <div className="ty-card">No transactions match these filters.</div>
                   : <EmptyCard text={`No transactions in ${monthTitle(month)}.`} action="Add transaction" onAction={() => setDialog({})} />
               ) : (
-                <section className={`ty-section${showBar ? ' app-sel--on' : ''}`} aria-label="Transactions">
-                  <label className="app-sel app-sel--head">
+                <section className={`ty-section${showBar ? ' ty-sel--on' : ''}`} aria-label="Transactions">
+                  <label className="ty-sel ty-sel--head">
                     <input type="checkbox" checked={allOn} onChange={() => setSelected(allOn ? new Set() : new Set(transactions.map((t) => t.id)))} />
                     <span className="ty-label">Select all shown</span>
                   </label>
@@ -210,21 +210,21 @@ export default function TransactionsPage() {
                         const cancelHold = () => clearTimeout(held.current.timer);
                         const release = () => { cancelHold(); setTimeout(() => { held.current.touching = false; }, 600); };
                         return (
-                          <div key={t.id} className="app-sel">
-                            <input type="checkbox" className="app-sel__box" aria-label={`Select ${t.payee || t.kind} on ${dayLabel(t.date)}`} checked={selected.has(t.id)} onChange={() => toggle(t.id)} />
+                          <div key={t.id} className="ty-sel">
+                            <input type="checkbox" className="ty-sel__box" aria-label={`Select ${t.payee || t.kind} on ${dayLabel(t.date)}`} checked={selected.has(t.id)} onChange={() => toggle(t.id)} />
                             <div
                               className="ty-trow app-pick" {...pick(open)}
                               onPointerDown={(e) => { if (e.pointerType === 'touch') { held.current.touching = true; held.current.timer = window.setTimeout(() => { held.current.fired = true; setSelecting(true); toggle(t.id); }, HOLD_MS); } }}
                               onPointerMove={cancelHold} onPointerUp={release} onPointerLeave={cancelHold} onPointerCancel={release} onContextMenu={(e) => { if (held.current.touching || held.current.fired) e.preventDefault(); }}
                             >
                               <div className="ty-trow__who">
-                                <span className="app-payee">
+                                <span className="ty-payee">
                                   <b>{transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? (t.sourceId === null ? t.payee : sourceName.get(t.sourceId)) : t.payee}</b>
                                   {t.attachments.length > 0 && <Clip />}
-                                  <span className="app-tags ty-wide">{tagPills}</span>
+                                  <span className="ty-tags ty-wide">{tagPills}</span>
                                 </span>
                                 {second && <span className="ty-cap">{second[0].toUpperCase() + second.slice(1)}</span>}
-                                <span className="ty-cap ty-trow__meta">{label ? <>{label} · {pocket}</> : t.kind === 'income' ? pocket : <>{where && <>{mark}{where} · </>}{pocket}</>}{tagPills.length > 0 && <span className="app-tags">{tagPills}</span>}</span>
+                                <span className="ty-cap ty-trow__meta">{label ? <>{label} · {pocket}</> : t.kind === 'income' ? pocket : <>{where && <>{mark}{where} · </>}{pocket}</>}{tagPills.length > 0 && <span className="ty-tags">{tagPills}</span>}</span>
                               </div>
                               <div className="ty-tag ty-wide">
                                 {label ?? (where && <><span className={sub && sub.slot >= 1 && !t.splits ? `ty-dot ty-dot--${sub.slot}` : 'ty-dot'} />{mark}{where}</>)}

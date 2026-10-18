@@ -105,7 +105,7 @@ export default function PocketsPage() {
           <div className="num-hero">{state.data ? formatMinor(state.data.net.totalMinor) : '–'}<span className="ty-cur">{baseCurrency(user)}</span></div>
           {state.data && netLine(state.data.net) && <div className="ty-cap">{netLine(state.data.net)}</div>}
           {state.data && (
-            <div className="app-nw">
+            <div className="ty-nw">
               <div><div className="ty-label">Assets</div><div className="ty-num">{formatMinor(state.data.net.assetsMinor)}</div></div>
               <div><div className="ty-label">Debts</div><div className="ty-num ty-num--neg">{formatMinor(state.data.net.debtsMinor)}</div></div>
             </div>

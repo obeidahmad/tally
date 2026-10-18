@@ -41,12 +41,12 @@ function Sparkline({ series }: { series: Home['networth']['series'] }) {
   const step = (w - 2 * PAD) / Math.max(series.length - 1, 1);
   const tip = at === undefined ? undefined : series[at];
   return (
-    <div className="rp-plot" ref={box}>
+    <div className="ty-chart-plot" ref={box}>
       <svg width={w} height={SPARK_H} viewBox={`0 0 ${w} ${SPARK_H}`} onPointerDown={(e) => { if (e.target === e.currentTarget) setAt(undefined); }}>
-        <polyline className="rp-line" fill="none" points={series.map((s, i) => `${x(i)},${y(s.minor)}`).join(' ')} />
-        <circle className="rp-dot" cx={x(series.length - 1)} cy={y(vals[vals.length - 1]!)} r={4} />
+        <polyline className="ty-chart-line" fill="none" points={series.map((s, i) => `${x(i)},${y(s.minor)}`).join(' ')} />
+        <circle className="ty-chart-dot" cx={x(series.length - 1)} cy={y(vals[vals.length - 1]!)} r={4} />
         {series.map((s, i) => (
-          <rect key={s.month} className="rp-hit" x={x(i) - step / 2} y={0} width={step} height={SPARK_H} fill="transparent"
+          <rect key={s.month} className="ty-chart-hit" x={x(i) - step / 2} y={0} width={step} height={SPARK_H} fill="transparent"
             tabIndex={0} role="img" aria-label={`${monthTitle(s.month)}: ${formatMinor(s.minor)}`}
             onPointerEnter={() => setAt(i)} onFocus={() => setAt(i)} onClick={() => setAt(i)} onBlur={() => setAt(undefined)}
             onPointerLeave={(e) => { if (e.pointerType === 'mouse') setAt(undefined); }}
@@ -54,9 +54,9 @@ function Sparkline({ series }: { series: Home['networth']['series'] }) {
         ))}
       </svg>
       {tip && at !== undefined && (
-        <div className="rp-tip" role="tooltip" style={{ left: x(at), transform: `translateX(${at > series.length / 2 ? 'calc(-100% - 0.75rem)' : '0.75rem'})` }}>
-          <div className="rp-tip__title">{monthTitle(tip.month)}</div>
-          <div className="rp-tip__row"><span className="rp-tip__val">{formatMinor(tip.minor)}</span><span className="ty-cap">Net worth</span></div>
+        <div className="ty-chart-tip" role="tooltip" style={{ left: x(at), transform: `translateX(${at > series.length / 2 ? 'calc(-100% - 0.75rem)' : '0.75rem'})` }}>
+          <div className="ty-chart-tip__title">{monthTitle(tip.month)}</div>
+          <div className="ty-chart-tip__row"><span className="ty-chart-tip__val">{formatMinor(tip.minor)}</span><span className="ty-cap">Net worth</span></div>
         </div>
       )}
     </div>
@@ -113,10 +113,10 @@ export default function HomePage() {
               {h.needsSorting > 0 && (
                 <div className="ty-inset">
                   <span>{h.needsSorting} {h.needsSorting === 1 ? 'transaction needs' : 'transactions need'} sorting.</span>
-                  <div><Link className="app-link" to="/transactions?unsorted=1">Sort them</Link></div>
+                  <div><Link className="ty-link" to="/transactions?unsorted=1">Sort them</Link></div>
                 </div>
               )}
-              <div className="app-home">
+              <div className="ty-home">
                 <HomeCard title={`${monthName(h.month)} so far`}>
                   <div className="ty-sumrow"><span className="num-lg">{formatMinor(b.spentMinor)} <span className="ty-cap">of {formatMinor(b.budgetedMinor)}</span></span></div>
                   <Meter cls={st.meter} pct={st.pct} label={`${formatMinor(b.spentMinor)} spent of ${formatMinor(b.budgetedMinor)}`} />
@@ -130,11 +130,11 @@ export default function HomePage() {
                       })}
                     </div>
                   )}
-                  <div><Link className="app-link" to="/budget">Open the budget</Link></div>
+                  <div><Link className="ty-link" to="/budget">Open the budget</Link></div>
                 </HomeCard>
 
                 <HomeCard title="Net worth">
-                  <div className="app-inline"><span className="num-lg">{formatMinor(h.networth.minor)}</span>
+                  <div className="ty-inline"><span className="num-lg">{formatMinor(h.networth.minor)}</span>
                     <span className={change > 0 ? 'ty-pill ty-pill--positive' : change < 0 ? 'ty-pill ty-pill--negative' : 'ty-pill'}>{change > 0 ? '+' : ''}{formatMinor(change)} since {prev}</span>
                   </div>
                   {asTable ? (
@@ -159,7 +159,7 @@ export default function HomePage() {
                 </HomeCard>
 
                 <HomeCard title="Recent transactions">
-                  <div className="app-rows">
+                  <div className="ty-rows">
                     {h.recent.map((t) => {
                       const sub = t.subsectionId === null ? undefined : subs.get(t.subsectionId);
                       const p = pocketById.get(t.pocketId);
@@ -178,9 +178,9 @@ export default function HomePage() {
                         </div>
                       );
                     })}
-                    {h.recent.length === 0 && <div className="ty-cap app-rows__empty">No transactions yet.</div>}
+                    {h.recent.length === 0 && <div className="ty-cap ty-rows__empty">No transactions yet.</div>}
                   </div>
-                  <div><Link className="app-link" to="/transactions">All transactions</Link></div>
+                  <div><Link className="ty-link" to="/transactions">All transactions</Link></div>
                 </HomeCard>
 
                 {h.goals.length > 0 && (

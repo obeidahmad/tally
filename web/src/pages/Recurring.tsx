@@ -28,9 +28,9 @@ function CalendarCard({ sections }: { sections: Section[] }) {
   const emoji = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, x.emoji] as const)));
   const now = today();
   const chip = (d: Calendar['days'][number]['items'][number]) => (
-    <li key={d.key} className={d.paid ? 'app-cal__chip app-cal__chip--paid' : 'app-cal__chip'}>
-      <span className="app-cal__payee">{d.paid && <span aria-hidden="true">✓ </span>}<SubEmoji emoji={d.subsectionId === null ? null : emoji.get(d.subsectionId)} />{d.payee}</span>
-      <span className="app-cal__amt"><span className="ty-num">{formatMinor(-d.amountMinor)}</span>{d.paid && <span className="ty-cap">Paid</span>}</span>
+    <li key={d.key} className={d.paid ? 'ty-cal__chip ty-cal__chip--paid' : 'ty-cal__chip'}>
+      <span className="ty-cal__payee">{d.paid && <span aria-hidden="true">✓ </span>}<SubEmoji emoji={d.subsectionId === null ? null : emoji.get(d.subsectionId)} />{d.payee}</span>
+      <span className="ty-cal__amt"><span className="ty-num">{formatMinor(-d.amountMinor)}</span>{d.paid && <span className="ty-cap">Paid</span>}</span>
     </li>
   );
   const lead = (new Date(Date.UTC(+month.slice(0, 4), +month.slice(5) - 1, 1)).getUTCDay() + 6) % 7;
@@ -46,20 +46,20 @@ function CalendarCard({ sections }: { sections: Section[] }) {
       <Load state={state}>{({ days }) => phone ? (
         days.every((d) => d.items.length === 0) ? <div className="ty-cap">No bills in {monthTitle(month)}.</div> : (
           <div className="ty-stack">{days.filter((d) => d.items.length).map((d) => (
-            <div key={d.date} className={d.date === now ? 'app-cal__day app-cal__day--today' : 'app-cal__day'}>
+            <div key={d.date} className={d.date === now ? 'ty-cal__day ty-cal__day--today' : 'ty-cal__day'}>
               <div className="ty-label">{dayLabel(d.date)}</div>
-              <ul className="app-cal__items">{d.items.map(chip)}</ul>
+              <ul className="ty-cal__items">{d.items.map(chip)}</ul>
             </div>
           ))}</div>
         )
       ) : (
-        <div className="app-cal" role="group" aria-label={`Bills in ${monthTitle(month)}`}>
-          {WEEKDAYS.map((w) => <div key={w} className="ty-label app-cal__head">{w}</div>)}
+        <div className="ty-cal" role="group" aria-label={`Bills in ${monthTitle(month)}`}>
+          {WEEKDAYS.map((w) => <div key={w} className="ty-label ty-cal__head">{w}</div>)}
           {Array.from({ length: lead }, (_, i) => <div key={`b${i}`} />)}
           {days.map((d) => (
-            <div key={d.date} className={d.date === now ? 'app-cal__day app-cal__day--today' : 'app-cal__day'} aria-current={d.date === now ? 'date' : undefined}>
+            <div key={d.date} className={d.date === now ? 'ty-cal__day ty-cal__day--today' : 'ty-cal__day'} aria-current={d.date === now ? 'date' : undefined}>
               <span className="ty-cap">{Number(d.date.slice(8))}</span>
-              {d.items.length > 0 && <ul className="app-cal__items">{d.items.map(chip)}</ul>}
+              {d.items.length > 0 && <ul className="ty-cal__items">{d.items.map(chip)}</ul>}
             </div>
           ))}
         </div>
@@ -98,7 +98,7 @@ export default function RecurringPage() {
           const row = (i: Item, extra: string, button: { label: string; method: 'POST' | 'DELETE' } | null) => (
             <div key={i.key} className="ty-trow">
               <div className="ty-trow__who">
-                <span className="app-inline"><b>{i.payee}</b>{pill(i)}</span>
+                <span className="ty-inline"><b>{i.payee}</b>{pill(i)}</span>
                 <span className="ty-cap">{extra}</span>
                 <span className="ty-cap ty-trow__meta"><span className="ty-tag">{tag(i)}</span></span>
                 {button && (

@@ -53,16 +53,16 @@ Tally is a self-hosted budgeting app for a household. Its screens should feel fa
 
 ## Layout
 
-- **Desktop.** A 220px sidebar with the wordmark, Budget, Pipeline, Transactions, Pockets, Investments and Settings. The page starts with its title and its actions on one line, primary button rightmost.
-- **Phone (up to 640px).** One column with `space-4` gutters, a translucent top bar holding the page title and its primary action, and a bottom tab bar with Budget, Transactions, Pockets and More. The budget table keeps Subsection, Spent and Available. Dialogs become bottom sheets.
+- **Desktop.** A 220px sidebar with the wordmark, Home, Budget, Pipeline, Transactions, Recurring, Pockets, Investments, Reports and Settings. The page starts with its title and its actions on one line, primary button rightmost.
+- **Phone (up to 640px).** One column with `space-4` gutters, a translucent top bar holding the page title and its primary action, and a bottom tab bar with Home, Budget, Transactions, Pockets and Settings. The budget table keeps Subsection, Spent and Available. Dialogs become bottom sheets.
 - **Budget page.** MonthHeader, then BudgetTable (every section, in the order they were created) with a 300px aside on screens from 1464px: the month summary, the close reminder and "Moved this month". Narrower, the summary is one row of stats above the table. How income reaches the sections is set on the Pipeline page.
 
 ## Iconography
 
-Tally has no icon set and no logo yet. The wordmark is the name set in Bricolage Grotesque Bold. Navigation is text only. The only glyphs are `‹` and `›` for previous and next. The tally-mark motif on the cover is decoration for the cover only.
+Tally has no icon set and no logo yet. The wordmark is the name set in Bricolage Grotesque Bold. Navigation is text only. The only drawn marks are the paperclip on a transaction with a receipt, the pencil and plus on a section row, and the chevron that collapses a section. The only glyphs are `‹` and `›` for previous and next. The tally-mark motif on the cover is decoration for the cover only.
 
 Pocket marks are emoji drawn in Noto Emoji at weight 700 (`ty-emoji`): thick, rounded, single-colour line drawings in `ink`, so they sit with the type instead of adding colour. A person picks one of 32 in the `EmojiPicker`. The app loads the font from an npm package like the other two faces.
 
 ## Components
 
-`Button`, `Field`, `Pill`, `Amount`, `BudgetTable`, `MonthHeader`, `AllocationBar`, `PocketCard`, `TransactionRow`, `Dialog`, `Toast`, `AppShell`. Also `Segmented`, `Chips`, `EmojiPicker`, `TransactionDialog`, `SectionDialog` and `StepDialog`. They are plain HTML with the classes in `components/bundle.css`; there is no script. Four screens show them composed: `BudgetScreen`, `BudgetPhone`, `TransactionsScreen`, `PocketsScreen`. `PipelineScreen` is the Pipeline page. `PipelineNextMonth` is the Pipeline page once months close. The figures on the screens are examples.
+`Button`, `Field`, `Pill`, `Amount`, `BudgetTable`, `MonthHeader`, `AllocationBar`, `PocketCard`, `TransactionRow`, `Dialog`, `Toast`, `AppShell`. Also `FilterBar`, `SplitParts`, `TagInput`, `ReceiptList`, `PocketGroups`, `HomeCards`, `BillsCalendar`, `FlowDiagram`, `Segmented`, `Chips`, `EmojiPicker`, `TransactionDialog`, `SectionDialog` and `StepDialog`. They are plain HTML with the classes in `components/bundle.css`; there is no script. Five screens show them composed: `HomeScreen`, `BudgetScreen`, `BudgetPhone`, `TransactionsScreen`, `PocketsScreen`. `PipelineScreen` is the Pipeline page. `PipelineNextMonth` is the Pipeline page once months close. The figures on the screens are examples.
