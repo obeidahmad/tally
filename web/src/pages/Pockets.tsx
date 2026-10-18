@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { api, KIND_WORDS, useLoad, type Holding, type NetWorth, type Pocket, type Section, type Source, type Where } from '../api';
 import { bankByPocket, countsLine, loadConnections, syncedLine, useAutoSync } from '../bank';
 import { loadT212Pocket, useT212Sync } from '../trading212';
-import { PocketDialog, TransactionDialog } from '../dialogs';
+import { PocketDialog, ReconcileDialog, TransactionDialog } from '../dialogs';
+import { dayLabel } from '../dates';
 import { formatMinor } from '../money';
 import { baseCurrency, useAuth } from '../auth';
 import { pick } from '../pick';
@@ -20,6 +21,9 @@ function netLine(n: NetWorth) {
 }
 
 const dot = (slot: number) => (slot >= 1 && slot <= 8 ? `ty-dot ty-dot--${slot}` : 'ty-dot');
+
+const GROUPS: [Pocket['group'], string][] = [['cash', 'Cash'], ['investments', 'Investments'], ['property', 'Property'], ['debts', 'Debts']];
+const short = (date: string) => dayLabel(date).slice(4); // "16 Oct"
 
 function WhereTable({ where, sections }: { where: Where; sections: Section[] }) {
   const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
@@ -68,7 +72,7 @@ function WhereTable({ where, sections }: { where: Where; sections: Section[] }) 
 export default function PocketsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [dialog, setDialog] = useState<{ pocket?: Pocket; transfer?: boolean } | null>(null);
+  const [dialog, setDialog] = useState<{ pocket?: Pocket; transfer?: boolean; reconcile?: boolean } | null>(null);
   const close = () => setDialog(null);
   useAutoSync();
   useT212Sync();
@@ -100,6 +104,12 @@ export default function PocketsPage() {
           <div className="ty-label">Net worth</div>
           <div className="num-hero">{state.data ? formatMinor(state.data.net.totalMinor) : '–'}<span className="ty-cur">{baseCurrency(user)}</span></div>
           {state.data && netLine(state.data.net) && <div className="ty-cap">{netLine(state.data.net)}</div>}
+          {state.data && (
+            <div className="app-nw">
+              <div><div className="ty-label">Assets</div><div className="ty-num">{formatMinor(state.data.net.assetsMinor)}</div></div>
+              <div><div className="ty-label">Debts</div><div className="ty-num ty-num--neg">{formatMinor(state.data.net.debtsMinor)}</div></div>
+            </div>
+          )}
         </div>
         <span className="ty-grow" />
         <button className="ty-btn ty-wide" onClick={() => setDialog({ transfer: true })}>Transfer</button>
@@ -114,14 +124,20 @@ export default function PocketsPage() {
             {pockets.length === 0 ? (
               <EmptyCard text="No pockets yet. A pocket is where money sits: a bank account, cash, a fund." action="Add pocket" onAction={() => setDialog({})} />
             ) : (
-              <section className="ty-section" aria-label="Pockets">
-                {pockets.map((p) => {
+              GROUPS.map(([group, title]) => ({ group, title, list: pockets.filter((p) => p.group === group) })).filter((g) => g.list.length > 0).map(({ group, title, list }) => (
+              <section key={group} className="ty-section" aria-label={title}>
+                <div className="ty-day">
+                  <h2 className="ty-label" style={{ margin: 0 }}>{title}</h2>
+                  <span className="ty-grow" />
+                  <span className={list.reduce((t, p) => t + (p.baseValueMinor ?? 0), 0) < 0 ? 'ty-num ty-num--neg' : 'ty-num'}>{formatMinor(list.reduce((t, p) => t + (p.baseValueMinor ?? 0), 0))}<span className="ty-cur">{baseCurrency(user)}</span></span>
+                </div>
+                {list.map((p) => {
                   const paid = held.filter((x) => x.pocketId === p.id).reduce((t, x) => t + x.paidMinor, 0);
                   const converted = p.currency === baseCurrency(user) ? '' : p.baseValueMinor === null ? `No exchange rate for ${p.currency} yet.` : `≈ ${formatMinor(p.baseValueMinor)} ${baseCurrency(user)}`;
                   const broker = banks.get(p.id) === 'Trading212'; // its figure is synced cash plus holdings, which the server already adds
                   const shown = p.syncedAt && !broker ? p.syncedBalanceMinor ?? p.valueMinor : p.valueMinor;
                   const sub = [converted, held.some((x) => x.pocketId === p.id) && `paid ${formatMinor(paid)} ${p.currency}`].filter(Boolean).join(' · ');
-                  const where = [syncedLine(p, banks.get(p.id)), !broker && countsLine(p)].filter(Boolean).join(' · ');
+                  const where = [syncedLine(p, banks.get(p.id)), !broker && countsLine(p), p.reconciledAt && `Reconciled ${short(p.reconciledAt)}`].filter(Boolean).join(' · ');
                   return (
                     <div key={p.id} className="ty-prow app-pick" {...pick(() => setDialog({ pocket: p }))}>
                       <div className="ty-prow__who">
@@ -136,10 +152,12 @@ export default function PocketsPage() {
                   );
                 })}
               </section>
+              ))
             )}
             <WhereTable where={where} sections={sections} />
             {dialog?.transfer && <TransactionDialog kind="transfer" pockets={pockets} sections={sections} sources={sources} currency={baseCurrency(user)} onClose={close} />}
-            {dialog && !dialog.transfer && <PocketDialog pocket={dialog.pocket} currency={baseCurrency(user)} onClose={close} />}
+            {dialog && !dialog.transfer && !dialog.reconcile && <PocketDialog pocket={dialog.pocket} pockets={pockets} currency={baseCurrency(user)} onReconcile={() => setDialog({ pocket: dialog.pocket, reconcile: true })} onClose={close} />}
+            {dialog?.reconcile && dialog.pocket && <ReconcileDialog pocket={dialog.pocket} onClose={close} />}
           </>
         )}
       </Load>

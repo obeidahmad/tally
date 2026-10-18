@@ -81,12 +81,12 @@ export function PocketCurrencyField({ value, onChange, error, offered, base, loc
   );
 }
 
-export function KindField({ value, onChange, error }: { value: PocketKind; onChange: (v: PocketKind) => void; error?: string }) {
+export function KindField({ value, onChange, error, omit }: { value: PocketKind; onChange: (v: PocketKind) => void; error?: string; omit?: PocketKind }) {
   return (
     <Field label="Kind" error={error}>
       {(p) => (
         <select {...p} value={value} onChange={(e) => onChange(e.target.value as PocketKind)}>
-          {(Object.keys(KIND_WORDS) as PocketKind[]).map((k) => <option key={k} value={k}>{KIND_WORDS[k]}</option>)}
+          {(Object.keys(KIND_WORDS) as PocketKind[]).filter((k) => k !== omit).map((k) => <option key={k} value={k}>{KIND_WORDS[k]}</option>)}
         </select>
       )}
     </Field>

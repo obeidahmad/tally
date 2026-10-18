@@ -104,7 +104,7 @@ test('Transactions: a filter or the month changed to a result with no rows keeps
     const select = page.getByLabel(name, { exact: true });
     await select.focus();
     await change(select);
-    await expect(page.getByText(/^No transactions in/), `${name}: empty result`).toBeVisible();
+    await expect(page.getByText(/^No transactions (in|match)/), `${name}: empty result`).toBeVisible();
     await expect(select, `${name}: focus stays on the select`).toBeFocused();
     await page.waitForTimeout(400);
     await expect(select, `${name}: focus stays on the select (settled)`).toBeFocused();
