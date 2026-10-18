@@ -64,18 +64,33 @@ function detect(rows: Row[], today: number) {
   return found;
 }
 
+export const loadRecurring = (db: Db, now: () => number, uid: number) => {
+  const d = new Date(now());
+  const today = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY);
+  const since = dayStr(today - 800);
+  const rows = db.prepare(`SELECT date, base_amount_minor AS baseAmountMinor, payee,
+    COALESCE(subsection_id, (SELECT subsection_id FROM transaction_splits p WHERE p.transaction_id = transactions.id ORDER BY amount_minor DESC, id LIMIT 1)) AS subsectionId FROM transactions
+    WHERE user_id = ? AND kind = 'expense' AND source != 'adjustment' AND date >= ? ORDER BY date, id`).all(uid, since) as Row[];
+  const dismissed = new Set(db.prepare('SELECT key FROM recurring_dismissed WHERE user_id = ?').pluck().all(uid) as string[]);
+  return { found: detect(rows, today), dismissed, today };
+};
+
+// The non-dismissed groups' payments expected from today for `span` days, by date; one already paid within 3 days of its date is left out.
+export function upcoming(db: Db, now: () => number, uid: number, span: number) {
+  const { found, dismissed, today } = loadRecurring(db, now, uid);
+  const out: { key: string; payee: string; amountMinor: number; date: string }[] = [];
+  for (const g of found.values()) {
+    if (dismissed.has(g.key)) continue;
+    const actual = g.payments.map((x: any) => days(x.date));
+    for (let k = 1, d = days(stepDate(g.lastDate, g.cadence, 1)); d < today + span; d = days(stepDate(g.lastDate, g.cadence, ++k)))
+      if (d >= today && !actual.some((a: number) => Math.abs(a - d) <= 3)) out.push({ key: g.key, payee: g.payee, amountMinor: g.amountMinor, date: dayStr(d) });
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date) || a.key.localeCompare(b.key));
+}
+
 export function recurringRouter(db: Db, now: () => number): Router {
   const r = Router();
-  const load = (uid: number) => {
-    const d = new Date(now());
-    const today = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY);
-    const since = dayStr(today - 800);
-    const rows = db.prepare(`SELECT date, base_amount_minor AS baseAmountMinor, payee,
-      COALESCE(subsection_id, (SELECT subsection_id FROM transaction_splits p WHERE p.transaction_id = transactions.id ORDER BY amount_minor DESC, id LIMIT 1)) AS subsectionId FROM transactions
-      WHERE user_id = ? AND kind = 'expense' AND source != 'adjustment' AND date >= ? ORDER BY date, id`).all(uid, since) as Row[];
-    const dismissed = new Set(db.prepare('SELECT key FROM recurring_dismissed WHERE user_id = ?').pluck().all(uid) as string[]);
-    return { found: detect(rows, today), dismissed, today };
-  };
+  const load = (uid: number) => loadRecurring(db, now, uid);
   const byNext = (a: any, b: any) => a.nextDate.localeCompare(b.nextDate) || a.key.localeCompare(b.key);
 
   r.get('/recurring', (req, res) => {

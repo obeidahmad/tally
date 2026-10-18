@@ -6,6 +6,7 @@ import { removeFiles } from './attachments';
 import * as s from './schemas';
 import { bankRouter, type BankConfig } from './banks';
 import { trading212, type BrokerConfig } from './trading212';
+import { payeeKey, upcoming } from './recurring';
 import { guessMapping, readAmount, readCsv, readDate } from './csv';
 
 const POCKET = `SELECT p.id, p.name, p.kind, p.emoji, p.currency, p.opening_balance_minor AS openingBalanceMinor,
@@ -243,6 +244,48 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
     res.json({ currency: base, totalMinor: byCurrency.reduce((a, x) => a + (x.baseMinor ?? 0), 0), assetsMinor, debtsMinor, byCurrency, missingRates });
   });
 
+  // Net worth at each month's end (today for the last month), in the base currency.
+  const networthSeries = (uid: number, base: string, months: string[]) => {
+    // Past months: opening balance plus transactions up to the month's last day. A held holding's cost is deducted from the
+    // balance and added back, so it cancels out; no purchase date is stored, so it is never left out of a month.
+    const pockets = all<{ id: number; currency: string; opening: number; kind: string }>('SELECT id, currency, kind, opening_balance_minor AS opening FROM pockets WHERE user_id = ?', uid);
+    const moved = db.prepare(
+      `SELECT COALESCE(SUM(CASE WHEN pocket_id = ? THEN (CASE kind WHEN 'income' THEN amount_minor ELSE -amount_minor END) ELSE 0 END
+         + CASE WHEN to_pocket_id = ? THEN to_amount_minor ELSE 0 END), 0) FROM transactions
+       WHERE user_id = ? AND (pocket_id = ? OR to_pocket_id = ?) AND date <= ?`).pluck();
+    const current = months[months.length - 1]!;
+    const missing = new Set<string>();
+    const networth = months.map((month) => {
+      const day = month === current ? today() : `${month}-${new Date(Date.UTC(+month.slice(0, 4), +month.slice(5), 0)).getUTCDate()}`;
+      const sums = new Map<string, number>();
+      if (month === current)
+        for (const p of all<any>(`${POCKET} WHERE p.user_id = ?`, uid).map((x) => withBase(x, base))) sums.set(p.currency, (sums.get(p.currency) ?? 0) + p.valueMinor);
+      else for (const p of pockets) sums.set(p.currency, (sums.get(p.currency) ?? 0) + (p.kind === 'property' ? valueOn(p.id, day) : p.opening + (moved.get(p.id, p.id, uid, p.id, p.id, day) as number)));
+      let minor = 0;
+      for (const [currency, amount] of sums) {
+        const c = rates.convert(amount, currency, base, day);
+        if (c === null) missing.add(currency);
+        else minor += c;
+      }
+      return { month, minor };
+    });
+    return { networth, missing };
+  };
+
+  // The 10 payees with the most sorted spending between two dates, grouped by payee key, with the latest spelling.
+  const topPayees = (uid: number, from: string, to: string) => {
+    const groups = new Map<string, { payee: string; minor: number; count: number }>();
+    for (const t of all<{ payee: string; v: number }>(
+      `SELECT payee, base_amount_minor AS v FROM transactions WHERE user_id = ? AND kind = 'expense' AND source != 'adjustment'
+       AND NOT (${UNSORTED}) AND date BETWEEN ? AND ? ORDER BY date, id`, uid, from, to)) {
+      const key = payeeKey(t.payee);
+      if (!key) continue;
+      const g = groups.get(key) ?? { payee: t.payee, minor: 0, count: 0 };
+      groups.set(key, { payee: t.payee, minor: g.minor + t.v, count: g.count + 1 });
+    }
+    return [...groups.values()].sort((a, b) => b.minor - a.minor || a.payee.localeCompare(b.payee)).slice(0, 10);
+  };
+
   r.get('/reports', (req, res) => {
     const uid = req.user.id;
     const base = req.user.baseCurrency;
@@ -266,29 +309,8 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
        WHERE user_id = ? AND kind IN ('income', 'expense') AND source != 'adjustment' AND NOT (${UNSORTED}) GROUP BY 1, 2`, uid))
       flow.set(`${x.month}/${x.kind}`, x.v);
 
-    // Past months: opening balance plus transactions up to the month's last day. A held holding's cost is deducted from the
-    // balance and added back, so it cancels out; no purchase date is stored, so it is never left out of a month.
-    const pockets = all<{ id: number; currency: string; opening: number; kind: string }>('SELECT id, currency, kind, opening_balance_minor AS opening FROM pockets WHERE user_id = ?', uid);
-    const moved = db.prepare(
-      `SELECT COALESCE(SUM(CASE WHEN pocket_id = ? THEN (CASE kind WHEN 'income' THEN amount_minor ELSE -amount_minor END) ELSE 0 END
-         + CASE WHEN to_pocket_id = ? THEN to_amount_minor ELSE 0 END), 0) FROM transactions
-       WHERE user_id = ? AND (pocket_id = ? OR to_pocket_id = ?) AND date <= ?`).pluck();
+    const { networth, missing } = networthSeries(uid, base, months);
     const current = months[n - 1]!;
-    const missing = new Set<string>();
-    const networth = months.map((month) => {
-      const day = month === current ? today() : `${month}-${new Date(Date.UTC(+month.slice(0, 4), +month.slice(5), 0)).getUTCDate()}`;
-      const sums = new Map<string, number>();
-      if (month === current)
-        for (const p of all<any>(`${POCKET} WHERE p.user_id = ?`, uid).map((x) => withBase(x, base))) sums.set(p.currency, (sums.get(p.currency) ?? 0) + p.valueMinor);
-      else for (const p of pockets) sums.set(p.currency, (sums.get(p.currency) ?? 0) + (p.kind === 'property' ? valueOn(p.id, day) : p.opening + (moved.get(p.id, p.id, uid, p.id, p.id, day) as number)));
-      let minor = 0;
-      for (const [currency, amount] of sums) {
-        const c = rates.convert(amount, currency, base, day);
-        if (c === null) missing.add(currency);
-        else minor += c;
-      }
-      return { month, minor };
-    });
     res.json({
       currency: base,
       months,
@@ -298,6 +320,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
       }),
       cashflow: months.map((month) => ({ month, incomeMinor: flow.get(`${month}/income`) ?? 0, spendingMinor: flow.get(`${month}/expense`) ?? 0 })),
       networth,
+      payees: topPayees(uid, `${months[0]}-01`, `${current}-31`),
       missingRates: [...missing].sort(),
     });
   });
@@ -942,6 +965,113 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   });
   r.get('/budget', (req, res) => {
     res.json(answer(req.user, parse(s.monthQuery, req.query).month, 'budget'));
+  });
+
+  // Age of money: incomes (and pockets' opening balances) wait in a queue; each expense spends the oldest first.
+  const ageOfMoney = (user: Who): number | null => {
+    const uid = user.id;
+    const ms = (d: string) => Date.parse(d + 'T00:00:00Z');
+    const first = one('SELECT MIN(date) AS d FROM transactions WHERE user_id = ?', uid).d as string | null;
+    if (!first) return null;
+    const open = new Date(ms(first) - 86400000).toISOString().slice(0, 10);
+    type Ev = { date: string; amount: number; expense: boolean };
+    const events: Ev[] = [];
+    for (const p of all<any>('SELECT currency, kind, opening_balance_minor AS o FROM pockets WHERE user_id = ?', uid)) {
+      const v = p.kind === 'property' || p.o <= 0 ? null : rates.convert(p.o, p.currency, user.baseCurrency, open);
+      if (v) events.push({ date: open, amount: v, expense: false });
+    }
+    for (const t of all<{ date: string; kind: string; v: number }>(
+      `SELECT date, kind, base_amount_minor AS v FROM transactions
+       WHERE user_id = ? AND kind IN ('income', 'expense') AND source != 'adjustment' AND base_amount_minor > 0 AND (kind = 'expense' OR NOT (${UNSORTED}))
+       ORDER BY date, id`, uid)) events.push({ date: t.date, amount: t.v, expense: t.kind === 'expense' });
+    events.sort((a, b) => a.date.localeCompare(b.date) || +a.expense - +b.expense); // stable: income first on a day
+    const queue: { date: string; left: number }[] = [];
+    let head = 0, expenses = 0;
+    const spent: { weight: number; waited: number; dry: boolean }[] = [];
+    for (const e of events) {
+      if (!e.expense) { queue.push({ date: e.date, left: e.amount }); continue; }
+      expenses++;
+      let need = e.amount, weight = 0, waited = 0;
+      while (need > 0 && head < queue.length) {
+        const q = queue[head]!;
+        const take = Math.min(need, q.left);
+        q.left -= take; need -= take; weight += take;
+        waited += take * Math.round((ms(e.date) - ms(q.date)) / 86400000);
+        if (!q.left) head++;
+      }
+      spent.push({ weight, waited, dry: need > 0 });
+    }
+    const last = spent.slice(-10);
+    if (expenses < 10 || last.some((x) => x.dry)) return null;
+    return Math.floor(last.reduce((a, x) => a + x.waited, 0) / last.reduce((a, x) => a + x.weight, 0));
+  };
+
+  r.get('/home', (req, res) => {
+    const uid = req.user.id;
+    const base = req.user.baseCurrency;
+    const month = today().slice(0, 7);
+    const b = answer(req.user, month, 'budget');
+    const subs = b.sections.flatMap((x: any) => x.subsections);
+    const [y, m] = month.split('-').map(Number) as [number, number];
+    const months = Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(y, m - 1 - (6 - i), 1)).toISOString().slice(0, 7));
+    const series = networthSeries(uid, base, months).networth;
+    const cash = one(
+      `SELECT COALESCE(SUM(CASE WHEN kind = 'income' THEN base_amount_minor END), 0) AS i, COALESCE(SUM(CASE WHEN kind = 'expense' THEN base_amount_minor END), 0) AS e
+       FROM transactions WHERE user_id = ? AND substr(date, 1, 7) = ? AND kind IN ('income', 'expense') AND source != 'adjustment' AND NOT (${UNSORTED})`, uid, month);
+    res.json({
+      month,
+      budget: {
+        budgetedMinor: b.totals.budgetedMinor, spentMinor: b.totals.spentMinor, leftMinor: b.totals.availableMinor,
+        overspent: subs.filter((x: any) => x.availableMinor < 0).map((x: any) => ({ subsectionId: x.id, overMinor: -x.availableMinor }))
+          .sort((p: any, q: any) => q.overMinor - p.overMinor || p.subsectionId - q.subsectionId).slice(0, 3),
+      },
+      networth: { minor: series[6]!.minor, changeMinor: series[6]!.minor - series[5]!.minor, series },
+      cashflow: { incomeMinor: cash.i, spendingMinor: cash.e },
+      upcoming: upcoming(db, now, uid, 14),
+      recent: all(`${TX} WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT 5`, uid).map(shape),
+      goals: subs.filter((x: any) => x.kind === 'goal' && x.capMinor)
+        .map((x: any) => ({ subsectionId: x.id, savedMinor: x.availableMinor, targetMinor: x.capMinor, goalStatus: x.goalStatus })),
+      needsSorting: one(`SELECT COUNT(*) AS n FROM transactions WHERE user_id = ? AND ${UNSORTED}`, uid).n,
+      ageOfMoneyDays: ageOfMoney(req.user),
+    });
+  });
+
+  // Where the month's money went: sources (a box is one node), sections, subsections, and what stayed.
+  r.get('/reports/flow', (req, res) => {
+    const month = req.query.month === undefined ? today().slice(0, 7) : parse(s.monthQuery, req.query).month;
+    const p = answer(req.user, month, 'pipeline');
+    const b = answer(req.user, month, 'budget');
+    const nodes = new Map<string, { id: string; label: string; kind: string }>();
+    const links = new Map<string, { from: string; to: string; minor: number }>();
+    const node = (id: string, label: string, kind: string) => { nodes.set(id, { id, label, kind }); return id; };
+    const link = (from: string, to: string, minor: number) => {
+      if (minor <= 0) return;
+      const k = `${from}>${to}`;
+      links.set(k, { from, to, minor: (links.get(k)?.minor ?? 0) + minor });
+    };
+    const secName = new Map<number, string>(b.sections.map((x: any) => [x.id, x.name]));
+    for (const box of p.boxes) {
+      const from = `box-${box.id}`;
+      const label = box.sources.map((x: any) => x.name).join(' and ');
+      const to = (sectionId: number, minor: number) => {
+        if (minor > 0) { node(from, label, 'source'); link(from, node(`section-${sectionId}`, secName.get(sectionId)!, 'section'), minor); }
+      };
+      for (const st of box.steps) {
+        if (st.kind === 'amount') to(st.sectionId, st.takenMinor);
+        else for (const x of st.shares) to(x.sectionId, x.takenMinor);
+      }
+      if (box.leftOverMinor > 0) { node(from, label, 'source'); link(from, node('left-over', 'Left over', 'other'), box.leftOverMinor); }
+    }
+    const received = new Map<number, number>(p.sections.map((x: any) => [x.id, x.receivedMinor]));
+    for (const sec of b.sections) {
+      const id = `section-${sec.id}`;
+      for (const x of sec.subsections) if (x.spentMinor > 0) { node(id, sec.name, 'section'); link(id, node(`subsection-${x.id}`, x.name, 'subsection'), x.spentMinor); }
+      const carried = p.sections.find((x: any) => x.id === sec.id)?.carriedMinor ?? 0;
+      if (carried > 0) { node(id, sec.name, 'section'); link(node('carried', 'From last month', 'other'), id, carried); }
+      const kept = (received.get(sec.id) ?? 0) - sec.spentMinor;
+      if (kept > 0) { node(id, sec.name, 'section'); link(id, node('kept', 'Kept', 'other'), kept); }
+    }
+    res.json({ nodes: [...nodes.values()], links: [...links.values()] });
   });
 
   // Moves
