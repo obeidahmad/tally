@@ -24,7 +24,7 @@ test('sign out, a wrong password, then the right one', async ({ page, me }) => {
 
   await page.getByLabel('Password').fill(me.password);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/budget$/);
+  await expect(page).toHaveURL(/\/home$/);
 });
 
 test('signing out ends the session: the app no longer opens', async ({ page, me }) => {
@@ -57,7 +57,7 @@ test('change password: the new one signs in', async ({ page, me }) => {
   await page.getByLabel('Username').fill(me.username);
   await page.getByLabel('Password').fill(newPassword);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/budget$/);
+  await expect(page).toHaveURL(/\/home$/);
 });
 
 test('change password with a wrong current password shows the error under the field', async ({ page, me }) => {

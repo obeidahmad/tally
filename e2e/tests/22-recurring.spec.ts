@@ -11,6 +11,9 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 const at = (offset: number) => new Date(Date.now() + offset * 864e5);
 const iso = (offset: number) => at(offset).toISOString().slice(0, 10);
 const short = (offset: number) => `${at(offset).getUTCDate()} ${MONTHS[at(offset).getUTCMonth()]}`;
+// Spec 25: monthly bills step one calendar month (same day, clamped), yearly ones one calendar year.
+const stepMonth = (offset: number, months: number) => { const d = at(offset); const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1)); const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate(); t.setUTCDate(Math.min(d.getUTCDate(), last)); return t; };
+const shortOf = (d: Date) => `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
 const long = (offset: number) => `${DAYS[at(offset).getUTCDay()]} ${short(offset)}`;
 
 const EMPTY = 'Nothing recurring yet. Tally finds a payment once it has been paid three times on a regular schedule.';
@@ -55,10 +58,10 @@ test('with no recurring payment the page shows the empty message and no sections
   await expect(page.getByText(/^Hidden \(/)).toHaveCount(0);
 });
 
-test('only two payments, a gap outside every band and an amount outside 15% are not found', async ({ page, me }) => {
+test('only two payments, a gap outside every band and a latest amount more than 50% above the others are not found', async ({ page, me }) => {
   await pays(me.seed, 'Two Only', 1000, [-40, -10]);
   await pays(me.seed, 'Gap Of Forty', 1000, [-100, -60, -20], 'Gaps');
-  await pays(me.seed, 'Amount Jumps', [1000, 1000, 1200], [-65, -35, -5], 'Jumps');
+  await pays(me.seed, 'Amount Jumps', [1000, 1000, 1600], [-65, -35, -5], 'Jumps');
   await goto(page);
   await expect(page.getByText(EMPTY)).toBeVisible();
   for (const p of ['Two Only', 'Gap Of Forty', 'Amount Jumps']) await expect(page.getByText(p)).toHaveCount(0);
@@ -70,7 +73,7 @@ test('three monthly Netflix expenses of 12.99 show as Monthly with last, next da
   // "NETFLIX.COM 4471" and "Netflix.com" share a key, so there is one item, named as the latest was written
   await about(page, '12.99', 1);
   const r = allRow(page, 'Netflix.com');
-  await expect(r).toContainText(`Monthly · last paid ${short(-5)} · next ${short(25)}`);
+  await expect(r).toContainText(`Monthly · last paid ${short(-5)} · next ${shortOf(stepMonth(-5, 1))}`);
   await expect(r).toContainText('Subscriptions');
   await expect.poll(() => r.locator('.ty-dot').evaluateAll((d) => d.filter((e) => e.getBoundingClientRect().width > 0).length)).toBeGreaterThan(0);
   await expect(r).toContainText('12.99');
@@ -90,7 +93,7 @@ test('a weekly payment shows as Weekly, is due within 7 days, and counts weekly 
   await expect(page.getByText('Due in the next 7 days')).toBeVisible();
   await expect(page.getByText(`due ${long(4)}`)).toBeVisible();
   // the due row has the payee, the subsection with its dot and the amount
-  const due = page.getByText('Gym Weekly', { exact: true }).first().locator("xpath=ancestor::*[contains(@class,'ty-trow__who')][1]/..");
+  const due = page.locator('.ty-trow__who').filter({ hasText: 'Gym Weekly' }).first().locator('xpath=..');
   await expect(due).toContainText('Fitness');
   await expect.poll(() => due.locator('.ty-dot').evaluateAll((d) => d.filter((e) => e.getBoundingClientRect().width > 0).length)).toBeGreaterThan(0);
   await expect(due).toContainText('5.00');
@@ -101,7 +104,7 @@ test('a yearly payment shows as Yearly and counts one twelfth a month', async ({
   await pays(me.seed, 'Domain Renewal', 12000, [-375, -10], 'Domains');
   await goto(page);
   await about(page, '10.00', 1);
-  await expect(allRow(page, 'Domain Renewal')).toContainText(`Yearly · last paid ${short(-10)} · next ${short(355)}`);
+  await expect(allRow(page, 'Domain Renewal')).toContainText(`Yearly · last paid ${short(-10)} · next ${shortOf(stepMonth(-10, 12))}`);
 });
 
 test('the monthly total adds every item: monthly 12.99 and weekly 5.00 make 34.66 in 2 payments, listed by next date', async ({ page, me }) => {
@@ -166,6 +169,7 @@ test.describe('phone', () => {
     await goto(page);
     await about(page, '34.66', 2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await allRow(page, 'Netflix.com').scrollIntoViewIfNeeded(); // the calendar card now sits above the list
     await expect(allRow(page, 'Netflix.com').getByRole('button', { name: 'Not recurring', exact: true })).toBeInViewport();
   });
 });

@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, useLoad, type Rates, type BudgetSection, type CloseSummary, type End, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
-import { monthName, monthTitle, shiftMonth, today } from './dates';
+import { currentMonth, monthName, monthTitle, shiftMonth, today } from './dates';
 import { AMOUNT_ERROR, formatMinor, minorToInput, parseAmount, parsePercent, percentText, PERCENT_ERROR } from './money';
-import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, PocketCurrencyField, SubsectionOptions, TextField, useToast } from './ui';
+import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, PocketCurrencyField, SubsectionOptions, subLabel, TextField, useToast } from './ui';
 
 const BALANCE_ERROR = 'Enter an amount, with at most two decimals.';
 
@@ -381,11 +381,12 @@ export function SectionDialog({ section, onMove, onClose }: {
   );
 }
 
-type SubRules = SubsectionRules & { name: string; budgetMinor: number | null };
+type SubRules = SubsectionRules & { name: string; budgetMinor: number | null; emoji?: string | null; targetMonth?: string | null };
 
 /** The body that recreates a subsection: only the budget and cap fields that apply. */
 const subBody = (x: SubRules, position?: number) => ({
-  name: x.name, kind: x.kind, budgetKind: x.budgetKind, keep: x.keep,
+  name: x.name, kind: x.kind, budgetKind: x.budgetKind, keep: x.keep, emoji: x.emoji ?? null,
+  ...(x.kind === 'goal' && x.targetMonth && x.targetMonth >= currentMonth() ? { targetMonth: x.targetMonth } : {}),
   ...(x.budgetKind === 'percent' ? { budgetBasisPoints: x.budgetBasisPoints } : { budgetMinor: x.budgetMinor }),
   ...(x.keep === 'cap' ? { capMinor: x.capMinor } : {}),
   ...(position ? { position } : {}),
@@ -413,10 +414,13 @@ export function SubsectionDialog({ sectionId, sub, position, count, held, curren
   const [keep, setKeep] = useState(sub?.keep ?? 'all');
   const [cap, setCap] = useState(sub?.capMinor ? minorToInput(sub.capMinor) : '');
   const [pos, setPos] = useState(String(position ?? count + 1));
+  const [emoji, setEmoji] = useState(sub?.emoji ?? '');
+  const [by, setBy] = useState(sub?.targetMonth ?? '');
 
   const save = f.on(async () => {
     const goal = kind === 'goal';
-    const b: Record<string, unknown> = { name, kind, budgetKind, keep: goal ? 'cap' : keep };
+    const b: Record<string, unknown> = { name, kind, budgetKind, keep: goal ? 'cap' : keep, emoji: emoji || null };
+    if (goal) b.targetMonth = by || null;
     if (budgetKind === 'amount') {
       const budgetMinor = parseAmount(budget, { allowZero: true });
       if (budgetMinor === null) throw fieldError('budgetMinor', 'Enter an amount of zero or more, with at most two decimals.');
@@ -449,6 +453,7 @@ export function SubsectionDialog({ sectionId, sub, position, count, held, curren
       <form className="ty-stack" onSubmit={save} noValidate>
         <FormError message={f.formError} />
         <TextField label="Name" value={name} onChange={setName} error={f.errors.name} />
+        <EmojiPicker value={emoji} onChange={setEmoji} onClear={() => setEmoji('')} error={f.errors.emoji} />
         {held && <div className="ty-cap">Held investments: {held}</div>}
         <Seg legend="Kind" name="kind" value={kind} onChange={(v) => setKind(v as typeof kind)} options={[['spending', 'Spending'], ['goal', 'Savings goal']]} />
         {f.errors.kind && <span className="ty-error">{f.errors.kind}</span>}
@@ -467,7 +472,12 @@ export function SubsectionDialog({ sectionId, sub, position, count, held, curren
           </Field>
         )}
         {kind === 'goal' ? (
-          <AmountField label="Target" value={cap} onChange={setCap} error={f.errors.capMinor} currency={currency} hint="It keeps its money until it reaches the target." />
+          <>
+            <AmountField label="Target" value={cap} onChange={setCap} error={f.errors.capMinor} currency={currency} hint="It keeps its money until it reaches the target." />
+            <Field label="Reach it by (optional)" error={f.errors.targetMonth}>
+              {(p) => <input {...p} type="month" value={by} min={currentMonth()} onChange={(e) => setBy(e.target.value)} />}
+            </Field>
+          </>
         ) : (<>
           <Seg legend="At month end, keep" name="keep" value={keep} onChange={(v) => setKeep(v as typeof keep)} options={[['all', 'Everything'], ['cap', 'Up to'], ['none', 'Nothing']]} />
           {f.errors.keep && <span className="ty-error">{f.errors.keep}</span>}
@@ -813,7 +823,7 @@ type MoveEnd = { key: string; label: string; end: End; availableMinor: number };
 
 const moveEnds = (sections: BudgetSection[]): MoveEnd[] => sections.flatMap((s) => [
   { key: `r${s.id}`, label: `Rest of ${s.name}`, end: { sectionId: s.id }, availableMinor: s.restMinor },
-  ...s.subsections.map((x) => ({ key: `s${x.id}`, label: x.name, end: { subsectionId: x.id }, availableMinor: x.availableMinor })),
+  ...s.subsections.map((x) => ({ key: `s${x.id}`, label: subLabel(x), end: { subsectionId: x.id }, availableMinor: x.availableMinor })),
 ]);
 
 export const endKey = (e: End) => ('sectionId' in e ? `r${e.sectionId}` : `s${e.subsectionId}`);

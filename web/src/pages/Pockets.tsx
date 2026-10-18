@@ -7,7 +7,7 @@ import { PocketDialog, TransactionDialog } from '../dialogs';
 import { formatMinor } from '../money';
 import { baseCurrency, useAuth } from '../auth';
 import { pick } from '../pick';
-import { EmptyCard, Load, Topbar, useRescueFocus } from '../ui';
+import { EmptyCard, Load, SubEmoji, Topbar, useRescueFocus } from '../ui';
 
 /** "8,942.55 in EUR · 3,550.00 USD, worth 3,268.85 EUR at 0.9208" */
 function netLine(n: NetWorth) {
@@ -22,7 +22,7 @@ function netLine(n: NetWorth) {
 const dot = (slot: number) => (slot >= 1 && slot <= 8 ? `ty-dot ty-dot--${slot}` : 'ty-dot');
 
 function WhereTable({ where, sections }: { where: Where; sections: Section[] }) {
-  const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
+  const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, emoji: x.emoji, slot: s.colorSlot }] as const)));
   if (where.rows.length === 0) return null;
   return (
     <section className="ty-stack" aria-labelledby="where-h">
@@ -33,7 +33,7 @@ function WhereTable({ where, sections }: { where: Where; sections: Section[] }) 
           const s = subs.get(r.subsectionId);
           return (
             <tr key={r.subsectionId}>
-              <td><span className="ty-tag"><span className={dot(s?.slot ?? 0)} />{s?.name}</span></td>
+              <td><span className="ty-tag"><span className={dot(s?.slot ?? 0)} /><SubEmoji emoji={s?.emoji} />{s?.name}</span></td>
               {where.pockets.map((p) => {
                 const c = r.cells.find((x) => x.pocketId === p.id);
                 return c
@@ -54,7 +54,7 @@ function WhereTable({ where, sections }: { where: Where; sections: Section[] }) 
         return (
           <div key={r.subsectionId} className="ty-brow">
             <div className="ty-brow__name">
-              <span className="ty-tag"><span className={dot(s?.slot ?? 0)} /><b>{s?.name}</b></span>
+              <span className="ty-tag"><span className={dot(s?.slot ?? 0)} /><SubEmoji emoji={s?.emoji} /><b>{s?.name}</b></span>
               {cells && <span className="ty-cap">{cells}</span>}
             </div>
             <div className="ty-num ty-right">{formatMinor(r.totalMinor)}</div>

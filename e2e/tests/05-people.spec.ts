@@ -39,7 +39,8 @@ test('the owner sees the people with an Owner pill, adds a person, and that pers
   await p2.getByLabel('Username').fill(username);
   await p2.getByLabel('Password').fill('temporary pass 1');
   await p2.getByRole('button', { name: 'Sign in' }).click();
-  await expect(p2).toHaveURL(/\/budget$/);
+  await expect(p2).toHaveURL(/\/home$/);
+  await p2.goto('/budget');
   await expect(p2.getByText('No sections yet', { exact: false })).toBeVisible();
   await p2.goto('/settings');
   await expect(p2.getByRole('heading', { name: 'People' })).toHaveCount(0);

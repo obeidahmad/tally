@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { EMOJIS, KIND_WORDS, type Loaded, type PocketKind, type Section } from './api';
 
 /* ---------- Fields ---------- */
@@ -94,7 +94,7 @@ export function KindField({ value, onChange, error }: { value: PocketKind; onCha
 }
 
 /** The 32 pocket emoji as native radios; each one's accessible name is its name. */
-export function EmojiPicker({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
+export function EmojiPicker({ value, onChange, error, onClear }: { value: string; onChange: (v: string) => void; error?: string; onClear?: () => void }) {
   const name = useId();
   return (
     <fieldset className="ty-fieldset">
@@ -104,16 +104,22 @@ export function EmojiPicker({ value, onChange, error }: { value: string; onChang
           <label key={label}><input type="radio" name={name} aria-label={label} checked={value === char} onChange={() => onChange(char)} />{char}</label>
         ))}
       </div>
+      {onClear && <div><button type="button" className="ty-btn ty-btn--quiet ty-btn--sm" disabled={!value} onClick={onClear}>No emoji</button></div>}
       {error && <span className="ty-error">{error}</span>}
     </fieldset>
   );
 }
 
+/** A subsection's emoji before its name, when it has one. */
+export const SubEmoji = ({ emoji }: { emoji?: string | null }) => (emoji ? <><span className="ty-emoji" aria-hidden="true">{emoji}</span> </> : null);
+/** The same as plain text, for an option. */
+export const subLabel = (x: { name: string; emoji?: string | null }) => (x.emoji ? `${x.emoji} ${x.name}` : x.name);
+
 /** Subsection select grouped by section. */
 export function SubsectionOptions({ sections }: { sections: Section[] }) {
   return <>{sections.filter((s) => s.subsections.length).map((s) => (
     <optgroup key={s.id} label={s.name}>
-      {s.subsections.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+      {s.subsections.map((x) => <option key={x.id} value={x.id}>{subLabel(x)}</option>)}
     </optgroup>
   ))}</>;
 }
@@ -197,6 +203,12 @@ export const EmptyCard = ({ text, action, onAction }: { text: string; action: st
     <div>{text}</div>
     <div><button className="ty-btn" onClick={onAction}>{action}</button></div>
   </div>
+);
+
+/** Whether a media query matches now, following changes. */
+export const useMedia = (query: string) => useSyncExternalStore(
+  (cb) => { const m = matchMedia(query); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); },
+  () => matchMedia(query).matches,
 );
 
 /* ---------- Phone top bar and focus ---------- */

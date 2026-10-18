@@ -7,7 +7,7 @@ import { formatMinor, minorToInput, parseAmount } from '../money';
 import { pick } from '../pick';
 import { loadT212Pocket, useT212Sync } from '../trading212';
 import { syncedLine } from '../bank';
-import { AmountField, Field, FormError, Load, Modal, PocketCurrencyField, SubsectionOptions, TextField, Topbar, useToast } from '../ui';
+import { AmountField, Field, FormError, Load, Modal, PocketCurrencyField, SubEmoji, SubsectionOptions, TextField, Topbar, useToast } from '../ui';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** "2026-10-03" -> "3 Oct" */
@@ -160,7 +160,7 @@ export default function InvestmentsPage() {
       </header>
       <Load state={state}>
         {({ holdings, pockets, sections, rates, t212 }) => {
-          const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
+          const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, emoji: x.emoji, slot: s.colorSlot }] as const)));
           const perBase = (c: string) => (c === baseCurrency(user) ? 1 : Number(rates.currencies.find((x) => x.currency === c)?.rate));
           const held = holdings.filter((h) => !h.soldDate);
           const sold = holdings.filter((h) => h.soldDate);
@@ -173,7 +173,7 @@ export default function InvestmentsPage() {
               <div key={h.id} className="app-hold">
                 <div className="app-hold__who app-pick" aria-label={`Edit ${h.name}`} {...pick(() => setDialog({ t: 'edit', holding: h }))}>
                   <b>{h.name}</b>
-                  <span className="ty-tag ty-cap"><span className={dot(s?.slot ?? 0)} />{s?.name}</span>
+                  <span className="ty-tag ty-cap"><span className={dot(s?.slot ?? 0)} /><SubEmoji emoji={s?.emoji} />{s?.name}</span>
                 </div>
                 <div className="app-hold__fig">
                   <span className="ty-cap">paid {formatMinor(h.paidMinor)} {pocket.currency}</span>
