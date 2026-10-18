@@ -85,3 +85,9 @@ Screenshots light and dark, desktop and phone, of the Pockets page with all four
 2. Net worth equals assets minus debts, with property at its latest value.
 3. A reconcile adjustment changes balances and net worth and nothing else.
 4. The backend tests cover every rule in the contract.
+
+## Notes from the backend
+
+- **Reconcile on a debt:** `balanceMinor` uses the pocket's own sign, so a credit card owing 7.00 is sent as `-700`. The UI asks "How much does {pocket} say you owe?" for credit and loan pockets, takes a positive amount, and sends it negative.
+- `reconciledAt` is a date (`YYYY-MM-DD`).
+- An adjustment can only have its note and tags edited.
