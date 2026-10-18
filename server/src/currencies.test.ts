@@ -308,7 +308,7 @@ describe('net worth', () => {
     await pocket(a, 'Pounds', 'GBP', 87000);
     await post(a, '/api/pockets', { name: 'Other EUR', kind: 'cash', openingBalanceMinor: 5 });
     expect(await get(a, '/api/networth')).toEqual({
-      currency: 'EUR', totalMinor: 100005 + 100578 + 46041,
+      currency: 'EUR', totalMinor: 100005 + 100578 + 46041, assetsMinor: 100005 + 100578 + 46041, debtsMinor: 0,
       byCurrency: [
         { currency: 'EUR', amountMinor: 100005, baseMinor: 100005, rate: null },
         { currency: 'GBP', amountMinor: 87000, baseMinor: 100578, rate: '1.1561' },
@@ -322,7 +322,7 @@ describe('net worth', () => {
     const { a } = await world();
     db.prepare("DELETE FROM rates WHERE currency = 'USD'").run();
     expect(await get(a, '/api/networth')).toEqual({
-      currency: 'EUR', totalMinor: 100000,
+      currency: 'EUR', totalMinor: 100000, assetsMinor: 100000, debtsMinor: 0,
       byCurrency: [
         { currency: 'EUR', amountMinor: 100000, baseMinor: 100000, rate: null },
         { currency: 'USD', amountMinor: 50000, baseMinor: null, rate: null },

@@ -5,6 +5,7 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { actingBudget, burnTime, currentSession, ownerOnlyBudget, endSession, hashPassword, requireAuth, startSession, toUser, USER_COLS, verifyPassword } from './auth';
+import { attachmentsRouter } from './attachments';
 import { bankCallback } from './banks';
 import { createRates, ECB_URL } from './rates';
 import { dataRouter } from './data';
@@ -31,7 +32,9 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   const api = express.Router();
   const json = express.json();
   // A statement can be 5,000,000 characters: its routes get a bigger limit, and only after sign-in.
-  api.use(requireJson, (req, res, next) => (req.path.startsWith('/imports') ? next() : json(req, res, next)), cookieParser());
+  // A receipt is sent as the raw file, not as JSON.
+  const isReceipt = (req: express.Request) => req.method === 'POST' && /^\/transactions\/\d+\/attachments$/.test(req.path);
+  api.use((req, res, next) => (isReceipt(req) ? next() : requireJson(req, res, next)), (req, res, next) => (req.path.startsWith('/imports') ? next() : json(req, res, next)), cookieParser());
 
   const userById = (id: number) => toUser(db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id));
   const needsSetup = () => !db.prepare('SELECT 1 FROM users').get();
@@ -125,6 +128,7 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   api.use(sharingRouter(db));
   api.use(['/banks', '/brokers'], ownerOnlyBudget);
   api.use('/imports', express.json({ limit: '25mb' }));
+  api.use(attachmentsRouter(db));
   api.use(dataRouter(db, rates, now, bank, { url: t212Url, now, sleep }));
   api.use(recurringRouter(db, now));
   api.use(() => { throw notFound(); });

@@ -195,6 +195,7 @@ export function trading212(db: Db, rates: Rates, cfg: BrokerConfig, deps: Broker
   r.put('/brokers/trading212', async (req, res) => {
     const uid = req.user.id;
     const b = parse(body, req.body);
+    if (one("SELECT 1 FROM pockets WHERE id = ? AND user_id = ? AND kind = 'property'", b.pocketId, uid)) throw fieldError('pocketId', 'A property pocket holds a value, not transactions.');
     const pocket = one("SELECT currency FROM pockets WHERE id = ? AND user_id = ? AND kind = 'broker'", b.pocketId, uid);
     if (!pocket) throw fieldError('pocketId', 'Choose a broker pocket.');
     if (!one('SELECT 1 FROM subsections WHERE id = ? AND user_id = ?', b.subsectionId, uid)) throw fieldError('subsectionId', 'Choose a subsection.');

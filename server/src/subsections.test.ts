@@ -211,6 +211,103 @@ describe('closing with keep rules', () => {
   });
 });
 
+describe('emoji and goal dates', () => {
+  const C = ym(0);
+  const patch = (a: Agent, id: number, body: object) => json(a.patch('/api/subsections/' + id)).send(body);
+  const bad = async (r: request.Test, field: string, message: string) => {
+    const e = (await r.expect(400)).body.error;
+    expect(e.fields[field]).toBe(message);
+  };
+  const trip = (target: number, extra: object = {}) => ({ name: 'Trip', kind: 'goal', budgetMinor: 0, keep: 'cap', capMinor: target, ...extra });
+  const goalOf = async (a: Agent, t: Awaited<ReturnType<typeof setup>>, month = C) => (await budgetOf(a, month, t.sec.id)).Trip;
+
+  it('stores an emoji, clears it with null, and refuses one outside the list', async () => {
+    const a = await owner();
+    const t = await setup(a);
+    const x = await t.sub({ name: 'Food', budgetMinor: 100, emoji: String.fromCodePoint(0x1f6d2) });
+    expect(x.emoji).toBe('\u{1f6d2}');
+    expect((await budgetOf(a, C, t.sec.id)).Food.emoji).toBe('\u{1f6d2}');
+    expect((await patch(a, x.id, { name: 'Food2' }).expect(200)).body.subsection.emoji).toBe('\u{1f6d2}');
+    expect((await patch(a, x.id, { emoji: null }).expect(200)).body.subsection.emoji).toBeNull();
+    await bad(patch(a, x.id, { emoji: 'x' }), 'emoji', 'Choose an emoji.');
+    expect((await t.sub({ name: 'Plain', budgetMinor: 1 })).emoji).toBeNull();
+  });
+
+  it('allows a target month only on a goal, this month or later', async () => {
+    const a = await owner();
+    const t = await setup(a);
+    const url = `/api/sections/${t.sec.id}/subsections`;
+    await bad(json(a.post(url)).send({ name: 'S', budgetMinor: 1, targetMonth: ym(-3) }), 'targetMonth', 'Only a savings goal has a target date.');
+    await bad(json(a.post(url)).send(trip(1000, { targetMonth: ym(1) })), 'targetMonth', 'Choose this month or later.');
+    await bad(json(a.post(url)).send(trip(1000, { targetMonth: '2027-13' })), 'targetMonth', 'Choose a month.');
+    const g = await t.sub(trip(1000, { targetMonth: C }));
+    expect(g.targetMonth).toBe(C);
+    expect((await patch(a, g.id, { targetMonth: null }).expect(200)).body.subsection.targetMonth).toBeNull();
+    // turning a goal with a date into spending drops the date
+    const h = await t.sub(trip(1000, { name: 'H', targetMonth: ym(-2) }));
+    expect((await patch(a, h.id, { kind: 'spending', keep: 'all' }).expect(200)).body.subsection).toMatchObject({ kind: 'spending', targetMonth: null });
+  });
+
+  it('needs the rest of the target over the months left, rounded up, never below 0', async () => {
+    const a = await owner();
+    const t = await setup(a);
+    const g = await t.sub(trip(120000, { targetMonth: ym(-11) }));
+    expect(await goalOf(a, t)).toMatchObject({ targetMonth: ym(-11), neededMinor: 10000 }); // 12 months left
+    await patch(a, g.id, { capMinor: 100000 }).expect(200);
+    expect((await goalOf(a, t)).neededMinor).toBe(8334); // 8333.33 up
+    await patch(a, g.id, { targetMonth: C, capMinor: 120000 }).expect(200);
+    expect((await goalOf(a, t)).neededMinor).toBe(120000); // 1 month left
+    await patch(a, g.id, { targetMonth: null }).expect(200);
+    expect(await goalOf(a, t)).toMatchObject({ neededMinor: null, goalStatus: null });
+  });
+
+  it('gives each status and sums what the behind goals lack', async () => {
+    const a = await owner();
+    const t = await setup(a);
+    const g = await t.sub(trip(120000, { targetMonth: ym(-11), budgetMinor: 10000 }));
+    expect(await goalOf(a, t)).toMatchObject({ neededMinor: 10000, goalStatus: 'on_track' });
+    expect((await get(a, `/api/budget?month=${C}`)).underfundedMinor).toBe(0);
+    await patch(a, g.id, { budgetMinor: 9999 }).expect(200);
+    expect(await goalOf(a, t)).toMatchObject({ goalStatus: 'behind' });
+    await t.sub({ name: 'Car', kind: 'goal', keep: 'cap', capMinor: 5000, budgetMinor: 1000, targetMonth: C });
+    expect((await get(a, `/api/budget?month=${C}`)).underfundedMinor).toBe(1 + 4000);
+    // done wins, with or without a date
+    await patch(a, g.id, { budgetMinor: 120000 }).expect(200);
+    expect(await goalOf(a, t)).toMatchObject({ goalStatus: 'done' });
+    await patch(a, g.id, { targetMonth: null }).expect(200);
+    expect(await goalOf(a, t)).toMatchObject({ goalStatus: 'done', neededMinor: null });
+    // after its month a goal that is not done is past
+    await patch(a, g.id, { budgetMinor: 100, targetMonth: C }).expect(200);
+    expect(await goalOf(a, t, ym(-1))).toMatchObject({ goalStatus: 'past' });
+    expect(await goalOf(a, t, C)).toMatchObject({ goalStatus: 'behind' });
+  });
+
+  it('counts what the goal held at the start of the month, and a closed month keeps its figures', async () => {
+    const a = await owner();
+    const t = await setup(a);
+    await t.earn(M1, 100000);
+    const g = await t.sub(trip(30000, { targetMonth: ym(-3), budgetMinor: 10000 }));
+    expect(await goalOf(a, t, M1)).toMatchObject({ neededMinor: 5000, goalStatus: 'on_track' }); // 6 months left from M1
+    await json(a.post('/api/months/' + M1 + '/close')).expect(200);
+    expect(await goalOf(a, t, M2)).toMatchObject({ carriedMinor: 10000, neededMinor: 4000 }); // (30000 - 10000) / 5
+    await patch(a, g.id, { budgetMinor: 1, emoji: String.fromCodePoint(0x1f3af) }).expect(200);
+    expect(await goalOf(a, t, M1)).toMatchObject({ neededMinor: 5000, goalStatus: 'on_track', budgetMinor: 10000, emoji: null });
+  });
+
+  it('is per person', async () => {
+    const a = await owner();
+    const t = await setup(a);
+    const g = await t.sub(trip(1000, { targetMonth: C }));
+    await json(a.post('/api/users')).send({ username: 'other', displayName: 'o', password: 'correct horse battery', baseCurrency: 'EUR' }).expect(201);
+    const b = request.agent(app);
+    await json(b.post('/api/auth/login')).send({ username: 'other', password: 'correct horse battery' }).expect(200);
+    await patch(b, g.id, { emoji: null }).expect(404);
+    const o = await get(b, `/api/budget?month=${C}`);
+    expect(o.sections).toEqual([]);
+    expect(o.underfundedMinor).toBe(0);
+  });
+});
+
 describe('a database from before the migration', () => {
   it('gives existing subsections the spending, amount, keep-all defaults', () => {
     const file = path.join(dir, 'old.db');
