@@ -9,7 +9,7 @@ import { ImportDialog } from '../import';
 import { formatMinor } from '../money';
 import { baseCurrency, useAuth } from '../auth';
 import { pick } from '../pick';
-import { EmptyCard, Field, Load, SubEmoji, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
+import { EmptyCard, Load, SubEmoji, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
 
 const MONTHS_BACK = 36;
 const ORIGIN: Record<Transaction['source'], string> = { manual: '', import: 'from a statement', bank: 'from your bank', broker: 'from Trading212', adjustment: '' };
@@ -32,6 +32,7 @@ export default function TransactionsPage() {
   const [dialog, setDialog] = useState<{ tx?: Transaction; importing?: boolean } | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulk, setBulk] = useState<BulkAction | null>(null);
+  const [datesOpen, setDatesOpen] = useState(false);
   const [selecting, setSelecting] = useState(false); // the phone's "Select" button and long press turn it on
   const held = useRef<{ timer?: number; fired: boolean; touching: boolean }>({ fired: false, touching: false });
   const close = () => setDialog(null);
@@ -44,6 +45,7 @@ export default function TransactionsPage() {
   };
   const unsortedView = !!get('unsorted');
   const anyFilter = FILTERS.some(get);
+  const showDates = datesOpen || !!(get('from') || get('to'));
   const range = !!(get('from') || get('to') || get('q') || get('tag')); // these look through every month
 
   const state = useLoad(
@@ -97,56 +99,41 @@ export default function TransactionsPage() {
         </div>
       ) : (
         <div className="ty-filters">
-          <Field label="Month">
-            {(p) => (
-              <select {...p} value={month} disabled={unsortedView || range} onChange={(e) => set('month', e.target.value)}>
-                {months.map((m) => <option key={m} value={m}>{monthTitle(m)}</option>)}
-              </select>
-            )}
-          </Field>
-          <Field label="Search">
-            {(p) => <input {...p} type="search" placeholder="Search payee or note" value={get('q')} onChange={(e) => set('q', e.target.value)} />}
-          </Field>
-          <Field label="Subsection">
-            {(p) => (
-              <select {...p} value={get('subsectionId')} onChange={(e) => set('subsectionId', e.target.value)}>
-                <option value="">All subsections</option>
-                {state.data && <SubsectionOptions sections={state.data.sections} />}
-              </select>
-            )}
-          </Field>
-          <Field label="Pocket">
-            {(p) => (
-              <select {...p} value={get('pocketId')} onChange={(e) => set('pocketId', e.target.value)}>
-                <option value="">All pockets</option>
-                {state.data?.pockets.map((x) => <option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
-              </select>
-            )}
-          </Field>
-          <Field label="Type">
-            {(p) => (
-              <select {...p} value={get('kind')} onChange={(e) => set('kind', e.target.value)}>
-                <option value="">All types</option>
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-                <option value="transfer">Transfer</option>
-              </select>
-            )}
-          </Field>
-          <Field label="From">{(p) => <input {...p} type="date" value={get('from')} onChange={(e) => set('from', e.target.value)} />}</Field>
-          <Field label="To">{(p) => <input {...p} type="date" value={get('to')} onChange={(e) => set('to', e.target.value)} />}</Field>
-          <Field label="Tag">
-            {(p) => (
-              <select {...p} value={get('tag')} onChange={(e) => set('tag', e.target.value)}>
-                <option value="">All tags</option>
-                {state.data?.tags.map((x) => <option key={x} value={x}>{x}</option>)}
-              </select>
-            )}
-          </Field>
+          <select className="ty-input" aria-label="Month" value={month} disabled={unsortedView || range} onChange={(e) => set('month', e.target.value)}>
+            {months.map((m) => <option key={m} value={m}>{monthTitle(m)}</option>)}
+          </select>
+          <input className="ty-input ty-filters__search" type="search" aria-label="Search" placeholder="Search payee or note" value={get('q')} onChange={(e) => set('q', e.target.value)} />
+          <select className="ty-input" aria-label="Subsection" value={get('subsectionId')} onChange={(e) => set('subsectionId', e.target.value)}>
+            <option value="">All subsections</option>
+            {state.data && <SubsectionOptions sections={state.data.sections} />}
+          </select>
+          <select className="ty-input" aria-label="Pocket" value={get('pocketId')} onChange={(e) => set('pocketId', e.target.value)}>
+            <option value="">All pockets</option>
+            {state.data?.pockets.map((x) => <option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
+          </select>
+          <select className="ty-input" aria-label="Type" value={get('kind')} onChange={(e) => set('kind', e.target.value)}>
+            <option value="">All types</option>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="transfer">Transfer</option>
+          </select>
+          <select className="ty-input" aria-label="Tag" value={get('tag')} onChange={(e) => set('tag', e.target.value)}>
+            <option value="">All tags</option>
+            {state.data?.tags.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
           <label className="ty-chip ty-filters__chip">
             <input type="checkbox" checked={unsortedView} onChange={(e) => set('unsorted', e.target.checked ? '1' : '')} />Needs sorting{state.data && state.data.unsortedCount > 0 ? ` (${state.data.unsortedCount})` : ''}
           </label>
-          {anyFilter && <button className="ty-btn ty-btn--quiet" onClick={() => { setSelected(new Set()); setParams(params.get('month') ? { month } : {}, { replace: true }); }}>Clear filters</button>}
+          <label className="ty-chip ty-filters__chip">
+            <input type="checkbox" checked={showDates} onChange={(e) => { if (e.target.checked) setDatesOpen(true); else { setDatesOpen(false); set('from', ''); set('to', ''); } }} />Dates
+          </label>
+          {showDates && (
+            <span className="ty-filters__dates">
+              <input className="ty-input" type="date" aria-label="From" value={get('from')} onChange={(e) => set('from', e.target.value)} />
+              <input className="ty-input" type="date" aria-label="To" value={get('to')} onChange={(e) => set('to', e.target.value)} />
+            </span>
+          )}
+          {anyFilter && <button className="ty-btn ty-btn--quiet" onClick={() => { setSelected(new Set()); setDatesOpen(false); setParams(params.get('month') ? { month } : {}, { replace: true }); }}>Clear filters</button>}
           <button className="ty-btn ty-btn--quiet app-phone-only" onClick={() => setSelecting(true)}>Select</button>
         </div>
       )}

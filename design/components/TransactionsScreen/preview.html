@@ -11,12 +11,15 @@
 <main class="ty-main">
 <header class="ty-month__top"><h1 class="text-display">Transactions</h1><span class="ty-grow"></span><button class="ty-btn">Import a statement</button><button class="ty-btn ty-btn--spend">Add transaction</button></header>
 <div class="ty-filters">
-  <div class="ty-field"><label class="ty-label" for="ff-m">Month</label><select class="ty-input" id="ff-m"><option>October 2026</option></select></div>
-  <div class="ty-field"><label class="ty-label" for="ff-q">Search</label><input class="ty-input" id="ff-q" type="search" placeholder="Search payee or note"></div>
-  <div class="ty-field"><label class="ty-label" for="ff-s">Subsection</label><select class="ty-input" id="ff-s"><option>All subsections</option></select></div>
-  <div class="ty-field"><label class="ty-label" for="ff-p">Pocket</label><select class="ty-input" id="ff-p"><option>All pockets</option></select></div>
-  <div class="ty-field"><label class="ty-label" for="ff-t">Tag</label><select class="ty-input" id="ff-t"><option>All tags</option></select></div>
+  <select class="ty-input" aria-label="Month"><option>October 2026</option></select>
+  <input class="ty-input ty-filters__search" type="search" aria-label="Search" placeholder="Search payee or note">
+  <select class="ty-input" aria-label="Subsection"><option>All subsections</option></select>
+  <select class="ty-input" aria-label="Pocket"><option>All pockets</option></select>
+  <select class="ty-input" aria-label="Type"><option>All types</option></select>
+  <select class="ty-input" aria-label="Tag"><option>All tags</option></select>
   <label class="ty-chip ty-filters__chip"><input type="checkbox">Needs sorting (3)</label>
+  <label class="ty-chip ty-filters__chip"><input type="checkbox" checked>Dates</label>
+  <span class="ty-filters__dates"><input class="ty-input" type="date" aria-label="From"><input class="ty-input" type="date" aria-label="To"></span>
   <button class="ty-btn ty-btn--quiet">Clear filters</button>
 </div>
 <section class="ty-section" aria-label="Transactions">
