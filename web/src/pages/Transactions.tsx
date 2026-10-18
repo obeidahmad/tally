@@ -125,7 +125,7 @@ export default function TransactionsPage() {
             <input type="checkbox" checked={unsortedView} onChange={(e) => set('unsorted', e.target.checked ? '1' : '')} />Needs sorting{state.data && state.data.unsortedCount > 0 ? ` (${state.data.unsortedCount})` : ''}
           </label>
           <label className="ty-chip ty-filters__chip">
-            <input type="checkbox" checked={showDates} onChange={(e) => { if (e.target.checked) setDatesOpen(true); else { setDatesOpen(false); set('from', ''); set('to', ''); } }} />Dates
+            <input type="checkbox" checked={showDates} onChange={(e) => { if (e.target.checked) setDatesOpen(true); else { setDatesOpen(false); setSelected(new Set()); setParams((p) => { const n = new URLSearchParams(p); n.delete('from'); n.delete('to'); return n; }, { replace: true }); } }} />Dates
           </label>
           {showDates && (
             <span className="ty-filters__dates">

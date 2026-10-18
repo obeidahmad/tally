@@ -255,10 +255,11 @@ a.ty-btn { text-decoration: none; }
 
 /* FilterBar: the Transactions filter row, the selection bar and the selectable row */
 .ty-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.ty-filters > .ty-input, .ty-filters__dates .ty-input { width: auto; max-width: 11rem; flex: none; }
-.ty-filters > .ty-filters__search { flex: 1 1 16rem; max-width: none; }
+.ty-filters > select.ty-input { width: auto; max-width: 9rem; flex: none; text-overflow: ellipsis; }
+.ty-filters__dates .ty-input { width: auto; flex: none; }
+.ty-filters > .ty-filters__search { flex: 1 1 10rem; min-width: 10rem; width: auto; max-width: none; }
 .ty-filters__dates { display: contents; }
-.ty-filters__chip { flex: none; }
+.ty-filters__chip { flex: none; padding: 0 var(--space-3); }
 .ty-selbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: 3.5rem; padding: var(--space-2) var(--space-4); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
 .ty-sel { display: flex; align-items: center; border-top: 1px solid var(--line); }
 .ty-sel .ty-trow { flex: 1; min-width: 0; border-top: 0; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -345,7 +346,7 @@ a.ty-btn { text-decoration: none; }
 .ty-labelbg { fill: var(--surface); fill-opacity: 0.92; pointer-events: none; }
 
 @media (max-width: 640px) {
-  .ty-filters > *, .ty-filters__dates .ty-input { flex: 1 1 calc(50% - var(--space-2)); min-width: 0; max-width: none; width: auto; }
+  .ty-filters > *, .ty-filters > select.ty-input, .ty-filters__dates .ty-input { flex: 1 1 calc(50% - var(--space-2)); min-width: 0; max-width: none; width: auto; }
   .ty-filters > .ty-filters__search { flex-basis: 100%; }
   .ty-selbar { gap: var(--space-1); }
   /* on a phone the checkboxes appear once a long press starts selecting */
