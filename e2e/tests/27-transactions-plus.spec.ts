@@ -90,6 +90,8 @@ test('From and To bound the list by date, both inclusive', async ({ page, me }) 
   const today = todayIso();
   const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   await page.goto('/transactions');
+  await expect(page.getByLabel('From')).toHaveCount(0); // hidden until the Dates chip is on
+  await page.getByRole('checkbox', { name: 'Dates' }).or(page.getByRole('button', { name: 'Dates' })).first().click();
   await page.getByLabel('From').fill(today);
   await page.getByLabel('To').fill(today);
   await expect(row(page, /Alphamega/)).toBeVisible(); // today is inside both ends
@@ -97,8 +99,11 @@ test('From and To bound the list by date, both inclusive', async ({ page, me }) 
   await page.getByLabel('To').fill('');
   await expect(page.getByText(FILTERS_NONE)).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel('From')).toHaveValue(tomorrow);
+  await expect(page.getByLabel('From')).toHaveValue(tomorrow); // the chip is on by itself
   await expect(page.getByText(FILTERS_NONE)).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Dates' }).or(page.getByRole('button', { name: 'Dates' })).first().click(); // off clears both
+  await expect(page.getByLabel('From')).toHaveCount(0);
+  await expect(row(page, /Alphamega/)).toBeVisible();
 });
 
 test('"Needs sorting" shows only transactions without a subsection', async ({ page, me }) => {
@@ -115,6 +120,25 @@ test('"Needs sorting" shows only transactions without a subsection', async ({ pa
   await page.reload();
   await expect(row(page, /Netflix/)).toBeVisible();
   await expect(row(page, /Hand entered coffee/)).toHaveCount(0);
+});
+
+test('at 1280 wide the filter row is one row: no labels, every control on the same line', async ({ page, me }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await seedBudget(me.seed);
+  await page.goto('/transactions');
+  const names = ['Month', 'Search', 'Subsection', 'Pocket', 'Type', 'Tag'];
+  const ys: number[] = [];
+  for (const n of names) {
+    const c = page.getByLabel(n, { exact: true }).first();
+    await expect(c, n).toBeVisible();
+    const bb = (await c.boundingBox())!;
+    expect(bb.height, n + ' height').toBeLessThanOrEqual(40);
+    ys.push(bb.y + bb.height / 2);
+  }
+  const chip = (await page.getByRole('checkbox', { name: /^Needs sorting/ }).or(page.getByRole('button', { name: /^Needs sorting/ })).first().boundingBox())!;
+  ys.push(chip.y + chip.height / 2);
+  expect(Math.max(...ys) - Math.min(...ys), JSON.stringify(ys)).toBeLessThan(6);
+  await expect(page.locator('label, .ty-label').filter({ hasText: /^(Month|Search|Subsection|Pocket|Type|Tag)$/ }).locator('visible=true')).toHaveCount(0);
 });
 
 // ============ splits ============
