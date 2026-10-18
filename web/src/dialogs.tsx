@@ -520,12 +520,12 @@ export function PocketDialog({ pocket, pockets = [], currency, onReconcile, onCl
           <div className="ty-inset">
             <div className="app-value">
               <span className="ty-label">Current value</span>
-              <span className="ty-num">{formatMinor(values?.[0]?.valueMinor ?? pocket.valueMinor)}<span className="ty-cur">{pocket.currency}</span></span>
+              <span className="ty-num">{formatMinor(values ? values.find((v) => v.date <= today())?.valueMinor ?? 0 : pocket.valueMinor)}<span className="ty-cur">{pocket.currency}</span></span>
             </div>
             <FormError message={g.formError} />
             <div className="app-valuerow">
               <AmountField label="Value" value={value} onChange={setValue} error={g.errors.valueMinor} currency={pocket.currency} />
-              <TextField label="Date" type="date" value={valueDate} onChange={setValueDate} error={g.errors.date} />
+              <TextField label="Date" type="date" max={today()} value={valueDate} onChange={setValueDate} error={g.errors.date} />
               <button type="button" className="ty-btn" disabled={g.busy} onClick={update}>Update value</button>
             </div>
             {values && values.length > 0 && (
@@ -557,7 +557,7 @@ export function ReconcileDialog({ pocket, onClose }: { pocket: Pocket; onClose: 
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(today());
   const save = f.on(async () => {
-    const shown = parseAmount(amount, { allowZero: true, allowNegative: !debt });
+    const shown = parseAmount(amount, { allowZero: true, allowNegative: true });
     if (shown === null) throw fieldError('balanceMinor', BALANCE_ERROR);
     const { adjustment } = await api<{ adjustment: Transaction | null }>('POST', `/pockets/${pocket.id}/reconcile`, { balanceMinor: debt ? -shown : shown, date });
     onClose();
@@ -567,8 +567,8 @@ export function ReconcileDialog({ pocket, onClose }: { pocket: Pocket; onClose: 
   return (
     <Modal title={debt ? `How much does ${pocket.name} say you owe?` : `What does ${pocket.name} show today?`} onClose={onClose}>
       <form className="ty-stack" onSubmit={save} noValidate>
-        <FormError message={f.formError} />
-        <AmountField label={debt ? 'Owed' : 'Balance'} value={amount} onChange={setAmount} error={f.errors.balanceMinor} currency={pocket.currency} />
+        <FormError message={f.formError || f.errors.pocketId || ''} />
+        <AmountField label={debt ? 'Owed' : 'Balance'} value={amount} onChange={setAmount} error={f.errors.balanceMinor} currency={pocket.currency} hint={debt ? 'Enter a negative amount if it is in credit.' : undefined} />
         <TextField label="Date" type="date" value={date} onChange={setDate} error={f.errors.date} />
         <Foot busy={f.busy} onCancel={onClose} label="Reconcile" />
       </form>

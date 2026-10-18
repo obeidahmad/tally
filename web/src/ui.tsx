@@ -24,12 +24,12 @@ export function Field({ label, error, hint, children }: {
   );
 }
 
-export function TextField({ label, value, onChange, error, type = 'text', autoComplete, hint, disabled }: {
-  label: string; value: string; onChange: (v: string) => void; error?: string; type?: string; autoComplete?: string; hint?: string; disabled?: boolean;
+export function TextField({ label, value, onChange, error, type = 'text', autoComplete, hint, disabled, max }: {
+  label: string; max?: string; value: string; onChange: (v: string) => void; error?: string; type?: string; autoComplete?: string; hint?: string; disabled?: boolean;
 }) {
   return (
     <Field label={label} error={error} hint={hint}>
-      {(p) => <input {...p} type={type} value={value} autoComplete={autoComplete} disabled={disabled} onChange={(e) => onChange(e.target.value)} />}
+      {(p) => <input {...p} type={type} max={max} value={value} autoComplete={autoComplete} disabled={disabled} onChange={(e) => onChange(e.target.value)} />}
     </Field>
   );
 }

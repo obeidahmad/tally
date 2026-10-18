@@ -173,3 +173,7 @@
 .app-tags .ty-pill, .app-tagpill { color: var(--ink); }
 .ty-dialog { scroll-padding-bottom: 6rem; }
 .app-attach { scroll-margin-bottom: 6rem; }
+@media (max-width: 640px) {
+  .app-filters .ty-field { flex: 1 1 calc(50% - var(--space-2)); min-width: 0; }
+  .app-filters .ty-field:has(input[type="search"]) { flex-basis: 100%; }
+}

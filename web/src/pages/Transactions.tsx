@@ -26,8 +26,8 @@ const Clip = () => (
 export default function TransactionsPage() {
   const { user } = useAuth();
   const now = currentMonth();
-  const [month, setMonth] = useState(now);
   const [params, setParams] = useSearchParams();
+  const month = params.get('month') ?? now;
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<{ tx?: Transaction; importing?: boolean } | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -44,7 +44,7 @@ export default function TransactionsPage() {
   };
   const unsortedView = !!get('unsorted');
   const anyFilter = FILTERS.some(get);
-  const range = !!(get('from') || get('to'));
+  const range = !!(get('from') || get('to') || get('q') || get('tag')); // these look through every month
 
   const state = useLoad(
     async () => {
@@ -99,7 +99,7 @@ export default function TransactionsPage() {
         <div className="app-filters">
           <Field label="Month">
             {(p) => (
-              <select {...p} value={month} disabled={unsortedView || range} onChange={(e) => { setSelected(new Set()); setMonth(e.target.value); }}>
+              <select {...p} value={month} disabled={unsortedView || range} onChange={(e) => set('month', e.target.value)}>
                 {months.map((m) => <option key={m} value={m}>{monthTitle(m)}</option>)}
               </select>
             )}
@@ -146,7 +146,7 @@ export default function TransactionsPage() {
           <label className="ty-chip app-filters__chip">
             <input type="checkbox" checked={unsortedView} onChange={(e) => set('unsorted', e.target.checked ? '1' : '')} />Needs sorting{state.data && state.data.unsortedCount > 0 ? ` (${state.data.unsortedCount})` : ''}
           </label>
-          {anyFilter && <button className="ty-btn ty-btn--quiet" onClick={() => { setSelected(new Set()); setParams({}, { replace: true }); }}>Clear filters</button>}
+          {anyFilter && <button className="ty-btn ty-btn--quiet" onClick={() => { setSelected(new Set()); setParams(params.get('month') ? { month } : {}, { replace: true }); }}>Clear filters</button>}
           <button className="ty-btn ty-btn--quiet app-phone-only" onClick={() => setSelecting(true)}>Select</button>
         </div>
       )}

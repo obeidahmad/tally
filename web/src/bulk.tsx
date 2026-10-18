@@ -36,7 +36,7 @@ export function BulkDialog({ action, ids, sections, tags, onDone, onClose }: {
           </Field>
         )}
         {action === 'addTag' && (
-          <Field label="Tag" error={f.errors.tag}>
+          <Field label="Tag" error={f.errors.tags}>
             {(p) => (
               <>
                 <input {...p} list="bulk-tags" value={tag} onChange={(e) => setTag(e.target.value)} />
@@ -46,7 +46,7 @@ export function BulkDialog({ action, ids, sections, tags, onDone, onClose }: {
           </Field>
         )}
         {action === 'removeTag' && (
-          <Field label="Tag" error={f.errors.tag}>
+          <Field label="Tag" error={f.errors.tags}>
             {(p) => (
               <select {...p} value={tag} onChange={(e) => setTag(e.target.value)}>
                 <option value="" disabled>Choose a tag</option>
