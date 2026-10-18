@@ -165,7 +165,7 @@ test('"Left to split" turns negative when the parts overshoot, and "Remove split
   await row(page, /Two parts/).click();
   const d = dialog(page);
   await d.getByLabel('Amount', { exact: true }).nth(1).fill('30.00');
-  await expect(d.locator('.ty-cap--negative, .negative').filter({ hasText: /Left to split/ })).toBeVisible();
+  await expect(d.locator('.ty-num--neg, .ty-cap .ty-num--neg').filter({ hasText: /Left to split/ })).toBeVisible();
   await expect(d.getByText(/Left to split\s+[−-]10\.00/)).toBeVisible();
   await d.getByRole('button', { name: 'Remove split' }).click();
   await expect(d.getByLabel('Subsection')).toHaveCount(1);
@@ -306,6 +306,63 @@ test('a bulk change that includes a transfer is refused in the dialog and change
   await expect(row(page, /EAC electricity/)).toContainText('Utilities');
 });
 
+test('bulk Add tag and Remove tag work, and a 31-character tag shows the error in the dialog', async ({ page, me }) => {
+  await seedBudget(me.seed);
+  await page.goto('/transactions');
+  await pick(page, /Alphamega/).check();
+  await pick(page, /Netflix/).check();
+  await page.getByRole('button', { name: 'Add tag' }).click();
+  let d = dialog(page);
+  await d.getByLabel('Tag').fill('x'.repeat(31));
+  await submitOf(d, /^(Add tag|Add|Apply|Save)$/).click();
+  await expect(d).toBeVisible();
+  await expect(d.locator('.ty-error, [role="alert"]').first()).toBeVisible();
+  await d.getByLabel('Tag').fill('shared');
+  await submitOf(d, /^(Add tag|Add|Apply|Save)$/).click();
+  await expect(d).toBeHidden();
+  await expect(row(page, /Alphamega/)).toContainText('shared');
+  await expect(row(page, /Netflix/)).toContainText('shared');
+  await expect(row(page, /EAC electricity/)).not.toContainText('shared');
+  expect((await tagsApi(page)).find((t) => t.name === 'shared')!.count).toBe(2);
+
+  await pick(page, /Alphamega/).check();
+  await pick(page, /Netflix/).check();
+  await page.getByRole('button', { name: 'Remove tag' }).click();
+  d = dialog(page);
+  await d.getByLabel('Tag').selectOption({ label: 'shared' }).catch(async () => { await d.getByLabel('Tag').fill('shared'); });
+  await submitOf(d, /^(Remove tag|Remove|Apply|Save)$/).click();
+  await expect(d).toBeHidden();
+  await expect(row(page, /Alphamega/)).not.toContainText('shared');
+  await expect(row(page, /Netflix/)).not.toContainText('shared');
+});
+
+test('on a narrow screen the "Select" button enters selection mode and "Cancel" leaves it', async ({ page, me }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seedBudget(me.seed);
+  await page.goto('/transactions');
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await expect(pick(page, /Alphamega/)).toBeVisible();
+  await pick(page, /Alphamega/).check();
+  await expect(page.getByText('1 selected')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByText(/d selected/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Select', exact: true })).toBeVisible();
+});
+
+test('a search finds a transaction from another month and disables the Month filter', async ({ page, me }) => {
+  const b = await seedBudget(me.seed);
+  const prev = new Date(); prev.setUTCDate(15); prev.setUTCMonth(prev.getUTCMonth() - 1);
+  await me.seed.expense(b.pocket.id, b.food.id, 999, 'Old bakery', prev.toISOString().slice(0, 10));
+  await page.goto('/transactions');
+  await expect(row(page, /Old bakery/)).toHaveCount(0);
+  await search(page).fill('old bakery');
+  await expect(row(page, /Old bakery/)).toBeVisible();
+  await expect(page.getByLabel('Month')).toBeDisabled();
+  await search(page).fill('');
+  await expect(page.getByLabel('Month')).toBeEnabled();
+  await expect(row(page, /Old bakery/)).toHaveCount(0);
+});
+
 // ============ receipts ============
 test('attach a PNG, see it listed and on the row, open it in a new tab, and remove it', async ({ page, me }) => {
   await seedBudget(me.seed);
@@ -380,6 +437,10 @@ for (const [size, viewport] of Object.entries(sizes)) {
       await row(page, /Big shop/).click();
       await expect(dialog(page).getByRole('button', { name: 'Remove split' })).toBeVisible();
       await shot(page, `spec22-split-dialog-${tag}`);
+      await dialog(page).getByRole('button', { name: 'Attach receipt' }).scrollIntoViewIfNeeded();
+      await expect(dialog(page).getByRole('button', { name: 'Attach receipt' })).toBeVisible();
+      await dialog(page).evaluate((e) => { const sc = [e, ...e.querySelectorAll('*')].filter((x) => x.scrollHeight > x.clientHeight + 4); sc.forEach((x) => (x.scrollTop = x.scrollHeight)); });
+      await shot(page, `spec22-split-dialog-end-${tag}`);
       await page.keyboard.press('Escape');
       await expect(dialog(page)).toBeHidden();
       if (size === 'phone') {
