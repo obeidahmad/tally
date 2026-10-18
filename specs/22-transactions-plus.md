@@ -141,6 +141,7 @@ Screenshots light and dark, desktop and phone, of the filter row, the selection 
 - **On phones** the filter row puts search full width, then the short controls (Type, From, To, Tag, Subsection, Pocket) two per row.
 - **The filter row is one compact row,** like Monarch's:
   - **Controls:** 36px tall with no visible labels; each has an accessible name ("Month", "Search", "Subsection", "Pocket", "Type", "Tag"). In order: Month, Search (it takes the free width), Subsection, Pocket, Type, Tag, the "Needs sorting (n)" chip, and a "Dates" toggle chip.
-  - **Dates:** the toggle shows From and To in the same row when on, and is on by itself when either is set in the URL.
+  - **Dates:** the toggle shows From and To when on (on a second line if the row is full), and is on by itself when either is set in the URL. Turning it off clears both dates.
+  - **Width:** with Dates off, everything fits on one line at a 1280px window (about 1010px of content).
   - **"Clear filters":** a quiet link at the end when any filter is set.
   - **Phones:** search full width, then the rest two per row, with "Select" last.
