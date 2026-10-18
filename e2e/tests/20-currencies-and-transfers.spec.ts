@@ -108,7 +108,7 @@ test.describe('phone', () => {
     await page.goto('/pockets');
     const btn = page.getByRole('button', { name: 'Transfer', exact: true });
     await expect(btn).toBeVisible();
-    const line = (await page.getByText(/ in EUR/).first().boundingBox())!;
+    const line = (await page.locator('.num-hero').first().boundingBox())!; // the "in EUR" line is hidden when it only repeats the net worth
     const b = (await btn.boundingBox())!;
     const content = (await page.locator('main').first().boundingBox())!;
     expect(b.y).toBeGreaterThanOrEqual(line.y + line.height - 1);
@@ -120,7 +120,7 @@ test('with only base-currency pockets the net worth line is just that currency',
   await me.seed.pocket('Bank of Cyprus', 894255);
   await page.goto('/pockets');
   await expect(page.locator('.num-hero').first()).toContainText('8,942.55');
-  await expect(page.getByText('8,942.55 in EUR')).toBeVisible();
+  await expect(page.getByText('8,942.55 in EUR')).toHaveCount(0); // spec 21: no line that only repeats the net worth
   await expect(page.getByText(/worth .* at /)).toHaveCount(0);
 });
 

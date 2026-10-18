@@ -19,6 +19,10 @@ Cancelling subscriptions, negotiating bills, reminders outside the app, and recu
 
 The 15% band now applies to every payment but the latest, compared with the median of the others. The latest may be up to 50% above that median, or up to 15% below it. So a price rise does not hide a subscription. `amountMinor` becomes the latest payment's amount, and the monthly figure follows it.
 
+### Next dates (replaces spec 18's "last + the median gap")
+
+Weekly items step by 7 days, monthly items by one calendar month on the same day of the month as `lastDate` (clamped to the last day of a shorter month), and yearly items by one calendar year (29 Feb becomes 28 Feb). This gives `nextDate` and the calendar's expected dates. A Netflix bill last paid on 13 Oct is next due on 13 Nov.
+
 ### On each item of `GET /api/recurring`
 
 - **`status`:**

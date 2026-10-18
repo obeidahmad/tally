@@ -20,7 +20,9 @@ test('first run shows the set-up page, then the app', async ({ page }) => {
   await page.getByLabel('Password').fill(OWNER.password);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page).toHaveURL(/\/budget$/);
+  await expect(page).toHaveURL(/\/home$/); // spec 26: sign-in lands on Home
+  await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+  await page.goto('/budget');
   await expect(page.getByText('No sections yet. A section is a group such as Needs or Savings.')).toBeVisible();
   await expect(page.getByText('Signed in as Sam')).toBeVisible();
 });

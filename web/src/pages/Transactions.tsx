@@ -8,7 +8,7 @@ import { ImportDialog } from '../import';
 import { formatMinor } from '../money';
 import { baseCurrency, useAuth } from '../auth';
 import { pick } from '../pick';
-import { EmptyCard, Field, Load, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
+import { EmptyCard, Field, Load, SubEmoji, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
 
 const MONTHS_BACK = 36;
 const ORIGIN: Record<Transaction['source'], string> = { manual: '', import: 'from a statement', bank: 'from your bank', broker: 'from Trading212' };
@@ -93,7 +93,7 @@ export default function TransactionsPage() {
         {({ transactions, pockets, sections, sources }) => {
           const unsortedView = subsectionId === UNSORTED;
           const sourceName = new Map(sources.map((x) => [x.id, x.name]));
-          const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, slot: s.colorSlot }] as const)));
+          const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, emoji: x.emoji, slot: s.colorSlot }] as const)));
           const pocketById = new Map(pockets.map((p) => [p.id, p]));
           const days: [string, Transaction[]][] = [];
           for (const t of transactions) {
@@ -115,6 +115,7 @@ export default function TransactionsPage() {
                         const imported = t.source !== 'manual';
                         const unsorted = imported && (t.kind === 'income' ? t.sourceId === null : t.subsectionId === null);
                         const where = unsorted ? '' : sub?.name ?? (transfer ? '' : 'Income');
+                        const mark = <SubEmoji emoji={sub?.emoji} />;
                         const p = pocketById.get(t.pocketId);
                         const pocket = p && <><span className="ty-emoji">{p.emoji}</span> {p.name}</>;
                         const code = p?.currency ?? baseCurrency(user);
@@ -136,10 +137,10 @@ export default function TransactionsPage() {
                             <div className="ty-trow__who">
                               <b>{transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? (t.sourceId === null ? t.payee : sourceName.get(t.sourceId)) : t.payee}</b>
                               {second && <span className="ty-cap">{second[0].toUpperCase() + second.slice(1)}</span>}
-                              <span className="ty-cap ty-trow__meta">{unsorted ? <><span className="ty-pill ty-pill--warning">Needs sorting</span> · {pocket}</> : t.kind === 'income' ? pocket : <>{where && `${where} · `}{pocket}</>}</span>
+                              <span className="ty-cap ty-trow__meta">{unsorted ? <><span className="ty-pill ty-pill--warning">Needs sorting</span> · {pocket}</> : t.kind === 'income' ? pocket : <>{where && <>{mark}{where} · </>}{pocket}</>}</span>
                             </div>
                             <div className="ty-tag ty-wide">
-                              {unsorted ? <span className="ty-pill ty-pill--warning">Needs sorting</span> : where && <><span className={sub && sub.slot >= 1 ? `ty-dot ty-dot--${sub.slot}` : 'ty-dot'} />{where}</>}
+                              {unsorted ? <span className="ty-pill ty-pill--warning">Needs sorting</span> : where && <><span className={sub && sub.slot >= 1 ? `ty-dot ty-dot--${sub.slot}` : 'ty-dot'} />{mark}{where}</>}
                             </div>
                             <div className="ty-wide">{pocket}</div>
                             {amount}

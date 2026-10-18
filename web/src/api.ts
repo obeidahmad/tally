@@ -7,7 +7,7 @@ export type SubsectionRules = {
   kind: 'spending' | 'goal'; budgetKind: 'amount' | 'percent'; budgetBasisPoints: number | null;
   keep: 'all' | 'cap' | 'none'; capMinor: number | null;
 };
-export type Subsection = { id: number; sectionId: number; name: string; budgetMinor: number | null; position: number } & SubsectionRules;
+export type Subsection = { id: number; sectionId: number; name: string; emoji: string | null; targetMonth: string | null; budgetMinor: number | null; position: number } & SubsectionRules;
 export type Source = { id: number; name: string; boxId: number; isLeftovers: boolean };
 export type RestRule = { shares: { sectionId: number | null; basisPoints: number }[]; overspent: 'income' | 'section' };
 export type Section = { id: number; name: string; colorSlot: number; position: number; subsections: Subsection[]; rest: RestRule };
@@ -37,7 +37,8 @@ export type NetWorth = {
   currency: string; totalMinor: number; missingRates: string[];
   byCurrency: { currency: string; amountMinor: number; baseMinor: number; rate: string | null }[];
 };
-export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number; movedMinor: number } & SubsectionRules;
+export type GoalStatus = 'done' | 'on_track' | 'behind' | 'past';
+export type BudgetSubsection = { id: number; name: string; emoji: string | null; targetMonth: string | null; neededMinor: number | null; goalStatus: GoalStatus | null; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number; movedMinor: number } & SubsectionRules;
 export type BudgetSection = {
   id: number; name: string; colorSlot: number; budgetedMinor: number; restMinor: number; spentMinor: number; availableMinor: number; movedMinor: number;
   subsections: BudgetSubsection[];
@@ -47,7 +48,7 @@ export type Move = { id: number; month: string; from: End; to: End; amountMinor:
 export type Budget = {
   month: string; currency: string; closed: boolean;
   totals: { incomeMinor: number; budgetedMinor: number; spentMinor: number; availableMinor: number; leftOverMinor: number };
-  sections: BudgetSection[]; unsortedCount: number;
+  sections: BudgetSection[]; unsortedCount: number; underfundedMinor: number;
 };
 
 export type StepBody =

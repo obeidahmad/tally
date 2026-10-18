@@ -4,6 +4,7 @@ import { api, setUnauthenticatedHandler, type User } from './api';
 import { AuthCtx, baseCurrency, useAuth } from './auth';
 import BudgetPage from './pages/Budget';
 import { SetupPage, SignInPage } from './pages/Entry';
+import HomePage from './pages/Home';
 import InvestmentsPage from './pages/Investments';
 import PipelinePage from './pages/Pipeline';
 import PocketsPage from './pages/Pockets';
@@ -14,7 +15,7 @@ import TransactionsPage from './pages/Transactions';
 import { BudgetSwitcher } from './sharing';
 import { Load, ToastProvider } from './ui';
 
-const PAGES = [['/budget', 'Budget'], ['/pipeline', 'Pipeline'], ['/transactions', 'Transactions'], ['/recurring', 'Recurring'], ['/pockets', 'Pockets'], ['/investments', 'Investments'], ['/reports', 'Reports'], ['/settings', 'Settings']] as const;
+const PAGES = [['/home', 'Home'], ['/budget', 'Budget'], ['/pipeline', 'Pipeline'], ['/transactions', 'Transactions'], ['/recurring', 'Recurring'], ['/pockets', 'Pockets'], ['/investments', 'Investments'], ['/reports', 'Reports'], ['/settings', 'Settings']] as const;
 
 function Shell() {
   const { user, setUser } = useAuth();
@@ -41,7 +42,7 @@ type Boot = { needsSetup: boolean; user: User | null };
 
 function Routing({ boot, setBoot }: { boot: Boot; setBoot: (b: Boot) => void }) {
   const navigate = useNavigate();
-  const enter = (user: User) => { setBoot({ needsSetup: false, user }); navigate('/budget', { replace: true }); };
+  const enter = (user: User) => { setBoot({ needsSetup: false, user }); navigate('/home', { replace: true }); };
   const setUser = (user: User | null) => setBoot({ needsSetup: false, user });
 
   useEffect(() => { setUnauthenticatedHandler(() => setUser(null)); });
@@ -56,6 +57,7 @@ function Routing({ boot, setBoot }: { boot: Boot; setBoot: (b: Boot) => void }) 
     <AuthCtx.Provider value={{ user: boot.user, setUser }}>
       <Routes>
         <Route element={<Shell />}>
+          <Route path="/home" element={<HomePage />} />
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
@@ -65,7 +67,7 @@ function Routing({ boot, setBoot }: { boot: Boot; setBoot: (b: Boot) => void }) 
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
-        <Route path="*" element={<Navigate to="/budget" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </AuthCtx.Provider>
   );

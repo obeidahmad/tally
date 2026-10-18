@@ -1,12 +1,12 @@
 import { test, expect, dialog, shot, seedBudget, row, srow } from '../support/fixtures';
 
-const names = ['Budget', 'Transactions', 'Pockets', 'Settings']; // the phone tab bar
-const sidebar = ['Budget', 'Pipeline', 'Transactions', 'Recurring', 'Pockets', 'Investments', 'Reports', 'Settings'];
+const names = ['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']; // the phone tab bar
+const sidebar = ['Home', 'Budget', 'Pipeline', 'Transactions', 'Recurring', 'Pockets', 'Investments', 'Reports', 'Settings'];
 
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test('all eight pages are reachable from the sidebar in order, and only those eight', async ({ page, me }) => {
+  test('all nine pages are reachable from the sidebar in order, and only those nine', async ({ page, me }) => {
     await page.goto('/budget');
     const side = page.locator('.ty-side');
     await expect(side.getByRole('link')).toHaveText(sidebar);
@@ -45,7 +45,7 @@ test.describe('desktop', () => {
 test.describe('phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('the tab bar shows the same four pages (Settings, not More) and the sidebar is gone', async ({ page, me }) => {
+  test('the tab bar shows the same five pages (Settings, not More) and the sidebar is gone', async ({ page, me }) => {
     await page.goto('/budget');
     await expect(page.locator('.ty-side')).toBeHidden();
     const tabs = page.locator('.ty-tabs');

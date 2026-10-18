@@ -5,7 +5,7 @@ import { api, fieldError, useForm, useLoad, type Pocket, type Rule, type Section
 import { useAuth } from '../auth';
 import { BudgetSwitcher, OwnerOnly, SharingCard } from '../sharing';
 import { Trading212 } from '../trading212';
-import { Field, Load, CurrencyField, FormError, Modal, SubsectionOptions, TextField, Topbar, useToast } from '../ui';
+import { Field, Load, CurrencyField, FormError, Modal, SubsectionOptions, subLabel, TextField, Topbar, useToast } from '../ui';
 
 function ChangePassword() {
   const toast = useToast();
@@ -111,7 +111,7 @@ function Rules() {
   return (
     <Load state={state}>
       {({ rules, sections, sources }) => {
-        const names = new Map([...sections.flatMap((s) => s.subsections.map((x) => ['s' + x.id, x.name] as const)), ...sources.map((x) => ['i' + x.id, x.name] as const)]);
+        const names = new Map([...sections.flatMap((s) => s.subsections.map((x) => ['s' + x.id, subLabel(x)] as const)), ...sources.map((x) => ['i' + x.id, x.name] as const)]);
         return (
     <section className="ty-card ty-stack" aria-labelledby="rules-h">
       <div className="ty-month__top">

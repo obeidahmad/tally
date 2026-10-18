@@ -290,10 +290,10 @@ test('amount fields that open with a value show two decimals and no thousands se
 });
 
 // ---- signed in: /setup and /sign-in go to /budget ----
-test('opening /setup or /sign-in while signed in goes to /budget', async ({ page, me }) => {
+test('opening /setup or /sign-in while signed in goes to /home', async ({ page, me }) => {
   for (const p of ['/setup', '/sign-in']) {
     await page.goto(p);
-    await expect(page, p).toHaveURL(/\/budget/);
+    await expect(page, p).toHaveURL(/\/home$/);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
   }
 });

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, useLoad, type Section } from '../api';
-import { monthName, monthTitle } from '../dates';
+import { currentMonth, monthName, monthTitle, shiftMonth } from '../dates';
 import { formatMinor } from '../money';
-import { Load, Topbar } from '../ui';
+import { Load, Topbar, subLabel } from '../ui';
 
 type Reports = {
   currency: string;
@@ -10,6 +10,7 @@ type Reports = {
   spending: { month: string; bySection: { sectionId: number; minor: number }[]; totalMinor: number }[];
   cashflow: { month: string; incomeMinor: number; spendingMinor: number }[];
   networth: { month: string; minor: number }[];
+  payees: { payee: string; minor: number; count: number }[];
   missingRates?: string[];
 };
 
@@ -110,13 +111,13 @@ function Axes({ w, months, ticks, y, band }: { w: number; months: string[]; tick
   );
 }
 
-function Card({ title, empty, legend, chart, table, note }: {
-  title: string; empty: boolean; legend?: ReactNode; chart: ReactNode; table: ReactNode; note?: ReactNode;
+function Card({ title, head, empty, legend, chart, table, note }: {
+  title: string; head?: ReactNode; empty: boolean; legend?: ReactNode; chart: ReactNode; table: ReactNode; note?: ReactNode;
 }) {
   const [asTable, setAsTable] = useState(false);
   return (
     <section className="ty-card ty-stack" aria-label={title}>
-      <h2 className="text-heading" style={{ margin: 0 }}>{title}</h2>
+      {head ?? <h2 className="text-heading" style={{ margin: 0 }}>{title}</h2>}
       {empty ? <div className="ty-cap">Nothing to show yet.</div> : (
         <>
           {!asTable && legend}
@@ -279,6 +280,150 @@ function NetWorthCard({ r }: { r: Reports }) {
   );
 }
 
+type Flow = { nodes: { id: string; label: string; kind: 'source' | 'section' | 'subsection' | 'other' }[]; links: { from: string; to: string; minor: number }[] };
+
+const NODE_W = 12, GAP = 10, MIN_H = 14, TOP = 8, LABEL_W = 190;
+
+/** Sankey layout: three columns (sources, sections, subsections), node height by value, links stacked at each end by the other end's position. */
+function layoutFlow(flow: Flow, plotW: number) {
+  const colOf = (n: Flow['nodes'][number]) => (n.kind === 'source' || n.id === 'carried' ? 0 : n.kind === 'section' || n.id === 'left-over' ? 1 : 2);
+  const nodes = flow.nodes.map((n) => {
+    const into = flow.links.filter((l) => l.to === n.id).reduce((a, l) => a + l.minor, 0);
+    const out = flow.links.filter((l) => l.from === n.id).reduce((a, l) => a + l.minor, 0);
+    return { ...n, col: colOf(n), value: Math.max(into, out), x: 0, y: 0, h: 0 };
+  });
+  const cols = [0, 1, 2].map((c) => nodes.filter((n) => n.col === c));
+  const biggest = Math.max(...cols.map((c) => c.length), 1);
+  const plotH = Math.max(280, biggest * (MIN_H + GAP));
+  const k = Math.min(...cols.filter((c) => c.length).map((c) => (plotH - (c.length - 1) * GAP) / c.reduce((a, n) => a + n.value, 0)));
+  let height = 0;
+  cols.forEach((c, i) => {
+    let y = TOP;
+    c.forEach((n) => { n.h = Math.max(n.value * k, MIN_H); n.x = i * ((plotW - NODE_W) / 2); n.y = y; y += n.h + GAP; });
+    height = Math.max(height, y);
+  });
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const thick = (n: { h: number; value: number }, minor: number) => (minor / n.value) * n.h;
+  const links = flow.links.map((l) => ({ ...l, a: byId.get(l.from)!, b: byId.get(l.to)!, y0: 0, y1: 0 }));
+  const stack = (end: 'a' | 'b', other: 'a' | 'b', key: 'y0' | 'y1') => {
+    for (const n of nodes) {
+      let off = 0;
+      for (const l of links.filter((x) => x[end] === n).sort((p, q) => p[other].y - q[other].y)) { l[key] = n.y + off; off += thick(n, l.minor); }
+    }
+  };
+  stack('a', 'b', 'y0');
+  stack('b', 'a', 'y1');
+  return { nodes, links, height, thick };
+}
+
+function FlowCard({ sections }: { sections: Section[] }) {
+  const now = currentMonth();
+  const [month, setMonth] = useState(now);
+  const state = useLoad(() => api<Flow>('GET', `/reports/flow?month=${month}`), [month]);
+  const box = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(640);
+  const [tip, setTip] = useState<{ x: number; y: number; text: string }>();
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setWidth(Math.max(el.clientWidth, 640)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [state.data]);
+  const secById = new Map(sections.map((s) => [s.id, s]));
+  const subById = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, x] as const)));
+  const sectionColour = (id: string) => slotColour(secById.get(Number(id.slice(8)))?.colorSlot ?? 0);
+  const head = (
+    <div className="ty-month__top">
+      <h2 className="text-heading rp-flowtitle" style={{ margin: 0 }}>Where {monthName(month)}'s money went</h2>
+      <span className="ty-grow" />
+      <button className="ty-btn ty-btn--icon" aria-label="Previous month" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
+      <span className="text-body" style={{ fontWeight: 600 }}>{monthTitle(month)}</span>
+      <button className="ty-btn ty-btn--icon" aria-label="Next month" disabled={month >= now} onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+    </div>
+  );
+  if (!state.data) return <Card title="Where the money went" head={head} empty={false} chart={<Load state={state}>{() => null}</Load>} table={null} />;
+  const flow = state.data;
+  const label = (id: string) => {
+    const n = flow.nodes.find((x) => x.id === id);
+    return n?.kind === 'subsection' ? subLabel({ name: n.label, emoji: subById.get(Number(id.slice(11)))?.emoji }) : n?.label ?? id;
+  };
+  const g = layoutFlow(flow, width - LABEL_W - 8);
+  const nodeColour = (n: (typeof g.nodes)[number]) => {
+    if (n.kind === 'section') return sectionColour(n.id);
+    if (n.kind === 'subsection') { const parent = g.links.find((l) => l.to === n.id); return parent ? sectionColour(parent.from) : 'var(--ink)'; }
+    return 'var(--ink)';
+  };
+  const linkColour = (l: (typeof g.links)[number]) => (l.a.kind === 'section' ? sectionColour(l.a.id) : l.b.kind === 'section' ? sectionColour(l.b.id) : 'var(--ink)');
+  return (
+    <Card
+      title="Where the money went" head={head} empty={flow.links.length === 0}
+      chart={
+        <div className="rp-flowbox">
+          <div className="rp-plot" ref={box} style={{ minWidth: 640 }}>
+            <svg width={width} height={g.height} viewBox={`0 0 ${width} ${g.height}`} onPointerDown={(e) => { if (e.target === e.currentTarget) setTip(undefined); }}>
+              <g transform="translate(4,0)">
+                {g.links.map((l) => {
+                  const x0 = l.a.x + NODE_W, x1 = l.b.x, xm = (x0 + x1) / 2;
+                  const t0 = g.thick(l.a, l.minor), t1 = g.thick(l.b, l.minor);
+                  const d = `M${x0},${l.y0}C${xm},${l.y0} ${xm},${l.y1} ${x1},${l.y1}L${x1},${l.y1 + t1}C${xm},${l.y1 + t1} ${xm},${l.y0 + t0} ${x0},${l.y0 + t0}Z`;
+                  const text = `${label(l.from)} → ${label(l.to)}: ${formatMinor(l.minor)}`;
+                  const at = { x: xm + 4, y: (l.y0 + l.y1 + (t0 + t1) / 2) / 2, text };
+                  return (
+                    <path key={`${l.from}>${l.to}`} className="rp-flow rp-hit" d={d} fill={linkColour(l)} tabIndex={0} role="img" aria-label={text}
+                      onPointerEnter={() => setTip(at)} onFocus={() => setTip(at)} onClick={() => setTip(at)} onBlur={() => setTip(undefined)}
+                      onPointerLeave={(e) => { if (e.pointerType === 'mouse') setTip(undefined); }}
+                      onKeyDown={(e) => { if (e.key === 'Escape') setTip(undefined); }} />
+                  );
+                })}
+                {g.nodes.map((n) => {
+                  const emoji = n.kind === 'subsection' ? subById.get(Number(n.id.slice(11)))?.emoji : null;
+                  return (
+                    <g key={n.id}>
+                      <rect x={n.x} y={n.y} width={NODE_W} height={n.h} fill={nodeColour(n)} rx={2} />
+                      {n.col < 2 && <rect className="rp-labelbg" x={n.x + NODE_W + 3} y={n.y + n.h / 2 - 9} width={(n.label.length + formatMinor(n.value).length + 1) * 6.4 + 10} height={18} rx={4} />}
+                      <text className="rp-nodelabel" x={n.x + NODE_W + 6} y={n.y + n.h / 2} dominantBaseline="middle">
+                        {emoji && <tspan className="ty-emoji">{emoji} </tspan>}{n.label}<tspan className="rp-nodeamt" dx={6}>{formatMinor(n.value)}</tspan>
+                      </text>
+                    </g>
+                  );
+                })}
+              </g>
+            </svg>
+            {tip && (
+              <div className="rp-tip" role="tooltip" style={{ left: tip.x, top: tip.y, transform: `translate(${tip.x > width / 2 ? 'calc(-100% - 0.75rem)' : '0.75rem'}, -50%)` }}>
+                <div className="rp-tip__val">{tip.text}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      }
+      table={
+        <table className="ty-table">
+          <thead><tr><th>From</th><th>To</th><th>Amount</th></tr></thead>
+          <tbody>{flow.links.map((l) => <tr key={`${l.from}>${l.to}`}><td>{label(l.from)}</td><td>{label(l.to)}</td><td>{formatMinor(l.minor)}</td></tr>)}</tbody>
+        </table>
+      }
+    />
+  );
+}
+
+function PayeesCard({ r }: { r: Reports }) {
+  return (
+    <section className="ty-card ty-stack" aria-label="Top payees">
+      <h2 className="text-heading" style={{ margin: 0 }}>Top payees</h2>
+      {r.payees.length === 0 ? <div className="ty-cap">Nothing to show yet.</div> : (
+        <div className="rp-table">
+          <table className="ty-table">
+            <thead><tr><th>Payee</th><th>Payments</th><th>Amount</th></tr></thead>
+            <tbody>{r.payees.map((p) => <tr key={p.payee}><td>{p.payee}</td><td>{p.count}</td><td>{formatMinor(p.minor)}</td></tr>)}</tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function ReportsPage() {
   const [months, setMonths] = useState(12);
   const state = useLoad(() => Promise.all([api<Reports>('GET', `/reports?months=${months}`), api<{ sections: Section[] }>('GET', '/sections')]), [months]);
@@ -296,9 +441,11 @@ export default function ReportsPage() {
       </fieldset>
       <Load state={state}>{([r, { sections }]) => (
         <div className="ty-stack">
+          <FlowCard sections={sections} />
           <SpendingCard r={r} sections={sections} />
           <CashflowCard r={r} />
           <NetWorthCard r={r} />
+          <PayeesCard r={r} />
         </div>
       )}</Load>
     </>

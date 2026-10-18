@@ -6,7 +6,7 @@ import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dat
 import { CloseDialog, endKey, MoveDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
 import { formatMinor, percentText } from '../money';
 import { baseCurrency, useAuth } from '../auth';
-import { EmptyCard, Load, StatePill, Topbar, useRescueFocus, useToast } from '../ui';
+import { EmptyCard, Load, StatePill, SubEmoji, subLabel, Topbar, useRescueFocus, useToast } from '../ui';
 import { pick } from '../pick';
 
 /** Pill and meter state for one subsection, from whole minor units. */
@@ -61,7 +61,9 @@ function Row({ sub, from, held, onOpen }: { sub: BudgetSubsection; from: string;
   const say = left < 0 ? `${formatMinor(-left)} over` : `${formatMinor(left)} left`;
   const saved = sub.availableMinor;
   const pct = target > 0 ? Math.floor((saved * 100) / target) : 0;
-  const rule = isGoal ? `Goal ${formatMinor(target)} · ${pct}%`
+  const by = isGoal && sub.targetMonth ? `${monthName(sub.targetMonth).slice(0, 3)} ${sub.targetMonth.slice(0, 4)}` : '';
+  const behind = sub.goalStatus === 'behind';
+  const rule = isGoal ? (by ? `${formatMinor(target)} by ${by}` : `Goal ${formatMinor(target)} · ${pct}%`)
     : sub.budgetKind === 'percent' && sub.budgetBasisPoints !== null ? `${percentText(sub.budgetBasisPoints)}%` : 'Fixed';
   // the longer rule: the cell's title
   const title = [
@@ -69,24 +71,25 @@ function Row({ sub, from, held, onOpen }: { sub: BudgetSubsection; from: string;
     !isGoal && sub.keep === 'cap' && `rolls over up to ${formatMinor(target)}`,
     !isGoal && sub.keep === 'none' && 'does not roll over',
     isGoal && `fills to ${formatMinor(target)}`,
+    isGoal && by && `${pct}% saved`,
     carried !== 0 && `${carried > 0 ? '+' : ''}${formatMinor(carried)} from ${from}`,
     held,
   ].filter(Boolean).join(' · ');
   return (
     <div className={onOpen ? 'ty-btable__row app-pick' : 'ty-btable__row'} {...(onOpen ? pick(onOpen) : {})}>
-      <div className="ty-btable__name"><span className="ty-btable__text">{sub.name}</span></div>
+      <div className="ty-btable__name"><span className="ty-btable__text"><SubEmoji emoji={sub.emoji} />{sub.name}</span></div>
       <div className="ty-btable__rule ty-x" title={title}>{rule}</div>
       <div className="ty-num ty-right ty-x">{dash(carried)}</div>
       <div className="ty-num ty-right ty-x ty-m">{dash(moved)}</div>
-      <div className="ty-num ty-right ty-x">{formatMinor(sub.budgetMinor)}</div>
+      <div className={behind ? 'ty-num ty-right ty-x app-warn' : 'ty-num ty-right ty-x'} title={behind ? `Needs ${formatMinor(sub.neededMinor ?? 0)} a month to reach ${formatMinor(target)} by ${by}` : undefined}>{formatMinor(sub.budgetMinor)}</div>
       <div className="ty-num ty-right">{formatMinor(sub.spentMinor)}</div>
-      <div className="ty-right">{isGoal ? <span className="ty-pill">{formatMinor(saved)}</span> : <span className={s.pill} role="img" aria-label={say} title={say}>{formatMinor(left)}</span>}</div>
+      <div className="ty-right">{sub.goalStatus === 'done' ? <span className="ty-pill ty-pill--positive">Reached</span> : sub.goalStatus === 'past' ? <span className="ty-pill ty-pill--warning">Date passed</span> : isGoal ? <span className="ty-pill">{formatMinor(saved)}</span> : <span className={s.pill} role="img" aria-label={say} title={say}>{formatMinor(left)}</span>}</div>
     </div>
   );
 }
 
 function MovedCard({ moves, sections, closed }: { moves: Move[]; sections: BudgetSection[]; closed: boolean }) {
-  const names = new Map(sections.flatMap((s) => [[`r${s.id}`, `Rest of ${s.name}`], ...s.subsections.map((x) => [`s${x.id}`, x.name])] as [string, string][]));
+  const names = new Map(sections.flatMap((s) => [[`r${s.id}`, `Rest of ${s.name}`], ...s.subsections.map((x) => [`s${x.id}`, subLabel(x)])] as [string, string][]));
   return (
     <section className="ty-card ty-stack" aria-label="Moved this month">
       <h2 className="text-title" style={{ margin: 0 }}>Moved this month</h2>
@@ -226,6 +229,14 @@ export default function BudgetPage() {
           const names = new Map(sections.map((s) => [s.id, s.name]));
           const movedCard = moves.length > 0 && <MovedCard moves={moves} sections={budget.sections} closed={budget.closed} />;
           const t = budget.totals;
+          const short = budget.sections.flatMap((s) => s.subsections).filter((x) => x.goalStatus === 'behind' || x.goalStatus === 'past')
+            .map((x) => ({ x, over: Math.max(0, (x.neededMinor ?? 0) - x.budgetMinor) })).filter((g) => g.over > 0);
+          const goalsNote = budget.underfundedMinor > 0 && (
+            <div className="ty-stack" aria-label="Goals behind">
+              <div>Goals need {formatMinor(budget.underfundedMinor)} more this month</div>
+              {short.map(({ x, over }) => <div key={x.id} className="ty-sumrow ty-cap"><span><SubEmoji emoji={x.emoji} />{x.name}</span><span className="ty-num">{formatMinor(over)}</span></div>)}
+            </div>
+          );
           return (
           <>
             <div className="ty-budget">
@@ -255,9 +266,9 @@ export default function BudgetPage() {
                             <span className="ty-x" />
                             <span className="ty-num ty-right ty-x">{dash(sum(sec, 'carriedMinor'))}</span>
                             <span className="ty-num ty-right ty-x ty-m">{dash(sec.movedMinor ?? 0)}</span>
-                            <span className="ty-num ty-right ty-x">{formatMinor(sum(sec, 'budgetMinor'))}</span>
+                            <span className="ty-num ty-right ty-x">{formatMinor(sec.budgetedMinor)}</span>
                             <span className="ty-num ty-right ty-sp">{formatMinor(sum(sec, 'spentMinor'))}</span>
-                            <span className="ty-num ty-right">{formatMinor(sum(sec, 'availableMinor') + sec.restMinor)}</span>
+                            <span className="ty-num ty-right">{formatMinor(sec.availableMinor)}</span>
                           </div>
                           {open && (<>
                             {sec.subsections.map((sub, i) => (
@@ -276,6 +287,7 @@ export default function BudgetPage() {
                   </div>
                   <div><button className="ty-btn" onClick={() => setDialog({ t: 'section' })}>Add section</button></div>
                 </>)}
+                {!wide && goalsNote && <div className="ty-card">{goalsNote}</div>}
                 {!wide && movedCard}
               </div>
               {wide && (
@@ -286,6 +298,7 @@ export default function BudgetPage() {
                     <div className="ty-sumrow"><span>Spent</span><span className="ty-num">{formatMinor(t.spentMinor)}</span></div>
                     <div className="ty-sumrow"><span>Left over</span><span className="ty-num">{formatMinor(t.leftOverMinor)}</span></div>
                     {leftOver}
+                    {goalsNote}
                     {closeNote}
                   </section>
                   {movedCard}
