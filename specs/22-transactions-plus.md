@@ -133,3 +133,9 @@ Screenshots light and dark, desktop and phone, of the filter row, the selection 
 3. Bulk actions apply to all or none.
 4. Receipts are checked by content, limited in size and count, and only reachable by the people who can see the budget.
 5. The backend tests cover every rule in the contract.
+
+## Decisions after review
+
+- **Search and tags span every month.** When `q` or `tag` is set, the month filter is disabled and not sent (as with From, To and "Needs sorting"), so a search finds matches in any month. The selected month also lives in the URL (`month=`), so a reload keeps it.
+- Bulk `subsection` also refuses income and adjustments (they have no subsection).
+- **On phones** the filter row puts search full width, then the short controls (Type, From, To, Tag, Subsection, Pocket) two per row.
