@@ -167,20 +167,18 @@ export default function PipelinePage() {
 
   return (
     <>
-      <Topbar title="Pipeline" />
-      <div className="app-phone-card ty-card">The pipeline needs a wider screen for now.</div>
-      <header className="ty-month__top ty-wide">
-        <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>Pipeline</h1>
-        <button className="ty-btn ty-btn--icon" aria-label="Previous month" onClick={() => go(shiftMonth(month, -1))}>‹</button>
-        <b>{monthTitle(month)}</b>
-        <button className="ty-btn ty-btn--icon" aria-label="Next month" disabled={month >= now} onClick={() => go(shiftMonth(month, 1))}>›</button>
-        {state.data && <StatePill closed={state.data.pipeline.closed} />}
-        <span className="ty-grow" />
-        {state.data && !state.data.pipeline.closed && (<>
-          <button className="ty-btn" onClick={() => setDialog({ t: 'section' })}>Add section</button>
-          <button className="ty-btn ty-btn--primary" onClick={() => setDialog({ t: 'source' })}>Add income source</button>
+      <Topbar
+        title="Pipeline"
+        month={{ label: monthTitle(month), onPrev: () => go(shiftMonth(month, -1)), onNext: () => go(shiftMonth(month, 1)), nextDisabled: month >= now }}
+        actions={state.data && (<>
+          <StatePill closed={state.data.pipeline.closed} />
+          {!state.data.pipeline.closed && (<>
+            <button className="ty-btn" onClick={() => setDialog({ t: 'section' })}>Add section</button>
+            <button className="ty-btn ty-btn--primary" onClick={() => setDialog({ t: 'source' })}>Add income source</button>
+          </>)}
         </>)}
-      </header>
+      />
+      <div className="app-phone-card ty-card">The pipeline needs a wider screen for now.</div>
       <div className="ty-wide app-pipe-wrap">
         <Load state={state}>
           {({ pipeline: p }) => p.boxes.length === 0 ? (

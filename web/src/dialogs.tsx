@@ -19,7 +19,7 @@ export function Foot({ busy, onCancel, onDelete, onMove, onReconcile, label = 'S
         </span>
       )}
       <button type="button" className="ty-btn ty-btn--quiet" onClick={onCancel}>Cancel</button>
-      <button type="submit" className={`ty-btn ty-btn--${tone}`} disabled={busy}>{label}</button>
+      <button type="submit" className={`ty-btn ty-btn--primary${tone === 'income' ? ' app-income' : ''}`} disabled={busy}>{label}</button>
     </div>
   );
 }

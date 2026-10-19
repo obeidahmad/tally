@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { EndingNotice, loadConnections } from '../bank';
 import { api, ApiError, useLoad, type Budget, type Holding, type Rates, type BudgetSection, type BudgetSubsection, type End, type Move, type Months, type Pocket, type RestRule, type Section, type Source } from '../api';
@@ -6,7 +6,7 @@ import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dat
 import { CloseDialog, endKey, MoveDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
 import { formatMinor, percentText } from '../money';
 import { baseCurrency, useAuth } from '../auth';
-import { EmptyCard, Load, StatePill, SubEmoji, subLabel, Topbar, useRescueFocus, useToast } from '../ui';
+import { EmptyCard, Load, StatePill, SubEmoji, subLabel, TopButton, Topbar, useRescueFocus, useToast } from '../ui';
 import { pick } from '../pick';
 
 /** Pill and meter state for one subsection, from whole minor units. */
@@ -27,13 +27,6 @@ type Dialog =
 
 const dash = (n: number) => (n === 0 ? '—' : formatMinor(n));
 const sum = (sec: BudgetSection, k: 'budgetMinor' | 'spentMinor' | 'availableMinor' | 'carriedMinor') => sec.subsections.reduce((t, x) => t + x[k], 0);
-
-/** Two columns from 1464px (the table beside the aside stays at least 880px wide): the table and the aside. Same breakpoint as the design CSS (in rem, so it follows the text size). */
-const WIDE = '(min-width: 91.5rem)';
-const useWide = () => useSyncExternalStore(
-  (cb) => { const m = matchMedia(WIDE); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); },
-  () => matchMedia(WIDE).matches,
-);
 
 const COLLAPSED = 'tally.collapsed';
 function loadCollapsed(): number[] {
@@ -138,7 +131,6 @@ export default function BudgetPage() {
 
   useRescueFocus(state.data ? state.data.budget.sections.length === 0 : undefined);
 
-  const wide = useWide();
   const [collapsed, setCollapsed] = useState(loadCollapsed);
   const toggle = (id: number) => setCollapsed((c) => {
     const next = c.includes(id) ? c.filter((x) => x !== id) : [...c, id];
@@ -153,67 +145,50 @@ export default function BudgetPage() {
       <div><button className="ty-btn ty-btn--sm" onClick={() => setDialog({ t: 'close' })}>Close {monthName(toClose)}</button></div>
     </div>
   );
-  const leftOver = state.data && state.data.budget.totals.leftOverMinor > 0 && (
-    <div className="ty-cap ty-wide">
-      {formatMinor(state.data.budget.totals.leftOverMinor)} is left over: no step in the pipeline takes it.{' '}
-      <Link className="ty-link" to={month === now ? '/pipeline' : `/pipeline?month=${month}`}>Open the pipeline</Link>
-    </div>
-  );
+  const open = state.data && !state.data.budget.closed;
 
   return (
     <>
       <Topbar
-        title={monthTitle(month)}
-        month={{ onPrev: () => go(shiftMonth(month, -1)), onNext: () => go(shiftMonth(month, 1)), nextDisabled: month >= now }}
-        add={!state.data || state.data.budget.closed ? undefined : { label: 'Add transaction', onClick: () => setDialog({ t: 'tx' }), spend: true }}
-      />
-      <header className="ty-month">
-        <div className="ty-month__top ty-wide">
-          <button className="ty-btn ty-btn--icon" aria-label="Previous month" onClick={() => go(shiftMonth(month, -1))}>‹</button>
-          <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>{monthTitle(month)}</h1>
-          <button className="ty-btn ty-btn--icon" aria-label="Next month" disabled={month >= now} onClick={() => go(shiftMonth(month, 1))}>›</button>
-          {state.data && <StatePill closed={state.data.budget.closed} />}
-          <span className="ty-grow" />
-          {state.data && !state.data.budget.closed && (<>
-            <button className="ty-btn ty-btn--income ty-wide" onClick={() => setDialog({ t: 'tx', kind: 'income' })}>Add income</button>
-            <button className="ty-btn ty-btn--spend" onClick={() => setDialog({ t: 'tx' })}>Add transaction</button>
-          </>)}
-        </div>
-        {state.data && (<>
-          {state.data.budget.closed && (
-            <div className="ty-inset">
-              <span>{monthTitle(month)} is closed.</span>
-              {state.data.months.lastClosed === month && (
-                <div>
-                  <button className="ty-btn ty-btn--sm" onClick={() => {
-                    setReopenError('');
-                    api('POST', `/months/${month}/reopen`).then(() => toast(`${monthTitle(month)} reopened`), (e) => setReopenError(e instanceof ApiError ? e.message : 'Something went wrong. Try again.'));
-                  }}>Reopen</button>
-                  {reopenError && <span className="ty-error" role="alert"> {reopenError}</span>}
-                </div>
-              )}
-            </div>
-          )}
-          {!wide && closeNote}
-          {state.data.budget.unsortedCount > 0 && (
-            <div className="ty-inset">
-              <span>{state.data.budget.unsortedCount} imported {state.data.budget.unsortedCount === 1 ? 'transaction needs' : 'transactions need'} a subsection or source.</span>
-              <div><Link className="ty-link" to="/transactions?unsorted=1">Sort them</Link></div>
-            </div>
-          )}
-          {state.data.connections.map((c) => <EndingNotice key={c.id} connection={c} />)}
-          {!wide && (
-            <div className="ty-stats">
-              <div className="ty-stat"><span className="ty-label">Income</span><span className="ty-stat__num">{formatMinor(state.data.budget.totals.incomeMinor)}</span></div>
-              <div className="ty-stat"><span className="ty-label">Budgeted</span><span className="ty-stat__num">{formatMinor(state.data.budget.totals.budgetedMinor)}</span></div>
-              <div className="ty-stat"><span className="ty-label">Spent</span><span className="ty-stat__num">{formatMinor(state.data.budget.totals.spentMinor)}</span></div>
-              <div className="ty-stat"><span className="ty-label">Left over</span><span className="ty-stat__num">{formatMinor(state.data.budget.totals.leftOverMinor)}</span></div>
-            </div>
-          )}
-          {!wide && leftOver}
-          {!state.data.budget.closed && <button className="ty-btn ty-btn--income ty-month__add" onClick={() => setDialog({ t: 'tx', kind: 'income' })}>Add income</button>}
+        title="Budget"
+        month={{ label: monthTitle(month), onPrev: () => go(shiftMonth(month, -1)), onNext: () => go(shiftMonth(month, 1)), nextDisabled: month >= now }}
+        actions={state.data && (<>
+          <span className="ty-wide"><StatePill closed={state.data.budget.closed} /></span>
+          {open && <TopButton label="Add income" wide onClick={() => setDialog({ t: 'tx', kind: 'income' })} />}
+          {open && <TopButton label="Add transaction" primary onClick={() => setDialog({ t: 'tx' })} />}
         </>)}
-      </header>
+      />
+      {state.data && (<>
+        {state.data.budget.closed && (
+          <div className="ty-inset">
+            <span>{monthTitle(month)} is closed.</span>
+            {state.data.months.lastClosed === month && (
+              <div>
+                <button className="ty-btn ty-btn--sm" onClick={() => {
+                  setReopenError('');
+                  api('POST', `/months/${month}/reopen`).then(() => toast(`${monthTitle(month)} reopened`), (e) => setReopenError(e instanceof ApiError ? e.message : 'Something went wrong. Try again.'));
+                }}>Reopen</button>
+                {reopenError && <span className="ty-error" role="alert"> {reopenError}</span>}
+              </div>
+            )}
+          </div>
+        )}
+        {closeNote}
+        {state.data.budget.unsortedCount > 0 && (
+          <div className="ty-inset">
+            <span>{state.data.budget.unsortedCount} imported {state.data.budget.unsortedCount === 1 ? 'transaction needs' : 'transactions need'} a subsection or source.</span>
+            <div><Link className="ty-link" to="/transactions?unsorted=1">Sort them</Link></div>
+          </div>
+        )}
+        {state.data.connections.map((c) => <EndingNotice key={c.id} connection={c} />)}
+        <div className="ty-statcards">
+          <div className="ty-statcard"><span className="ty-statcard__num ty-statcard__num--pos">{formatMinor(state.data.budget.totals.incomeMinor)}</span><span className="ty-label">Income</span></div>
+          <div className="ty-statcard"><span className="ty-statcard__num">{formatMinor(state.data.budget.totals.budgetedMinor)}</span><span className="ty-label">Budgeted</span></div>
+          <div className="ty-statcard"><span className="ty-statcard__num ty-statcard__num--neg">{formatMinor(state.data.budget.totals.spentMinor)}</span><span className="ty-label">Spent</span></div>
+          <div className="ty-statcard"><span className="ty-statcard__num">{formatMinor(state.data.budget.totals.leftOverMinor)}</span><span className="ty-label">Left over</span></div>
+        </div>
+        {open && <div className="app-phone-block"><button className="ty-btn app-full" onClick={() => setDialog({ t: 'tx', kind: 'income' })}>Add income</button></div>}
+      </>)}
       <Load state={state}>
         {({ budget, months, pockets, sections, sources, moves, holdings, rates }) => {
           // in the base currency at today's rate (the rates are units per 1 base)
@@ -228,7 +203,6 @@ export default function BudgetPage() {
           };
           const names = new Map(sections.map((s) => [s.id, s.name]));
           const movedCard = moves.length > 0 && <MovedCard moves={moves} sections={budget.sections} closed={budget.closed} />;
-          const t = budget.totals;
           const short = budget.sections.flatMap((s) => s.subsections).filter((x) => x.goalStatus === 'behind' || x.goalStatus === 'past')
             .map((x) => ({ x, over: Math.max(0, (x.neededMinor ?? 0) - x.budgetMinor) })).filter((g) => g.over > 0);
           const goalsNote = budget.underfundedMinor > 0 && (
@@ -237,9 +211,16 @@ export default function BudgetPage() {
               {short.map(({ x, over }) => <div key={x.id} className="ty-sumrow ty-cap"><span><SubEmoji emoji={x.emoji} />{x.name}</span><span className="ty-num">{formatMinor(over)}</span></div>)}
             </div>
           );
+          const leftOver = budget.totals.leftOverMinor > 0 && (
+            <div className="ty-cap">
+              {formatMinor(budget.totals.leftOverMinor)} is left over: no step in the pipeline takes it.{' '}
+              <Link className="ty-link" to={month === now ? '/pipeline' : `/pipeline?month=${month}`}>Open the pipeline</Link>
+            </div>
+          );
+          const hasAside = leftOver || goalsNote || movedCard;
           return (
           <>
-            <div className="ty-budget">
+            <div className={hasAside ? 'ty-budget' : undefined}>
               <div className="ty-budget__main">
                 {budget.sections.length === 0 ? (
                   <EmptyCard text="No sections yet. A section is a group such as Needs or Savings." action="Add section" onAction={() => setDialog({ t: 'section' })} />
@@ -278,7 +259,7 @@ export default function BudgetPage() {
                               <div className="ty-btable__name"><span className="ty-btable__text">Rest</span></div>
                               <div className="ty-btable__rule ty-x" title={rest}>{rest}</div>
                               <span className="ty-x" /><span className="ty-x ty-m" /><span className="ty-x" /><span />
-                              <div className="ty-right"><span className={sec.restMinor < 0 ? 'ty-pill ty-pill--warning' : sec.restMinor > 0 ? 'ty-pill ty-pill--positive' : 'ty-pill'}>{formatMinor(sec.restMinor)}</span></div>
+                              <div className="ty-right"><span className={sec.restMinor < 0 ? 'ty-pill ty-pill--negative' : sec.restMinor > 0 ? 'ty-pill ty-pill--positive' : 'ty-pill'}>{formatMinor(sec.restMinor)}</span></div>
                             </div>
                           </>)}
                         </section>
@@ -287,20 +268,10 @@ export default function BudgetPage() {
                   </div>
                   <div><button className="ty-btn" onClick={() => setDialog({ t: 'section' })}>Add section</button></div>
                 </>)}
-                {!wide && goalsNote && <div className="ty-card">{goalsNote}</div>}
-                {!wide && movedCard}
               </div>
-              {wide && (
+              {hasAside && (
                 <aside className="ty-budget__aside">
-                  <section className="ty-card ty-stack" aria-label="Month summary">
-                    <div className="ty-sumrow"><span>Income</span><span className="ty-num">{formatMinor(t.incomeMinor)}</span></div>
-                    <div className="ty-sumrow"><span>Budgeted</span><span className="ty-num">{formatMinor(t.budgetedMinor)}</span></div>
-                    <div className="ty-sumrow"><span>Spent</span><span className="ty-num">{formatMinor(t.spentMinor)}</span></div>
-                    <div className="ty-sumrow"><span>Left over</span><span className="ty-num">{formatMinor(t.leftOverMinor)}</span></div>
-                    {leftOver}
-                    {goalsNote}
-                    {closeNote}
-                  </section>
+                  {(leftOver || goalsNote) && <section className="ty-card ty-stack" aria-label="Month summary">{leftOver}{goalsNote}</section>}
                   {movedCard}
                 </aside>
               )}

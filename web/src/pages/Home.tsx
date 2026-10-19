@@ -72,9 +72,9 @@ const GOAL_PILL: Record<GoalStatus, [string, string]> = {
   behind: ['ty-pill ty-pill--warning', 'Behind'], past: ['ty-pill ty-pill--warning', 'Date passed'],
 };
 
-const HomeCard = ({ title, children }: { title: string; children: ReactNode }) => (
+const HomeCard = ({ title, all, children }: { title: string; all?: string; children: ReactNode }) => (
   <section className="ty-card ty-stack" aria-label={title}>
-    <h2 className="text-heading" style={{ margin: 0 }}>{title}</h2>
+    <div className="ty-card__head"><h2 className="text-title">{title}</h2>{all && <Link className="ty-viewall" to={all}>View all</Link>}</div>
     {children}
   </section>
 );
@@ -95,9 +95,6 @@ export default function HomePage() {
   return (
     <>
       <Topbar title="Home" />
-      <header className="ty-month__top ty-wide">
-        <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>Home</h1>
-      </header>
       <Load state={state}>
         {({ home: h, sections, pockets, sources }) => {
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, x] as const)));
@@ -133,7 +130,7 @@ export default function HomePage() {
                   <div><Link className="ty-link" to="/budget">Open the budget</Link></div>
                 </HomeCard>
 
-                <HomeCard title="Net worth">
+                <HomeCard title="Net worth" all="/pockets">
                   <div className="ty-inline"><span className="num-lg">{formatMinor(h.networth.minor)}</span>
                     <span className={change > 0 ? 'ty-pill ty-pill--positive' : change < 0 ? 'ty-pill ty-pill--negative' : 'ty-pill'}>{change > 0 ? '+' : ''}{formatMinor(change)} since {prev}</span>
                   </div>
@@ -152,13 +149,13 @@ export default function HomePage() {
                   <div className="ty-cap">{kept >= 0 ? 'Saved' : 'Overspent'} {formatMinor(Math.abs(kept))}</div>
                 </HomeCard>
 
-                <HomeCard title="Coming up">
+                <HomeCard title="Coming up" all="/recurring">
                   {h.upcoming.length === 0 ? <div className="ty-cap">No bills in the next 14 days.</div> : h.upcoming.map((u) => (
                     <div key={`${u.key}-${u.date}`} className="ty-sumrow"><span>{u.payee} <span className="ty-cap">{dayHeading(u.date)}</span></span><span className="ty-num">{formatMinor(-u.amountMinor)}</span></div>
                   ))}
                 </HomeCard>
 
-                <HomeCard title="Recent transactions">
+                <HomeCard title="Recent transactions" all="/transactions">
                   <div className="ty-rows">
                     {h.recent.map((t) => {
                       const sub = t.subsectionId === null ? undefined : subs.get(t.subsectionId);
@@ -184,7 +181,7 @@ export default function HomePage() {
                 </HomeCard>
 
                 {h.goals.length > 0 && (
-                  <HomeCard title="Goals">
+                  <HomeCard title="Goals" all="/budget">
                     {h.goals.map((g) => {
                       const x = subs.get(g.subsectionId);
                       const pct = g.targetMinor > 0 ? Math.max(0, Math.min(100, Math.floor((g.savedMinor * 100) / g.targetMinor))) : 0;

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, useLoad, type Section } from '../api';
 import { formatMinor } from '../money';
 import { currentMonth, dayHeading, dayLabel, monthTitle, shiftMonth, today } from '../dates';
+import { TabPanel, Tabs, useTab } from '../tabs';
 import { Load, SubEmoji, Topbar, useMedia } from '../ui';
 
 type Item = {
@@ -19,6 +20,7 @@ const weekday = (d: string) => DAYS[new Date(Number(d.slice(0, 4)), Number(d.sli
 const CADENCE = { weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' };
 const dot = (slot: number) => (slot >= 1 && slot <= 8 ? `ty-dot ty-dot--${slot}` : 'ty-dot');
 
+const TABS = [{ value: 'upcoming', label: 'Upcoming' }, { value: 'calendar', label: 'Calendar' }] as const;
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function CalendarCard({ sections }: { sections: Section[] }) {
@@ -36,12 +38,14 @@ function CalendarCard({ sections }: { sections: Section[] }) {
   const lead = (new Date(Date.UTC(+month.slice(0, 4), +month.slice(5) - 1, 1)).getUTCDay() + 6) % 7;
   return (
     <section className="ty-card ty-stack" aria-label="Bills calendar">
-      <div className="ty-month__top">
-        <h2 className="text-heading" style={{ margin: 0 }}>Bills calendar</h2>
+      <div className="ty-card__head">
+        <h2 className="text-title">Bills calendar</h2>
         <span className="ty-grow" />
-        <button className="ty-btn ty-btn--icon" aria-label="Previous month" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
-        <span className="text-body" style={{ fontWeight: 600 }}>{monthTitle(month)}</span>
-        <button className="ty-btn ty-btn--icon" aria-label="Next month" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+        <span className="ty-monthnav">
+          <button className="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Previous month" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
+          {monthTitle(month)}
+          <button className="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Next month" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+        </span>
       </div>
       <Load state={state}>{({ days }) => phone ? (
         days.every((d) => d.items.length === 0) ? <div className="ty-cap">No bills in {monthTitle(month)}.</div> : (
@@ -69,6 +73,7 @@ function CalendarCard({ sections }: { sections: Section[] }) {
 }
 
 export default function RecurringPage() {
+  const [tab, setTab] = useTab(TABS.map((t) => t.value));
   const [showHidden, setShowHidden] = useState(false);
   const state = useLoad(async () => {
     const [r, s] = await Promise.all([api<Recurring>('GET', '/recurring'), api<{ sections: Section[] }>('GET', '/sections')]);
@@ -77,11 +82,8 @@ export default function RecurringPage() {
 
   return (
     <>
-      <Topbar title="Recurring" />
-      <header className="ty-month__top ty-wide">
-        <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>Recurring</h1>
-      </header>
-      <Load state={state}>
+      <Topbar title="Recurring" tabs={<Tabs label="Recurring" tabs={TABS} value={tab} onChange={setTab} />} />
+      <TabPanel><Load state={state}>
         {({ items, dismissed, monthlyMinor, sections }) => {
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, emoji: x.emoji, slot: s.colorSlot }] as const)));
                   const t = today();
@@ -95,28 +97,29 @@ export default function RecurringPage() {
             : i.status === 'due' ? <span className="ty-pill ty-pill--warning">Due {weekday(i.nextDate)}</span>
             : i.status === 'missed' ? <span className="ty-pill ty-pill--negative">Missed</span> : null);
           const rises = items.filter((i) => i.priceChange);
-          const row = (i: Item, extra: string, button: { label: string; method: 'POST' | 'DELETE' } | null) => (
+          const row = (i: Item, extra: string, button: { label: string; method: 'POST' | 'DELETE' } | null) => {
+            const dismiss = () => void api(button!.method, `/recurring/${encodeURIComponent(i.key)}/dismiss`, {});
+            return (
             <div key={i.key} className="ty-trow">
               <div className="ty-trow__who">
                 <span className="ty-inline"><b>{i.payee}</b>{pill(i)}</span>
                 <span className="ty-cap">{extra}</span>
                 <span className="ty-cap ty-trow__meta"><span className="ty-tag">{tag(i)}</span></span>
-                {button && (
-                  <button className="ty-btn ty-btn--quiet ty-btn--sm" style={{ justifySelf: 'start', marginLeft: 'calc(-1 * var(--space-3))' }} onClick={() => api(button.method, `/recurring/${encodeURIComponent(i.key)}/dismiss`, {})}>{button.label}</button>
-                )}
+                {button && <button className="ty-btn ty-btn--quiet ty-btn--sm app-phone-only" style={{ justifySelf: 'start', marginLeft: 'calc(-1 * var(--space-3))' }} onClick={dismiss}>{button.label}</button>}
               </div>
               <div className="ty-tag ty-wide">{tag(i)}</div>
-              <div className="ty-wide" />
+              <div className="ty-wide">{button && <button className="ty-btn ty-btn--quiet ty-btn--sm" onClick={dismiss}>{button.label}</button>}</div>
               <div className="ty-num ty-right">{formatMinor(-i.amountMinor)}</div>
             </div>
-          );
+            );
+          };
+          if (tab === 'calendar') return <CalendarCard sections={sections} />;
           if (items.length === 0 && dismissed.length === 0) {
             return <div className="ty-card">Nothing recurring yet. Tally finds a payment once it has been paid three times on a regular schedule.</div>;
           }
           return (
             <>
               <p style={{ margin: 0 }}>About {formatMinor(monthlyMinor)} a month in {items.length} recurring payment{items.length === 1 ? '' : 's'}.</p>
-              <CalendarCard sections={sections} />
               {soon.length > 0 && (
                 <>
                   <h2 className="ty-label" style={{ margin: 0 }}>Due in the next 7 days</h2>
@@ -151,7 +154,7 @@ export default function RecurringPage() {
             </>
           );
         }}
-      </Load>
+      </Load></TabPanel>
     </>
   );
 }

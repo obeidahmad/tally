@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { api, useForm, useLoad, type Pocket, type Section } from './api';
 import { ago } from './bank';
 import { Field, FormError, Load, SubsectionOptions, TextField, useToast } from './ui';
@@ -81,8 +81,7 @@ function Connected({ c, pocket }: { c: T212Connection; pocket?: Pocket }) {
   );
 }
 
-/** `then` renders only once this card's data has loaded, so a failed load shows one failure card. */
-export function Trading212({ then }: { then: ReactNode }) {
+export function Trading212() {
   const state = useLoad(async () => {
     const [c, p, s] = await Promise.all([
       connection(),
@@ -93,13 +92,12 @@ export function Trading212({ then }: { then: ReactNode }) {
   }, []);
   return (
     <Load state={state}>
-      {({ c, pockets, sections }) => (<>
+      {({ c, pockets, sections }) => (
         <section className="ty-card ty-stack" aria-labelledby="t212-h">
           <h2 className="text-title" id="t212-h" style={{ margin: 0 }}>Trading212</h2>
           {c ? <Connected c={c} pocket={pockets.find((x) => x.id === c.pocketId)} /> : <ConnectForm pockets={pockets.filter((x) => x.kind === 'broker')} sections={sections} />}
         </section>
-        {then}
-      </>)}
+      )}
     </Load>
   );
 }

@@ -9,7 +9,7 @@ import { ImportDialog } from '../import';
 import { formatMinor } from '../money';
 import { baseCurrency, useAuth } from '../auth';
 import { pick } from '../pick';
-import { EmptyCard, Load, SubEmoji, SubsectionOptions, Topbar, useRescueFocus } from '../ui';
+import { EmptyCard, Load, longDay, SubEmoji, SubsectionOptions, TopButton, Topbar, useRescueFocus } from '../ui';
 
 const MONTHS_BACK = 36;
 const ORIGIN: Record<Transaction['source'], string> = { manual: '', import: 'from a statement', bank: 'from your bank', broker: 'from Trading212', adjustment: '' };
@@ -75,18 +75,15 @@ export default function TransactionsPage() {
 
   return (
     <>
-      <Topbar title="Transactions" add={{ label: 'Add transaction', onClick: () => setDialog({}), spend: true }} />
-      <header className="ty-month">
-        <div className="ty-month__top ty-wide">
-          <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>Transactions</h1>
-          <span className="ty-grow" />
-          <button className="ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button>
-          <button className="ty-btn ty-btn--spend" onClick={() => setDialog({})}>Add transaction</button>
-        </div>
-        <Link className="ty-btn ty-month__add" to="/recurring">Recurring</Link>
-        <button className="ty-btn ty-month__add" onClick={() => navigate('/reports')}>Reports</button>
-      </header>
-      <div><button className="app-phone-only ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button></div>
+      <Topbar title="Transactions" actions={<>
+        <TopButton label="Import a statement" wide onClick={() => setDialog({ importing: true })} />
+        <TopButton label="Add transaction" primary onClick={() => setDialog({})} />
+      </>} />
+      <div className="app-phone-block ty-inline">
+        <button className="ty-btn" onClick={() => setDialog({ importing: true })}>Import a statement</button>
+        <Link className="ty-btn" to="/recurring">Recurring</Link>
+        <button className="ty-btn" onClick={() => navigate('/reports')}>Reports</button>
+      </div>
       {showBar ? (
         <div className="ty-selbar" role="toolbar" aria-label="Selected transactions">
           <b>{selected.size} selected</b>
@@ -104,21 +101,21 @@ export default function TransactionsPage() {
           </select>
           <input className="ty-input ty-filters__search" type="search" aria-label="Search" placeholder="Search payee or note" value={get('q')} onChange={(e) => set('q', e.target.value)} />
           <select className="ty-input" aria-label="Subsection" value={get('subsectionId')} onChange={(e) => set('subsectionId', e.target.value)}>
-            <option value="">All subsections</option>
+            <option value="">Subsection</option>
             {state.data && <SubsectionOptions sections={state.data.sections} />}
           </select>
           <select className="ty-input" aria-label="Pocket" value={get('pocketId')} onChange={(e) => set('pocketId', e.target.value)}>
-            <option value="">All pockets</option>
+            <option value="">Pocket</option>
             {state.data?.pockets.map((x) => <option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
           </select>
           <select className="ty-input" aria-label="Type" value={get('kind')} onChange={(e) => set('kind', e.target.value)}>
-            <option value="">All types</option>
+            <option value="">Type</option>
             <option value="expense">Expense</option>
             <option value="income">Income</option>
             <option value="transfer">Transfer</option>
           </select>
           <select className="ty-input" aria-label="Tag" value={get('tag')} onChange={(e) => set('tag', e.target.value)}>
-            <option value="">All tags</option>
+            <option value="">Tag</option>
             {state.data?.tags.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
           <label className="ty-chip ty-filters__chip">
@@ -147,6 +144,11 @@ export default function TransactionsPage() {
             if (days.at(-1)?.[0] === t.date) days.at(-1)![1].push(t);
             else days.push([t.date, [t]]);
           }
+          // the day's net in the base currency: income in, expenses out, transfers neither
+          const total = (list: Transaction[]) => {
+            const n = list.reduce((t, x) => t + (x.kind === 'income' ? x.baseAmountMinor : x.kind === 'expense' ? -x.baseAmountMinor : 0), 0);
+            return `${n > 0 ? '+' : ''}${formatMinor(n)}`;
+          };
           const allOn = transactions.length > 0 && transactions.every((t) => selected.has(t.id));
           return (
             <>
@@ -162,7 +164,7 @@ export default function TransactionsPage() {
                   </label>
                   {days.map(([date, list]) => (
                     <div key={date}>
-                      <div className="ty-day ty-label">{dayLabel(date)}</div>
+                      <div className="ty-day"><span>{longDay(date)}</span><span className="ty-num">{total(list)}</span></div>
                       {list.map((t) => {
                         const sub = t.subsectionId === null ? undefined : subs.get(t.subsectionId);
                         const transfer = t.kind === 'transfer';
@@ -214,9 +216,9 @@ export default function TransactionsPage() {
                                 <span className="ty-cap ty-trow__meta">{label ? <>{label} · {pocket}</> : t.kind === 'income' ? pocket : <>{where && <>{mark}{where} · </>}{pocket}</>}{tagPills.length > 0 && <span className="ty-tags">{tagPills}</span>}</span>
                               </div>
                               <div className="ty-tag ty-wide">
-                                {label ?? (where && <><span className={sub && sub.slot >= 1 && !t.splits ? `ty-dot ty-dot--${sub.slot}` : 'ty-dot'} />{mark}{where}</>)}
+                                {label ?? (where && <>{mark}{where}</>)}
                               </div>
-                              <div className="ty-wide">{pocket}</div>
+                              <div className="ty-tag ty-wide">{pocket}</div>
                               {amount}
                             </div>
                           </div>

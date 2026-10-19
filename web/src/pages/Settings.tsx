@@ -1,11 +1,30 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BankConnections } from '../bank';
+import { TabPanel, Tabs, useTab } from '../tabs';
+import { setTheme, useTheme, type Theme } from '../theme';
 import { api, fieldError, useForm, useLoad, type Pocket, type Rule, type Section, type Source, type User } from '../api';
 import { useAuth } from '../auth';
 import { BudgetSwitcher, OwnerOnly, SharingCard } from '../sharing';
 import { Trading212 } from '../trading212';
 import { Field, Load, CurrencyField, FormError, Modal, SubsectionOptions, subLabel, TextField, Topbar, useToast } from '../ui';
+
+const TABS = [{ value: 'account', label: 'Account' }, { value: 'people', label: 'People and sharing' }, { value: 'connections', label: 'Connections' }, { value: 'appearance', label: 'Appearance' }] as const;
+const THEMES: [Theme, string][] = [['light', 'Light'], ['dark', 'Dark'], ['system', 'Match system']];
+
+function Appearance() {
+  const theme = useTheme();
+  return (
+    <section className="ty-card ty-stack" aria-label="Appearance">
+      <fieldset className="ty-fieldset">
+        <legend className="ty-label">Appearance</legend>
+        <div className="ty-segmented">
+          {THEMES.map(([v, name]) => <label key={v}><input type="radio" name="theme" checked={theme === v} onChange={() => setTheme(v)} />{name}</label>)}
+        </div>
+      </fieldset>
+    </section>
+  );
+}
 
 function ChangePassword() {
   const toast = useToast();
@@ -114,7 +133,7 @@ function Rules() {
         const names = new Map([...sections.flatMap((s) => s.subsections.map((x) => ['s' + x.id, subLabel(x)] as const)), ...sources.map((x) => ['i' + x.id, x.name] as const)]);
         return (
     <section className="ty-card ty-stack" aria-labelledby="rules-h">
-      <div className="ty-month__top">
+      <div className="ty-card__head">
         <h2 className="text-title" id="rules-h" style={{ margin: 0 }}>Rules</h2>
         <span className="ty-grow" />
         <button className="ty-btn" onClick={() => setAdding(true)}>Add rule</button>
@@ -168,19 +187,18 @@ function AddPerson({ currency, onClose }: { currency: string; onClose: () => voi
   );
 }
 
-/** `then` renders only once the people have loaded, so a failed load shows one failure card. */
-function People({ currency, then }: { currency: string; then: React.ReactNode }) {
+function People({ currency }: { currency: string }) {
   const [adding, setAdding] = useState(false);
   const state = useLoad(() => api<{ users: User[] }>('GET', '/users').then((r) => r.users), []);
   return (
     <section className="ty-stack" aria-labelledby="people-h">
-      <div className="ty-month__top">
+      <div className="ty-card__head">
         <h2 className="text-title" id="people-h" style={{ margin: 0 }}>People</h2>
         <span className="ty-grow" />
         <button className="ty-btn" onClick={() => setAdding(true)}>Add a person</button>
       </div>
       <Load state={state}>
-        {(users) => (<>
+        {(users) => (
           <div className="ty-section">
             {users.map((u, i) => (
               <div key={u.id} className="app-person" style={i ? { borderTop: '1px solid var(--line)' } : undefined}>
@@ -189,8 +207,7 @@ function People({ currency, then }: { currency: string; then: React.ReactNode })
               </div>
             ))}
           </div>
-          {then}
-        </>)}
+        )}
       </Load>
       {adding && <AddPerson currency={currency} onClose={() => setAdding(false)} />}
     </section>
@@ -205,18 +222,15 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!bank) return;
     toast(bank === 'connected' ? 'Bank connected.' : 'The bank did not connect. Try again.');
-    setParams({}, { replace: true });
+    setParams({ tab: 'connections' }, { replace: true });
   }, [bank]);
   const signOut = async () => { await api('POST', '/auth/logout').catch(() => {}); setUser(null); };
-  const chain = user.viewing
-    ? <><OwnerOnly title="Sharing" id="share-h" /><OwnerOnly title="Bank connections" id="bank-h" /><OwnerOnly title="Trading212" id="t212-h" /><Rules /></>
-    : <SharingCard then={<BankConnections then={<Trading212 then={<Rules />} />} />} />;
+  const [tab, setTab] = useTab(TABS.map((t) => t.value));
   return (
     <>
-      <Topbar title="Settings" />
-      <header className="ty-month__top ty-wide">
-        <h1 className="text-display" style={{ margin: 0 }}>Settings</h1>
-      </header>
+      <Topbar title="Settings" tabs={<Tabs label="Settings" tabs={TABS} value={tab} onChange={setTab} />} />
+      <TabPanel>
+      {tab === 'account' && <>
       <div className="app-phone-block"><BudgetSwitcher /></div>
       <section className="ty-card ty-stack" aria-labelledby="acct-h">
         <h2 className="text-title" id="acct-h" style={{ margin: 0 }}>Your account</h2>
@@ -229,7 +243,17 @@ export default function SettingsPage() {
       </section>
       <ChangePassword />
       <div><button className="ty-btn app-phone-only" onClick={signOut}>Sign out</button></div>
-      {user.isOwner ? <People currency={user.baseCurrency} then={chain} /> : chain}
+      </>}
+      {tab === 'people' && <>
+        {user.isOwner && <People currency={user.baseCurrency} />}
+        {user.viewing ? <OwnerOnly title="Sharing" id="share-h" /> : <SharingCard />}
+      </>}
+      {tab === 'connections' && <>
+        {user.viewing ? <><OwnerOnly title="Bank connections" id="bank-h" /><OwnerOnly title="Trading212" id="t212-h" /></> : <><BankConnections /><Trading212 /></>}
+        <Rules />
+      </>}
+      {tab === 'appearance' && <Appearance />}
+      </TabPanel>
     </>
   );
 }

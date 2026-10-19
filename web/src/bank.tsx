@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { api, useForm, useLoad, type Pocket } from './api';
 import { dayHeading } from './dates';
 import { formatMinor } from './money';
@@ -167,7 +167,7 @@ function ConnectionRow({ c, pockets }: { c: Connection; pockets: Pocket[] }) {
   };
   return (
     <div className="ty-stack app-bank">
-      <div className="ty-month__top">
+      <div className="ty-card__head">
         <div className="ty-trow__who"><b>{c.bank}</b><span className="ty-cap">until {longDate(c.validUntil)}</span></div>
         <span className="ty-grow" />
         <div className="app-actions">
@@ -190,8 +190,7 @@ function ConnectionRow({ c, pockets }: { c: Connection; pockets: Pocket[] }) {
   );
 }
 
-/** `then` renders only once this card's data has loaded, so a failed load shows one failure card. */
-export function BankConnections({ then }: { then: ReactNode }) {
+export function BankConnections() {
   const [connecting, setConnecting] = useState(false);
   const state = useLoad(async () => {
     const [reg, conn, p] = await Promise.all([
@@ -203,9 +202,9 @@ export function BankConnections({ then }: { then: ReactNode }) {
   }, []);
   return (
     <Load state={state}>
-      {({ reg, connections, pockets }) => (<>
+      {({ reg, connections, pockets }) => (
         <section className="ty-card ty-stack" aria-labelledby="bank-h">
-          <div className="ty-month__top">
+          <div className="ty-card__head">
             <h2 className="text-title" id="bank-h" style={{ margin: 0 }}>Bank connections</h2>
             <span className="ty-grow" />
             {reg.configured && <button className="ty-btn" disabled={!reg.publicUrl} onClick={() => setConnecting(true)}>Connect a bank</button>}
@@ -221,8 +220,7 @@ export function BankConnections({ then }: { then: ReactNode }) {
           </>
           )}
         </section>
-        {then}
-      </>)}
+      )}
     </Load>
   );
 }

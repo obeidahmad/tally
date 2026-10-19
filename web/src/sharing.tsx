@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { api, useForm, useLoad, type User } from './api';
 import { useAuth } from './auth';
 import { Field, Load, TextField, useToast } from './ui';
@@ -41,8 +41,7 @@ export function OwnerOnly({ title, id }: { title: string; id: string }) {
   );
 }
 
-/** `then` renders only once sharing has loaded, so a failed load shows one failure card. */
-export function SharingCard({ then }: { then: ReactNode }) {
+export function SharingCard() {
   const toast = useToast();
   const { setUser } = useAuth();
   const f = useForm();
@@ -56,7 +55,7 @@ export function SharingCard({ then }: { then: ReactNode }) {
   const act = (fn: () => Promise<void>) => () => void fn().catch((e: Error) => toast(e.message));
   return (
     <Load state={state}>
-      {({ members, sharedWithMe }) => (<>
+      {({ members, sharedWithMe }) => (
         <section className="ty-card ty-stack" aria-labelledby="share-h">
           <h2 className="text-title" id="share-h" style={{ margin: 0 }}>Sharing</h2>
           <form className="ty-stack" onSubmit={add} noValidate>
@@ -86,8 +85,7 @@ export function SharingCard({ then }: { then: ReactNode }) {
             </div>
           </>)}
         </section>
-        {then}
-      </>)}
+      )}
     </Load>
   );
 }

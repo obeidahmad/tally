@@ -152,12 +152,7 @@ export default function InvestmentsPage() {
 
   return (
     <>
-      <Topbar title="Investments" add={{ label: 'Add holding', onClick: () => setDialog({ t: 'edit' }) }} />
-      <header className="ty-month__top ty-wide">
-        <h1 className="text-display" style={{ margin: 0 }} tabIndex={-1}>Investments</h1>
-        <span className="ty-grow" />
-        <button className="ty-btn ty-btn--primary" onClick={() => setDialog({ t: 'edit' })}>Add holding</button>
-      </header>
+      <Topbar title="Investments" actions={<button className="ty-btn ty-btn--primary" onClick={() => setDialog({ t: 'edit' })}>Add holding</button>} />
       <Load state={state}>
         {({ holdings, pockets, sections, rates, t212 }) => {
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, emoji: x.emoji, slot: s.colorSlot }] as const)));
@@ -215,7 +210,7 @@ export default function InvestmentsPage() {
                 <div className="ty-stack">
                   {withHoldings(held).map((p) => card(held, p))}
                   {sold.length > 0 && (<>
-                    <h2 className="text-title" style={{ margin: 0 }}>Sold</h2>
+                    <h2 className="ty-label" style={{ margin: 0 }}>Sold</h2>
                     {withHoldings(sold).map((p) => card(sold, p))}
                   </>)}
                 </div>
