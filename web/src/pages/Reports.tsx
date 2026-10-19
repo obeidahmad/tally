@@ -431,7 +431,7 @@ function DonutCard({ r, sections, month }: { r: Reports; sections: Section[]; mo
 type Flow = { nodes: { id: string; label: string; kind: 'source' | 'section' | 'subsection' | 'other' }[]; links: { from: string; to: string; minor: number }[] };
 type FNode = { id: string; label: string; col: number; value: number; x: number; y: number; h: number; emoji?: string | null; cls: string; colour: string };
 
-const NODE_W = 10, GAP = 8, TOP = 4, PAD = 2, MIN_FLOW = 720, SHORT = 30;
+const NODE_W = 10, GAP = 8, TOP = 4, PAD = 2, MIN_FLOW = 720, SLOT = 38; // every node reserves a label slot of SLOT px, so every node can have its label
 
 /** Sankey layout in real pixels: sources -> Income -> "Not spent" and sections (sized by what they spent) -> subsections, one scale for every node. Sorted so no band crosses. */
 function layoutFlow(flow: Flow, w: number, slotOf: (id: string) => number, emojiOf: (id: string) => string | null | undefined) {
@@ -472,9 +472,10 @@ function layoutFlow(flow: Flow, w: number, slotOf: (id: string) => number, emoji
   const cols = [0, 1, 2, 3].map((c) => nodes.filter((n) => n.col === c));
   let height = Math.max(480, 34 * Math.max(...cols.map((c) => c.length)));
   const k = Math.min(...cols.filter((c) => c.length).map((c) => (height - 2 * TOP - (c.length - 1) * GAP) / c.reduce((a, n) => a + n.value, 0)));
+  const nextY = (n: FNode) => Math.max(n.y + n.h + GAP, n.y + SLOT);
   cols.forEach((c, i) => {
     let y = TOP;
-    c.forEach((n) => { n.h = Math.max(n.value * k, 3); n.x = PAD + (i * (w - 2 * PAD - NODE_W)) / 3; n.y = y; y += n.h + GAP; });
+    c.forEach((n) => { n.h = Math.max(n.value * k, 3); n.x = PAD + (i * (w - 2 * PAD - NODE_W)) / 3; n.y = y; y = nextY(n); });
   });
   // each section's subsections sit as a block level with their section, so bands run nearly level; the chart grows if the column needs it
   const top = new Map(cols[2].map((n) => [n.id, n.y]));
@@ -483,12 +484,11 @@ function layoutFlow(flow: Flow, w: number, slotOf: (id: string) => number, emoji
   let block = '';
   for (const n of cols[3]) {
     const p = parent.get(n.id) ?? '';
-    n.y = p !== block ? Math.max(top.get(p) ?? TOP, end + 2 * GAP) : end + GAP;
-    if (end === TOP) n.y = Math.max(top.get(p) ?? TOP, TOP);
+    n.y = end === TOP ? Math.max(top.get(p) ?? TOP, TOP) : p !== block ? Math.max(top.get(p) ?? TOP, end + GAP) : end;
     block = p;
-    end = n.y + n.h;
+    end = nextY(n);
   }
-  height = Math.max(height, end + TOP, ...cols.slice(0, 3).map((c) => (c.length ? c[c.length - 1].y + c[c.length - 1].h + TOP : 0)));
+  height = Math.max(height, end + TOP, ...cols.slice(0, 3).map((c) => (c.length ? nextY(c[c.length - 1]) + TOP : 0)));
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const placed = links.map((l) => ({ ...l, a: byId.get(l.from)!, b: byId.get(l.to)!, y0: 0, y1: 0 }));
   const thick = (n: FNode, minor: number) => (minor / n.value) * n.h;
@@ -531,7 +531,6 @@ function FlowCard({ sections, month }: { sections: Section[]; month: string }) {
       const out: string[] = [];
       for (const n of [...g.nodes].sort((p, q) => q.h - p.h)) {
         const el = labels.current.get(n.id);
-        if (n.h < SHORT) continue;
         if (!el) { out.push(n.id); continue; } // already dropped by an earlier pass (fit also runs when the font loads)
         const r = el.getBoundingClientRect();
         if (r.left < card.left || r.right > card.right || kept.some((o) => overlap(o, r))) out.push(n.id); else kept.push(r);
@@ -581,10 +580,10 @@ function FlowCard({ sections, month }: { sections: Section[]; month: string }) {
                 const end = n.col >= 2, lx = end ? n.x - 8 : n.x + NODE_W + 8;
                 // Income's label sits inside its largest outgoing band, so it does not cross a band edge
                 const big = n.col === 1 ? g.links.filter((l) => l.a === n).sort((p, q) => q.minor - p.minor)[0] : undefined;
-                const cy = big && g.thick(n, big.minor) >= 40 ? big.y0 + g.thick(n, big.minor) / 2 : n.y + n.h / 2;
+                const cy = big && g.thick(n, big.minor) >= 40 ? big.y0 + g.thick(n, big.minor) / 2 : n.y + Math.max(n.h, SLOT) / 2;
                 const amt = `${formatMinor(n.value)} (${pct(n.value, g.total)})`;
                 // A short or crowded node has no label: hovering or focusing it shows the same text as a tooltip.
-                const shown = n.h >= SHORT && !hide.has(n.id);
+                const shown = !hide.has(n.id);
                 const text = `${label(n)} ${amt}`;
                 const at = { x: end ? n.x - 6 : n.x + NODE_W + 6, y: Math.max(cy, 24), text };
                 return (

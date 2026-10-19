@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, useLoad, type GoalStatus, type Pocket, type Section, type Source, type Transaction } from '../api';
 import { baseCurrency, useAuth } from '../auth';
 import { dayHeading, monthName, monthTitle, shiftMonth } from '../dates';
 import { formatMinor } from '../money';
-import { Load, SubEmoji, Topbar } from '../ui';
+import { Load, SubEmoji, Topbar, TxAvatar } from '../ui';
 import { rowState } from './Budget';
 
 type Home = {
@@ -40,9 +40,13 @@ function Sparkline({ series }: { series: Home['networth']['series'] }) {
   const y = (v: number) => (hi === lo ? SPARK_H / 2 : PAD + (SPARK_H - 2 * PAD) * (1 - (v - lo) / (hi - lo)));
   const step = (w - 2 * PAD) / Math.max(series.length - 1, 1);
   const tip = at === undefined ? undefined : series[at];
+  const id = useId().replace(/W/g, '');
+  const line = series.map((s, i) => `${i ? 'L' : 'M'}${x(i)},${y(s.minor)}`).join('');
   return (
     <div className="ty-chart-plot" ref={box}>
       <svg width={w} height={SPARK_H} viewBox={`0 0 ${w} ${SPARK_H}`} onPointerDown={(e) => { if (e.target === e.currentTarget) setAt(undefined); }}>
+        <defs><linearGradient id={`sp${id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" className="ty-area-stop" stopOpacity="0.25" /><stop offset="1" className="ty-area-stop" stopOpacity="0" /></linearGradient></defs>
+        <path d={`${line}L${x(series.length - 1)},${SPARK_H}L${x(0)},${SPARK_H}Z`} fill={`url(#sp${id})`} />
         <polyline className="ty-chart-line" fill="none" points={series.map((s, i) => `${x(i)},${y(s.minor)}`).join(' ')} />
         <circle className="ty-chart-dot" cx={x(series.length - 1)} cy={y(vals[vals.length - 1]!)} r={4} />
         {series.map((s, i) => (
@@ -100,8 +104,10 @@ export default function HomePage() {
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, x] as const)));
           const pocketById = new Map(pockets.map((p) => [p.id, p]));
           const sourceName = new Map(sources.map((x) => [x.id, x.name]));
+          const slotOf = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, s.colorSlot] as const)));
           const b = h.budget;
           const st = rowState(b.budgetedMinor, b.spentMinor);
+          const ratio = b.budgetedMinor > 0 ? b.spentMinor / b.budgetedMinor : 0; // under 90%: positive, 90 to 100%: amber, over: negative
           const kept = h.cashflow.incomeMinor - h.cashflow.spendingMinor;
           const change = h.networth.changeMinor;
           const prev = monthName(shiftMonth(h.month, -1));
@@ -116,7 +122,7 @@ export default function HomePage() {
               <div className="ty-home">
                 <HomeCard title={`${monthName(h.month)} so far`}>
                   <div className="ty-sumrow"><span className="num-lg">{formatMinor(b.spentMinor)} <span className="ty-cap">of {formatMinor(b.budgetedMinor)}</span></span></div>
-                  <Meter cls={st.meter} pct={st.pct} label={`${formatMinor(b.spentMinor)} spent of ${formatMinor(b.budgetedMinor)}`} />
+                  <Meter cls={ratio > 1 ? 'ty-meter ty-meter--negative' : ratio >= 0.9 ? 'ty-meter ty-meter--caution' : 'ty-meter'} pct={st.pct} label={`${formatMinor(b.spentMinor)} spent of ${formatMinor(b.budgetedMinor)}`} />
                   <div className="ty-cap">{b.leftMinor < 0 ? `${formatMinor(-b.leftMinor)} over` : `${formatMinor(b.leftMinor)} left`}</div>
                   {b.overspent.length > 0 && (
                     <div className="ty-stack">
@@ -166,7 +172,8 @@ export default function HomePage() {
                       const income = t.kind === 'income';
                       const who = transfer ? `Moved to ${pocketById.get(t.toPocketId ?? 0)?.name ?? 'another pocket'}` : income ? (t.sourceId === null ? t.payee : sourceName.get(t.sourceId)) : t.payee;
                       return (
-                        <div key={t.id} className="ty-trow">
+                        <div key={t.id} className="ty-trow ty-trow--av">
+                          <TxAvatar title={who} sub={sub ? { emoji: sub.emoji, slot: slotOf.get(t.subsectionId ?? 0) ?? 0 } : undefined} split={!!t.splits} />
                           <div className="ty-trow__who">
                             <b>{who}</b>
                             <span className="ty-cap ty-trow__meta">{dayHeading(t.date)}{sub && <> · <SubEmoji emoji={sub.emoji} />{sub.name}</>}{p && <> · <span className="ty-emoji">{p.emoji}</span> {p.name}</>}</span>

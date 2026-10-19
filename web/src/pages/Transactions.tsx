@@ -9,9 +9,8 @@ import { ImportDialog } from '../import';
 import { formatMinor } from '../money';
 import { baseCurrency, useAuth } from '../auth';
 import { pick } from '../pick';
-import { EmptyCard, Load, longDay, SubEmoji, SubsectionOptions, TopButton, Topbar, useRescueFocus } from '../ui';
+import { EmptyCard, Load, longDay, SubEmoji, SubsectionOptions, TopButton, TxAvatar, Topbar, useRescueFocus } from '../ui';
 
-const inSlots = (n: number) => n >= 1 && n <= 8;
 
 const MONTHS_BACK = 36;
 const ORIGIN: Record<Transaction['source'], string> = { manual: '', import: 'from a statement', bank: 'from your bank', broker: 'from Trading212', adjustment: '' };
@@ -192,7 +191,6 @@ export default function TransactionsPage() {
                             ? <div className="ty-num ty-right ty-num--pos">+{formatMinor(t.amountMinor)}</div>
                             : <div className="ty-num ty-right">{formatMinor(-t.amountMinor)}</div>;
                         const title = transfer ? `Moved to ${to?.name ?? 'another pocket'}` : t.kind === 'income' ? (t.sourceId === null ? t.payee : sourceName.get(t.sourceId)) : t.payee;
-                        const avatar = t.splits ? '⋯' : sub?.emoji ? <span className="ty-emoji">{sub.emoji}</span> : (title || '?').trim().charAt(0).toUpperCase();
                         const tagPills = t.tags.map((x) => <span key={x} className="ty-pill">{x}</span>);
                         const label = adjustment ? <span className="ty-pill">Adjustment</span> : unsorted ? <span className="ty-pill ty-pill--warning">Needs sorting</span> : null;
                         const open = () => {
@@ -210,7 +208,7 @@ export default function TransactionsPage() {
                               onPointerDown={(e) => { if (e.pointerType === 'touch') { held.current.touching = true; held.current.timer = window.setTimeout(() => { held.current.fired = true; setSelecting(true); toggle(t.id); }, HOLD_MS); } }}
                               onPointerMove={cancelHold} onPointerUp={release} onPointerLeave={cancelHold} onPointerCancel={release} onContextMenu={(e) => { if (held.current.touching || held.current.fired) e.preventDefault(); }}
                             >
-                              <span className={`ty-avatar${sub && inSlots(sub.slot) ? ` ty-avatar--${sub.slot}` : ''}`} aria-hidden="true">{avatar}</span>
+                              <TxAvatar title={title} sub={sub} split={!!t.splits} />
                               <div className="ty-trow__who">
                                 <span className="ty-payee">
                                   <b>{title}</b>

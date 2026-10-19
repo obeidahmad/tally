@@ -36,7 +36,7 @@ Tally is a self-hosted budgeting app for a household. Its screens should feel fa
 - **Focus.** Every focusable control shows a 2px solid `primary` outline with a 2px offset. A row inside a card draws the same outline 2px inside its edge instead, because the card clips whatever reaches past it.
 - **Spacing and density.** Page padding 24px, card padding 20px, cards 16px apart. Budget table rows 40px, list rows 44px, pocket rows 56px (they have two lines). A row has a second line only when it has a second fact to show.
 - **Tabs, not scrolling.** A page with several views puts them in tabs in the top bar, selected in the URL as `?tab=`.
-- **Meters.** 6px tall on a `line` track. A meter appears only where it shows something that is not already a column figure.
+- **Meters.** 6px tall on a `line` track. A budget meter is `positive` under 90% of what it measures, `ty-meter--caution` (the amber section slot 2) from 90% to 100% and `negative` over it; never the dark warning brown. A meter appears only where it shows something that is not already a column figure.
 - **Materials.** Only phone chrome is translucent: the top bar and tab bar are `glass` with a 20px blur and content scrolls under them; a bottom sheet is `glass-thick` with a 30px blur. Text on glass is `ink`. Never put glass on glass. The sidebar, cards, tables and desktop dialogs stay opaque.
 - **Light and dark.** The app opens in light. Dark mode is a neutral, slightly warm dark, never green-tinted. The person chooses Light, Dark or Match system in Settings, or flips it with the sidebar button.
 - **Text size.** Type, spacing and control sizes are in `rem`, so the layout grows with the reader's text-size setting.

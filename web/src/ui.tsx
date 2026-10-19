@@ -115,6 +115,11 @@ export function EmojiPicker({ value, onChange, error, onClear }: { value: string
 
 /** A subsection's emoji before its name, when it has one. */
 export const SubEmoji = ({ emoji }: { emoji?: string | null }) => (emoji ? <><span className="ty-emoji" aria-hidden="true">{emoji}</span> </> : null);
+/** A transaction row's round mark: the subsection's emoji on its section's tint, else the payee's first letter, "⋯" for a split. */
+export function TxAvatar({ title, sub, split }: { title?: string; sub?: { emoji?: string | null; slot: number }; split?: boolean }) {
+  const slot = sub && sub.slot >= 1 && sub.slot <= 8 ? ` ty-avatar--${sub.slot}` : '';
+  return <span className={`ty-avatar${slot}`} aria-hidden="true">{split ? '⋯' : sub?.emoji ? <span className="ty-emoji">{sub.emoji}</span> : (title || '?').trim().charAt(0).toUpperCase()}</span>;
+}
 /** The same as plain text, for an option. */
 export const subLabel = (x: { name: string; emoji?: string | null }) => (x.emoji ? `${x.emoji} ${x.name}` : x.name);
 

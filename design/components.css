@@ -64,6 +64,7 @@ a.ty-btn { text-decoration: none; }
 .ty-meter > span { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--positive); }
 .ty-meter--warning > span { background: var(--warning); }
 .ty-meter--negative > span { background: var(--negative); }
+.ty-meter--caution > span { background: var(--sec-2); }
 .ty-meter--goal > span { background: var(--brand); }
 
 /* Card, section card, budget table */
@@ -347,6 +348,9 @@ a.ty-btn { text-decoration: none; }
 .ty-rows .ty-trow { grid-template-columns: minmax(0, 1fr) auto; }
 .ty-rows .ty-trow::after { display: none; }
 .ty-rows .ty-trow__meta { display: block; }
+.ty-rows .ty-trow--av { grid-template-columns: 1.75rem minmax(0, 1fr) auto; }
+.ty-trow .ty-avatar { width: 1.75rem; height: 1.75rem; font-size: 0.8125rem; }
+.ty-trow .ty-avatar .ty-emoji { font-size: 0.9375rem; }
 .ty-rows__empty { padding: 0 var(--space-5); }
 .ty-warn { color: var(--warning); font-weight: 600; }
 .ty-inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
