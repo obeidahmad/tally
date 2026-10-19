@@ -19,7 +19,7 @@ for (const path of ['/budget', '/transactions', '/pockets', '/reports', '/recurr
       const bar = (() => { let e: Element | null = document.querySelector('h1'); while (e && getComputedStyle(e).position !== 'sticky') e = e.parentElement; return e; })();
       const actions = bar ? [...bar.querySelectorAll('button, a, [role="radiogroup"]')].filter((b) => b.getBoundingClientRect().width > 0 && !b.closest('[role="tablist"]')) : [];
       const actionsRight = actions.length ? Math.max(...actions.map((b) => b.getBoundingClientRect().right)) : null;
-      const cards = [...document.querySelectorAll('main .ty-card, main .ty-statcard, main .ty-btable, main .ty-days')].filter((c) => c.getBoundingClientRect().width > 200);
+      const cards = [...document.querySelectorAll('main .ty-card, main .ty-statcard, main .ty-btable, main .ty-filters')].filter((c) => c.getBoundingClientRect().width > 200);
       const left = Math.min(...cards.map((c) => c.getBoundingClientRect().left));
       const right = Math.max(...cards.map((c) => c.getBoundingClientRect().right));
       return { h1: h1.left, left, right, actionsRight, n: cards.length };

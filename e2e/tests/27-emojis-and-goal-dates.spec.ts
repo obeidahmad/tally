@@ -103,7 +103,7 @@ test('a subsection without an emoji shows its name alone, and "No emoji" clears 
   await group(d, 'Emoji').getByRole('button', { name: 'No emoji', exact: true }).click();
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d).toBeHidden();
-  expect(noVs(norm(await srow(page, /Marked/).innerText()))).toMatch(/^Marked/);
+  await expect.poll(async () => noVs(norm(await srow(page, /Marked/).innerText()))).toMatch(/^Marked/); // the row follows the save
   expect(findNamed(await budgetApi(page), 'Marked')!.emoji ?? null).toBeNull();
 });
 
