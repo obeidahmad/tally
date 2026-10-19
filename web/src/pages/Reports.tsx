@@ -658,7 +658,7 @@ export default function ReportsPage() {
         tabs={<Tabs label="Reports" tabs={TABS} value={tab} onChange={setTab} />}
         month={tab === 'net-worth' ? undefined : { label: monthTitle(month), onPrev: () => setMonth(shiftMonth(month, -1)), onNext: () => setMonth(shiftMonth(month, 1)), nextDisabled: month >= now }}
       />
-      <TabPanel><Load state={state}>{([r, { sections }]) => tab === 'cash-flow' ? (
+      <TabPanel tab={tab}><Load state={state}>{([r, { sections }]) => tab === 'cash-flow' ? (
         <>
           <StatCards r={r} month={month} />
           <FlowCard sections={sections} month={month} />

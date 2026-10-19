@@ -55,7 +55,7 @@ Tally is a self-hosted budgeting app for a household. Its screens should feel fa
 ## Layout
 
 - **Desktop.** A 220px sidebar on `bg` with the logo, Home, Budget, Pipeline, Transactions, Recurring, Pockets, Investments, Reports and Settings, each with an icon. A sticky 56px top bar holds the page title, then the page tabs, then the page actions on the right (outline buttons, at most one primary).
-- **Phone (up to 640px).** One column with 16px gutters, a translucent top bar holding the page title and its primary action with the tabs as a sideways-scrolling row under it, and a bottom tab bar with icons for Home, Budget, Transactions, Pockets and Settings. The budget table keeps Subsection, Spent and Available. Dialogs become bottom sheets.
+- **Phone (up to 640px).** One column with 16px gutters, a translucent top bar holding the page title and its primary action with the tabs as a sideways-scrolling row under it, and a bottom tab bar with icons for Home, Budget, Transactions, Pockets and More (a sheet with the other five pages). The budget table keeps Subsection, Spent and Available. Dialogs become bottom sheets.
 - **Budget page.** StatCards, then the BudgetTable (every section, in the order they were created) with a 300px aside on screens from 1464px: the month summary, the close reminder and "Moved this month".
 - **Pockets page.** A net worth card with the AreaChart, then AccountGroups on the left and the SummaryCard on the right (on top under 1100px).
 - **Reports page.** Tabs Cash flow, Spending and Net worth. Cash flow is four StatCards, the FlowDiagram and the Cash flow bars; Spending is the DonutChart, stacked bars and top payees; Net worth is the AreaChart.

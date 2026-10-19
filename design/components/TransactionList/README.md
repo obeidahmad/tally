@@ -2,6 +2,7 @@
 
 Transactions grouped by day, in one card. It replaces TransactionRow. Provide the days, newest first, each with its rows.
 
+- **Avatar.** A row starts with a 28px round `ty-avatar` (the row is `ty-trow--av`) in the tint of its section (`ty-avatar--1` to `--8`). It holds the subsection's emoji, or the payee's first letter when there is none, or "⋯" for a split.
 - **Date header** (`ty-day`, `surface-sunken`, 36px, sticky under the top bar): the date on the left ("Sunday, 18 October") and the day's total on the right, with a plus sign when the day is net income.
 - **Row** (`ty-trow`, 44px, `role="button"`, the whole row opens the transaction): the payee at 500 (`ty-trow__who`), the subsection (an emoji and its name), the pocket (an emoji and its name), the amount right-aligned (`ty-num`, income `ty-num--pos` with a "+"), then a chevron the row draws itself. Long names are cut with an ellipsis.
 - The subsection and the pocket cells are `ty-tag ty-wide`. They take emoji in `ty-emoji`; a row without one shows only its name.

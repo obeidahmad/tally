@@ -134,7 +134,7 @@ export const FormError = ({ message }: { message: string }) => (message ? <div c
 /* ---------- Dialog ---------- */
 
 /** A native modal dialog. Mount it to open it; it calls onClose on Escape and when closed. */
-export function Modal({ title, sub, onClose, children }: { title: string; sub?: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, sub, onClose, children, backdropCloses }: { title: string; sub?: string; onClose: () => void; children: ReactNode; backdropCloses?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -147,7 +147,7 @@ export function Modal({ title, sub, onClose, children }: { title: string; sub?: 
     };
   }, []);
   return (
-    <dialog ref={ref} className="ty-dialog" aria-labelledby={titleId} onClose={onClose}>
+    <dialog ref={ref} className="ty-dialog" aria-labelledby={titleId} onClose={onClose} onClick={backdropCloses ? (e) => { if (e.target === e.currentTarget) onClose(); } : undefined}>
       {sub ? (
         <div><h2 className="text-title" id={titleId}>{title}</h2><p className="ty-cap" style={{ margin: '0.25rem 0 0' }}>{sub}</p></div>
       ) : <h2 className="text-title" id={titleId}>{title}</h2>}

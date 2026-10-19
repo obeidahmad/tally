@@ -11,7 +11,7 @@ export function useTab<T extends string>(values: readonly T[]): [T, (t: T) => vo
 }
 
 /** The content of the selected tab. */
-export const TabPanel = ({ children }: { children: ReactNode }) => <div role="tabpanel" className="ty-stack" style={{ gap: 'var(--space-4)' }}>{children}</div>;
+export const TabPanel = ({ tab, children }: { tab: string; children: ReactNode }) => <div role="tabpanel" id="tabpanel" aria-labelledby={`tab-${tab}`} className="ty-panel">{children}</div>;
 
 /** Page tabs (design system `Tabs`): roving tabindex, arrows, Home and End move and select. */
 export function Tabs<T extends string>({ label, tabs, value, onChange }: {
@@ -31,7 +31,7 @@ export function Tabs<T extends string>({ label, tabs, value, onChange }: {
   return (
     <div className="ty-tabs" role="tablist" aria-label={label} ref={list}>
       {tabs.map((t, i) => (
-        <a key={t.value} className="ty-tab" role="tab" href={`?tab=${t.value}`} aria-selected={t.value === value} tabIndex={t.value === value ? 0 : -1}
+        <a key={t.value} className="ty-tab" role="tab" id={`tab-${t.value}`} aria-controls="tabpanel" href={`?tab=${t.value}`} aria-selected={t.value === value} tabIndex={t.value === value ? 0 : -1}
           onClick={(e) => { e.preventDefault(); onChange(t.value); }} onKeyDown={(e) => move(e, i)}>{t.label}</a>
       ))}
     </div>

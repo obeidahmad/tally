@@ -83,7 +83,7 @@ export default function RecurringPage() {
   return (
     <>
       <Topbar title="Recurring" tabs={<Tabs label="Recurring" tabs={TABS} value={tab} onChange={setTab} />} />
-      <TabPanel><Load state={state}>
+      <TabPanel tab={tab}><Load state={state}>
         {({ items, dismissed, monthlyMinor, sections }) => {
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, emoji: x.emoji, slot: s.colorSlot }] as const)));
                   const t = today();

@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, setUnauthenticatedHandler, type User } from './api';
 import { AuthCtx, baseCurrency, useAuth } from './auth';
 import BudgetPage from './pages/Budget';
@@ -14,7 +14,7 @@ import SettingsPage from './pages/Settings';
 import TransactionsPage from './pages/Transactions';
 import { BudgetSwitcher } from './sharing';
 import { setTheme } from './theme';
-import { Load, Logo, ToastProvider, TopSlotCtx } from './ui';
+import { Load, Logo, Modal, ToastProvider, TopSlotCtx } from './ui';
 
 const PAGES = [['/home', 'Home'], ['/budget', 'Budget'], ['/pipeline', 'Pipeline'], ['/transactions', 'Transactions'], ['/recurring', 'Recurring'], ['/pockets', 'Pockets'], ['/investments', 'Investments'], ['/reports', 'Reports'], ['/settings', 'Settings']] as const;
 
@@ -30,7 +30,8 @@ const ICONS: Record<string, React.ReactNode> = {
   '/settings': <><path d="M4 8h9M17 8h3M4 16h3M11 16h9" /><circle cx="15" cy="8" r="2" /><circle cx="9" cy="16" r="2" /></>,
 };
 const Icon = ({ to }: { to: string }) => <svg className="ty-icon" viewBox="0 0 24 24" aria-hidden="true">{ICONS[to]}</svg>;
-const PHONE = ['/home', '/budget', '/transactions', '/pockets', '/settings'];
+const PHONE = ['/home', '/budget', '/transactions', '/pockets'];
+const MORE_ICON = <><circle cx="6" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="18" cy="12" r="1.5" /></>;
 
 /** The theme in force: the saved choice, or the system's when it is "Match system". */
 const html = document.documentElement;
@@ -43,6 +44,9 @@ const useEffectiveTheme = () => useSyncExternalStore(
 function Shell() {
   const { user, setUser } = useAuth();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [more, setMore] = useState(false);
+  const here = useLocation().pathname;
+  const onMore = !PHONE.some((p) => here.startsWith(p)) && PAGES.some(([p]) => here.startsWith(p));
   const dark = useEffectiveTheme() === 'dark';
   const signOut = async () => { await api('POST', '/auth/logout').catch(() => {}); setUser(null); };
   const link = ([to, label]: readonly [string, string]) => <NavLink key={to} to={to}><Icon to={to} />{label}</NavLink>;
@@ -69,7 +73,19 @@ function Shell() {
         <div ref={setSlot} className="app-slot" />
         <TopSlotCtx.Provider value={slot}><main className="ty-main"><Outlet /></main></TopSlotCtx.Provider>
       </div>
-      <nav className="ty-tabbar" aria-label="Main">{PAGES.filter(([to]) => PHONE.includes(to)).map(link)}</nav>
+      <nav className="ty-tabbar" aria-label="Main">
+        {PAGES.filter(([to]) => PHONE.includes(to)).map(link)}
+        <button type="button" aria-haspopup="dialog" aria-expanded={more} aria-current={onMore ? 'page' : undefined} onClick={() => setMore(true)}>
+          <svg className="ty-icon" viewBox="0 0 24 24" aria-hidden="true">{MORE_ICON}</svg>More
+        </button>
+      </nav>
+      {more && (
+        <Modal title="More" backdropCloses onClose={() => setMore(false)}>
+          <nav className="ty-more" aria-label="More pages">{PAGES.filter(([to]) => !PHONE.includes(to)).map(([to, label]) => (
+            <NavLink key={to} to={to} onClick={() => setMore(false)}><Icon to={to} />{label}</NavLink>
+          ))}</nav>
+        </Modal>
+      )}
     </div>
   );
 }

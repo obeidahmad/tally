@@ -72,3 +72,9 @@
   .ty-filters > select.ty-input { max-width: none; field-sizing: content; }
   .ty-filters > .ty-filters__search { flex: 1 1 8rem; min-width: 8rem; }
 }
+
+/* The phone "More" tab is current on the pages it holds */
+@media (max-width: 640px) {
+  .ty-tabbar button[aria-current] { font-weight: 600; }
+  .ty-tabbar button[aria-current] svg { stroke: var(--primary); }
+}

@@ -17,7 +17,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f
 .ty-brow, .ty-trow, .ty-prow, .ty-arow, .ty-nav a { transition: background-color 150ms ease-out; }
 .ty-brow:active, .ty-trow:active, .ty-prow:active, .ty-arow:active { background: var(--surface-sunken); }
 .ty-brow:focus-visible, .ty-trow:focus-visible, .ty-prow:focus-visible, .ty-arow:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-.ty-btn:focus-visible, .ty-input:focus-visible, .ty-nav a:focus-visible, .ty-tab:focus-visible, .ty-tabbar a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.ty-btn:focus-visible, .ty-input:focus-visible, .ty-nav a:focus-visible, .ty-tab:focus-visible, .ty-tabbar button:focus-visible, .ty-tabbar a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .ty-btn--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
 .ty-btn--primary:hover { background: var(--primary); opacity: 0.9; }
 .ty-btn--quiet { border-color: transparent; background: none; }
@@ -168,6 +168,18 @@ a.ty-btn { text-decoration: none; }
 .ty-trow__who { display: grid; min-width: 0; }
 .ty-trow__who b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ty-trow__meta { display: none; }
+.ty-trow--av { grid-template-columns: 1.75rem minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) 7rem 1rem; }
+.ty-avatar { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--av, var(--ink-muted)) 16%, var(--surface)); color: var(--ink-muted); font-size: 0.8125rem; font-weight: 600; line-height: 1; }
+.ty-avatar .ty-emoji { font-size: 0.9375rem; color: var(--ink); }
+.ty-avatar--1 { --av: var(--sec-1); } .ty-avatar--2 { --av: var(--sec-2); } .ty-avatar--3 { --av: var(--sec-3); } .ty-avatar--4 { --av: var(--sec-4); }
+.ty-avatar--5 { --av: var(--sec-5); } .ty-avatar--6 { --av: var(--sec-6); } .ty-avatar--7 { --av: var(--sec-7); } .ty-avatar--8 { --av: var(--sec-8); }
+.ty-panel { display: grid; gap: var(--space-4); }
+.ty-more { display: grid; margin: 0 calc(-1 * var(--space-5)); }
+.ty-more a { display: flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; padding: 0 var(--space-5); color: var(--ink); font-weight: 500; text-decoration: none; transition: background-color 150ms ease-out; }
+.ty-more a:hover, .ty-more a:active { background: var(--surface-hover); }
+.ty-more a:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.ty-more a[aria-current] { font-weight: 600; }
+.ty-more svg { width: 1.375rem; height: 1.375rem; }
 .ty-trow .ty-tag, .ty-trow .ty-wide { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ty-trow .ty-wide .ty-emoji, .ty-trow .ty-tag .ty-emoji { font-size: 0.9375rem; margin-right: 0.25rem; }
 
@@ -192,7 +204,7 @@ a.ty-btn { text-decoration: none; }
 .ty-side__who { display: grid; flex: 1; min-width: 0; line-height: 1rem; }
 .ty-side__who b { font-weight: 600; font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ty-page { display: grid; grid-template-rows: auto 1fr; min-width: 0; }
-.ty-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: stretch; gap: var(--space-5); min-height: 3.5rem; padding: 0 var(--space-5); background: var(--bg); }
+.ty-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: stretch; gap: var(--space-5); min-height: 3.5rem; padding: 0 max(var(--space-5), calc((100% - 79rem) / 2 + var(--space-5))); background: var(--bg); }
 .ty-top__title { align-self: center; margin: 0; white-space: nowrap; }
 .ty-top__actions { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
 .ty-monthnav .ty-btn { font-size: 1.125rem; }
@@ -444,7 +456,7 @@ a.ty-btn { text-decoration: none; }
   .ty-top__actions { margin-left: 0; }
   .ty-top .ty-tabs { grid-column: 1 / -1; margin: var(--space-2) calc(-1 * var(--space-4)) 0; padding: 0 var(--space-4); overflow-x: auto; scrollbar-width: none; }
   .ty-top .ty-tabs::-webkit-scrollbar { display: none; }
-  .ty-top .ty-tab { min-height: 2.75rem; }
+  .ty-top .ty-tab { min-height: 2.75rem; scroll-margin-inline: var(--space-4); }
   .ty-top:not(:has(.ty-tabs)) { padding-bottom: var(--space-3); }
   .ty-main { padding: var(--space-4) var(--space-4) 6rem; }
   .ty-btable__head, .ty-day { top: 4.25rem; }
@@ -453,12 +465,16 @@ a.ty-btn { text-decoration: none; }
   .ty-dialog__foot { padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px)); }
   .ty-dialog::before { content: ""; justify-self: center; width: 2.25rem; height: 0.25rem; margin-top: calc(-1 * var(--space-3)); border-radius: var(--radius-pill); background: var(--line-strong); }
   .ty-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--line); background: var(--glass); -webkit-backdrop-filter: blur(1.25rem) saturate(180%); backdrop-filter: blur(1.25rem) saturate(180%); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .ty-tabbar button { display: grid; justify-items: center; align-content: center; gap: 2px; height: 3.5rem; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 0.6875rem; line-height: 0.875rem; font-weight: 500; cursor: pointer; }
+  .ty-tabbar button[aria-expanded="true"] { font-weight: 600; }
+  .ty-tabbar button[aria-expanded="true"] svg { stroke: var(--primary); }
   .ty-tabbar a { display: grid; justify-items: center; align-content: center; gap: 2px; height: 3.5rem; color: var(--ink); font-size: 0.6875rem; line-height: 0.875rem; font-weight: 500; text-decoration: none; }
   .ty-tabbar svg { width: 1.375rem; height: 1.375rem; }
   .ty-tabbar a[aria-current] { font-weight: 600; }
   .ty-tabbar a[aria-current] svg { stroke: var(--primary); }
   .ty-wide { display: none !important; }
   .ty-trow { grid-template-columns: minmax(0, 1fr) auto 1rem; }
+  .ty-trow--av { grid-template-columns: 1.75rem minmax(0, 1fr) auto 1rem; }
   .ty-brow, .ty-prow, .ty-trow, .ty-arow, .ty-btable__sec, .ty-btable__row { min-height: 2.75rem; }
   .ty-arow { min-height: 3.5rem; }
   .ty-trow__meta { display: block; }

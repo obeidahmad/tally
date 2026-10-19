@@ -229,7 +229,7 @@ export default function SettingsPage() {
   return (
     <>
       <Topbar title="Settings" tabs={<Tabs label="Settings" tabs={TABS} value={tab} onChange={setTab} />} />
-      <TabPanel>
+      <TabPanel tab={tab}>
       <div className="app-phone-block"><BudgetSwitcher /></div>
       {tab === 'account' && <Load state={pockets}>{(list) => <>
       <section className="ty-card ty-stack" aria-labelledby="acct-h">
