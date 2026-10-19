@@ -149,6 +149,7 @@ The pipeline stays Tally's main distinction, but Tally also offers what Monarch,
 - `specs/23-debts-property-reconcile.md`: credit cards, loans and property; assets and debts; reconciling a pocket with the bank.
 - `specs/24-emojis-and-goal-dates.md`: an emoji per subsection; goals with a date, the amount needed a month, and on track or behind.
 - `specs/25-recurring-calendar.md`: a bills calendar, paid, due or missed, and price rises.
+- `specs/27-monarch-look.md`: the look rebuilt to Monarch's feel from the user's screen recording: light by default with an Appearance choice, warm light page, colour, small radii, page tabs, stat cards, a readable Sankey, a donut and an area chart.
 - `specs/26-home-flow-age-of-money.md`: a Home page, a Sankey of where the month's money went through the pipeline, top payees, and age of money.
 
 ## Not planned
