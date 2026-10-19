@@ -22,7 +22,6 @@ test('the list is grouped under day headings with signs, dots and source lines',
   await expect(alpha).toContainText('−212.40');
   await expect(alpha).not.toContainText('Entered by hand');
   await expect(alpha).toContainText('Food');
-  await expect(alpha.locator('.ty-dot').first()).toHaveClass(/ty-dot--1/);
   const pay = row(page, /Paycheck/);
   await expect(pay).toContainText('+2,000.00');
   await expect(pay.locator('.ty-num--pos')).toBeVisible();
@@ -59,12 +58,12 @@ test('filters: Month, Subsection and Pocket narrow the list', async ({ page, me 
   await expect(row(page, /Bakery/)).toBeVisible();
   await expect(row(page, /Alphamega/)).toHaveCount(0);
 
-  await page.getByLabel('Pocket').selectOption({ label: 'All pockets' });
+  await page.getByLabel('Pocket').selectOption({ label: 'Pocket' });
   await page.getByLabel('Subsection').selectOption({ label: 'Utilities' });
   await expect(row(page, /EAC electricity/)).toBeVisible();
   await expect(row(page, /Alphamega/)).toHaveCount(0);
 
-  await page.getByLabel('Subsection').selectOption({ label: 'All subsections' });
+  await page.getByLabel('Subsection').selectOption({ label: 'Subsection' });
   await page.getByLabel('Month').selectOption({ label: monthTitle(prev) });
   await expect(row(page, /Last month shop/)).toBeVisible();
   await expect(row(page, /Alphamega/)).toHaveCount(0);

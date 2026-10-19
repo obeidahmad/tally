@@ -24,7 +24,7 @@ test('first run shows the set-up page, then the app', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
   await page.goto('/budget');
   await expect(page.getByText('No sections yet. A section is a group such as Needs or Savings.')).toBeVisible();
-  await expect(page.getByText('Signed in as Sam')).toBeVisible();
+  await expect(page.locator('.ty-side').getByText('Sam')).toBeVisible();
 });
 
 test('after set-up, the set-up page is no longer offered', async ({ page }) => {

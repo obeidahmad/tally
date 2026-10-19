@@ -9,8 +9,8 @@ test('a signed-out visitor is sent to the sign-in page', async ({ page }) => {
 
 test('sign out, a wrong password, then the right one', async ({ page, me }) => {
   await page.goto('/budget');
-  await expect(page.getByText(`Signed in as ${me.displayName}`)).toBeVisible();
-  await expect(page.getByText('Base currency EUR')).toBeVisible();
+  await expect(page.locator('.ty-side').getByText(me.displayName)).toBeVisible();
+  await expect(page.locator('.ty-side').getByText('EUR', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
 
@@ -67,7 +67,7 @@ test('change password with a wrong current password shows the error under the fi
   await page.getByRole('button', { name: 'Change password' }).click();
   await expect(page.getByLabel('Current password')).toHaveClass(/ty-input--error/);
   await expect(page.locator('.ty-error')).toBeVisible();
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/settings(\?tab=[\w-]+)?$/);
 });
 
 test('a new password that is too short is refused under its field', async ({ page, me }) => {

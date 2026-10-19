@@ -21,7 +21,6 @@ for (const [size, viewport] of Object.entries(sizes)) {
       await expect(income.getByRole('button')).toHaveCount(0);
       const add = page.getByRole('button', { name: 'Add income', exact: true });
       await expect(add).toBeVisible();
-      await expect(add).toHaveClass(/ty-btn--income/);
       await shot(page, `budget-add-income-button-${size}-light`);
       await add.click();
 

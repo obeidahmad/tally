@@ -6,7 +6,7 @@ test('empty Budget shows one card with the empty line and Add section', async ({
   await page.goto('/budget');
   await expect(page.getByText('No sections yet. A section is a group such as Needs or Savings.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add section' })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1, name: monthTitle() }).first()).toBeVisible();
+  await expect(page.locator('.ty-monthnav')).toContainText(monthTitle());
   await shot(page, 'budget-empty-desktop-light');
 });
 
@@ -104,7 +104,7 @@ test('previous month shows that month; next is disabled on the current month', a
   const prev = new Date();
   prev.setUTCDate(1);
   prev.setUTCMonth(prev.getUTCMonth() - 1);
-  await expect(page.getByRole('heading', { level: 1, name: monthTitle(prev) }).first()).toBeVisible();
+  await expect(page.locator('.ty-monthnav')).toContainText(monthTitle(prev));
   await expect(page).toHaveURL(/month=\d{4}-\d{2}/);
   // A standing budget applies to every month, but nothing was spent last month.
   await expect(pillOf(srow(page, /Food/))).toContainText('300.00');

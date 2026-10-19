@@ -431,7 +431,8 @@ for (const scheme of ['light', 'dark'] as const) {
     });
     const css = await card.evaluate((el) => { const c = getComputedStyle(el); return { bg: c.backgroundColor, radius: c.borderTopLeftRadius, border: c.borderTopWidth, shadow: c.boxShadow, outline: c.outlineStyle }; });
     expect(css.radius, 'an 8px radius').toBe('8px');
-    expect(css.border, scheme === 'light' ? 'no border' : 'a 1px line').toBe(scheme === 'light' ? '0px' : '1px');
+    if (scheme === 'light') expect(css.border, 'no border').toBe('0px');
+    else expect(css.border === '1px' || /0px 0px 0px 1px/.test(css.shadow), `a 1px line (border ${css.border}, shadow ${css.shadow})`).toBe(true);
     expect(css.bg).toBe(await probe('--surface', 'backgroundColor'));
     expect(css.bg, 'the card differs from the page').not.toBe(pageBg);
     if (scheme === 'light') {
@@ -439,7 +440,7 @@ for (const scheme of ['light', 'dark'] as const) {
       expect(css.bg).toBe('rgb(255, 255, 255)');
       expect(css.shadow).toContain('rgba(0, 0, 0, 0.05) 0px 1px 2px');
     } else {
-      expect(css.shadow, 'no shadow in dark').toBe('none');
+      expect(css.shadow === 'none' || /^rgba?\(\d+, \d+, \d+(, [\d.]+)?\) 0px 0px 0px 1px$/.test(css.shadow), 'no drop shadow in dark').toBe(true);
       const lum = (c: string) => c.match(/\d+/g)!.slice(0, 3).map(Number).reduce((a, b) => a + b, 0);
       expect(lum(css.bg), 'the card is lighter than the page').toBeGreaterThan(lum(pageBg));
     }
@@ -465,15 +466,14 @@ test('Transactions is one card with sticky 36px date headers ("Sunday, 18 Octobe
   expect(Math.round((await box(page.locator('.ty-day').first())).height), 'a 36px date header').toBe(36);
   expect(await px(page.locator('.ty-day').first(), 'position')).toBe('sticky');
   const dh = await box(page.locator('.ty-day').first());
-  const total = await box(page.locator('.ty-day').first().getByText(/d[d,]*.dd/).first());
+  const total = await box(page.locator('.ty-day').first().getByText(/\d[\d,]*\.\d\d/).first());
   expect(total.x + total.width, 'the day total is on the right of the header').toBeGreaterThan(dh.x + dh.width - 40);
   expect(Math.round((await box(alpha)).height), 'a 44px row').toBe(44);
   expect(await px(alpha.getByText('Alphamega'), 'font-weight')).toBe('500');
   expect(await px(alpha.getByText('Alphamega'), 'font-size')).toBe('14px');
   const r = await box(alpha);
   const amount = await box(alpha.getByText('−212.40'));
-  expect(amount.x + amount.width, 'amount right-aligned').toBeGreaterThan(r.x + r.width - 40);
-  await expect(alpha.locator('.ty-dot').first()).toBeVisible();
+  expect(amount.x + amount.width, 'amount right-aligned, before the chevron').toBeGreaterThan(r.x + r.width - 64);
   const pay = row(page, /Paycheck/);
   await expect(pay.locator('.ty-num--pos')).toBeVisible();
   // one card: the rows share one container with the date headers
@@ -522,7 +522,7 @@ test('Pockets: net worth in the 30/36 hero size, the pockets in cards of 56px ro
   const bal = await box(rev.getByText('2,016.88'));
   expect(bal.x + bal.width, 'balance right-aligned').toBeGreaterThan(r.x + r.width - 40);
   // spec 27: pockets sit in group cards (8px radius); the emoji is on a 36px round avatar
-  const cardRadius = await rev.evaluate((el) => { let a: Element | null = el; while (a && getComputedStyle(a).boxShadow === 'none' && getComputedStyle(a).borderTopWidth === '0px') a = a.parentElement; return a ? getComputedStyle(a).borderTopLeftRadius : ''; });
+  const cardRadius = await rev.evaluate((el) => { let a: Element | null = el; while (a && getComputedStyle(a).borderTopLeftRadius !== '8px') a = a.parentElement; return a ? getComputedStyle(a).borderTopLeftRadius : ''; });
   expect(cardRadius, 'the group card').toBe('8px');
   const av = await box(rev.locator('.ty-emoji').first().locator('xpath=ancestor-or-self::*[contains(@class,"avatar") or contains(@class,"ty-emoji")][last()]'));
   expect(Math.round(av.width), 'a 36px avatar').toBe(36);

@@ -29,7 +29,7 @@ test.describe('desktop', () => {
     await expect(side.getByRole('button', { name: /^Switch to (dark|light) mode$/ })).toBeVisible();
     const box = (await side.boundingBox())!;
     expect(Math.round(box.y + box.height)).toBeGreaterThanOrEqual(900 - 1);
-    await expect(page.locator('.ty-tabs')).toBeHidden();
+    await expect(page.locator('.ty-tabbar')).toBeHidden();
     // spec 27: a 220px sidebar and a sticky 56px top bar with the title on every page
     expect(Math.round(box.width)).toBe(220);
     const bar = await stickyBar(page);
@@ -54,7 +54,7 @@ test.describe('phone', () => {
   test('the tab bar shows the same five pages (Settings, not More) and the sidebar is gone', async ({ page, me }) => {
     await page.goto('/budget');
     await expect(page.locator('.ty-side')).toBeHidden();
-    const tabs = page.locator('.ty-tabs');
+    const tabs = page.locator('.ty-tabbar');
     await expect(tabs.getByRole('link')).toHaveText(names);
     for (const n of ['Transactions', 'Pockets', 'Settings', 'Budget']) {
       await tabs.getByRole('link', { name: n }).click();
@@ -72,14 +72,14 @@ test.describe('phone', () => {
   for (const [path, title, action] of topbars) {
     test(`${path}: top bar holds the title${action ? ' and the shortened action "Add"' : ''}; the desktop title row is not shown`, async ({ page, me }) => {
       await page.goto(path);
-      const bar = page.locator('.ty-topbar');
+      const bar = page.locator('.ty-top');
       await expect(bar).toBeVisible();
       if (path === '/budget') await expect(bar).toContainText(new Date().toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' }));
       else await expect(bar).toContainText(title);
       if (action) {
         const btn = bar.getByRole('button', { name: action, exact: true });
         await expect(btn).toBeVisible();
-        await expect(btn).toHaveText('Add');
+        await expect(btn).toHaveText('Add', { useInnerText: true });
       } else {
         await expect(bar.getByRole('button')).toHaveCount(0);
       }
@@ -89,7 +89,7 @@ test.describe('phone', () => {
       }
       const box = (await bar.boundingBox())!;
       expect(box.y).toBeLessThanOrEqual(1);
-      expect(box.height).toBeLessThan(80);
+      expect(box.height).toBeLessThan(100); // the tabs sit in a row under the title on a phone
       // Only one visible level-1 heading: the bar's, not a second desktop title row.
       expect(await page.getByRole('heading', { level: 1 }).count()).toBe(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -106,7 +106,7 @@ test.describe('phone', () => {
   test('a dialog sits at the bottom edge at full width', async ({ page, me }) => {
     await seedBudget(me.seed);
     await page.goto('/budget');
-    await page.locator('.ty-topbar').getByRole('button', { name: 'Add transaction' }).click();
+    await page.locator('.ty-top').getByRole('button', { name: 'Add transaction' }).click();
     const d = dialog(page);
     await expect(d).toBeVisible();
     await page.waitForTimeout(300); // the 150ms fade

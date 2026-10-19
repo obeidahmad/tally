@@ -103,16 +103,13 @@ test('the Pockets header shows Net worth, the total in the base currency and one
 
 test.describe('phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
-  test('Transfer is visible under the net worth line and spans the content width', async ({ page, me }) => {
+  test('Transfer is visible on a phone as a 44px outline button in the top bar (spec 27)', async ({ page, me }) => {
     await me.seed.pocket('Bank of Cyprus', 100000);
     await page.goto('/pockets');
     const btn = page.getByRole('button', { name: 'Transfer', exact: true });
     await expect(btn).toBeVisible();
-    const line = (await page.locator('.num-hero').first().boundingBox())!; // the "in EUR" line is hidden when it only repeats the net worth
     const b = (await btn.boundingBox())!;
-    const content = (await page.locator('main').first().boundingBox())!;
-    expect(b.y).toBeGreaterThanOrEqual(line.y + line.height - 1);
-    expect(b.width).toBeGreaterThanOrEqual((content.width - 32) * 0.9);
+    expect(b.height).toBeGreaterThanOrEqual(44);
   });
 });
 
@@ -229,7 +226,7 @@ test('the Transactions page Pocket filter shows a transfer for either of its poc
   await expect(page.getByLabel('Pocket').locator('option')).toHaveCount(3); // All pockets + the two
   await selectLike(page.getByLabel('Pocket'), 'Revolut USD');
   await expect(row(page, /Moved to Revolut USD/)).toBeVisible();
-  await page.getByLabel('Pocket').selectOption({ label: 'All pockets' });
+  await page.getByLabel('Pocket').selectOption({ label: 'Pocket' });
   await selectLike(page.getByLabel('Pocket'), 'Bank of Cyprus');
   await expect(row(page, /Moved to Revolut USD/)).toBeVisible();
 });

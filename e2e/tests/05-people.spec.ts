@@ -84,7 +84,7 @@ test('a second person sees none of the first person\'s data on any page', async 
   await p2.goto('/pockets');
   await expect(p2.getByText('No pockets yet', { exact: false })).toBeVisible();
   await expect(p2.getByText('Revolut')).toHaveCount(0);
-  await expect(p2.getByText('Signed in as Otto')).toBeVisible();
+  await expect(p2.locator('.ty-side').getByText('Otto')).toBeVisible();
   await shot(p2, 'second-person-pockets-desktop-light');
   await ctx.close();
 });

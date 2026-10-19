@@ -64,7 +64,7 @@ test('Home is first in the sidebar and the tab bar, is where /setup and the root
   expect((await side.getByRole('link').first().innerText()).trim()).toBe('Home');
   await expect(side.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page');
   await page.setViewportSize(phone);
-  const tabs = page.locator('.ty-tabs');
+  const tabs = page.locator('.ty-tabbar');
   expect((await tabs.getByRole('link').first().innerText()).trim()).toBe('Home');
   await expect(tabs.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page');
 });
@@ -391,7 +391,8 @@ test('Reports starts with "Where <month>\'s money went", whose table lists every
   // spec 27: the sources feed one "Income" node, which feeds the sections. The API links from a source become "<source> -> Income"
   // with the source's total; every other link of the API is a row of its own.
   const isSource = (id: string | number) => f.nodes.find((n) => n.id === id)!.kind === 'source';
-  const others = f.links.filter((l) => !isSource(l.from));
+  // spec 27 (decisions after the first build): no "Kept" or "Left over" node; sections show what they spent
+  const others = f.links.filter((l) => !isSource(l.from) && !['Kept', 'Left over'].includes(label(f, l.to)));
   for (const l of others) {
     const hit = rows.find((r) => r.includes(label(f, l.from)) && r.includes(label(f, l.to)) && r.includes(fmt(l.minor)));
     expect(hit, `${label(f, l.from)} to ${label(f, l.to)} ${fmt(l.minor)} in ${JSON.stringify(rows)}`).toBeTruthy();
@@ -400,8 +401,10 @@ test('Reports starts with "Where <month>\'s money went", whose table lists every
     const total = f.links.filter((l) => l.from === src.id).reduce((a, l) => a + l.minor, 0);
     expect(rows.find((r) => r.includes(src.label) && r.includes('Income') && r.includes(fmt(total))), `${src.label} to Income ${fmt(total)}`).toBeTruthy();
   }
-  for (const l of f.links.filter((x) => isSource(x.from))) {
-    expect(rows.find((r) => r.includes('Income') && r.includes(label(f, l.to)) && r.includes(fmt(l.minor))), `Income to ${label(f, l.to)}`).toBeTruthy();
+  expect(rows.find((r) => r.includes('Income') && r.includes('Not spent') && r.includes('1,700.00')), 'Income to Not spent').toBeTruthy();
+  for (const sec of f.nodes.filter((n) => n.kind === 'section')) {
+    const spent = f.links.filter((l) => l.from === sec.id && label(f, l.to) !== 'Kept').reduce((acc, l) => acc + l.minor, 0);
+    expect(rows.find((r) => r.includes('Income') && r.includes(sec.label) && r.includes(fmt(spent))), `Income to ${sec.label} ${fmt(spent)}`).toBeTruthy();
   }
   await expect(c.getByRole('button', { name: /Show as chart/ }).or(c.getByRole('checkbox', { name: /Show as table/ })).or(c.getByRole('switch', { name: /Show as table/ })).first()).toBeVisible();
 });
@@ -412,7 +415,7 @@ test('the diagram shows the labels and amounts of its nodes, and a link\'s toolt
   const c = flowCard(page);
   const svg = c.locator('svg').first();
   await expect(svg).toBeVisible();
-  for (const t of ['Paycheck', 'Needs', 'Wants', 'Rent', 'Food', 'Fun', 'Left over', 'Kept']) await expect(svg).toContainText(t);
+  for (const t of ['Paycheck', 'Needs', 'Wants', 'Rent', 'Fun', 'Not spent', 'Income']) // Food (100.00) is under 30px tall: its label shows on hover only; the table has it await expect(svg).toContainText(t);
   await expect(svg).toContainText('3,000.00');
   const marks = svg.locator('[tabindex="0"]');
   const n = await marks.count();
@@ -423,9 +426,9 @@ test('the diagram shows the labels and amounts of its nodes, and a link\'s toolt
     const tip = tooltip(page);
     if (await tip.count()) seen.push(norm(await tip.first().innerText()));
   }
-  expect(seen, JSON.stringify(seen)).toContain('Income → Needs: 1,000.00'); // spec 27: the Income node sits between
+  expect(seen, JSON.stringify(seen)).toContain('Income → Needs: 800.00'); // spec 27: the Income node sits between
   expect(seen).toContain('Paycheck → Income: 3,000.00');
-  expect(seen).toContain('Needs → Kept: 200.00');
+  expect(seen).toContain('Income → Not spent: 1,700.00');
 });
 
 test('the month ‹ › of the card moves to last month, where nothing happened, and back', async ({ page, me }) => {

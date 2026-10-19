@@ -11,8 +11,8 @@ const sizes = {
 
 // Token values from the spec's table, as the browser reports them.
 const TOKENS = {
-  light: { surface: 'rgb(255, 255, 255)', sunken: 'rgb(244, 242, 238)', ink: 'rgb(31, 30, 28)', muted: 'rgb(110, 106, 100)' },
-  dark: { surface: 'rgb(29, 29, 32)', sunken: 'rgb(25, 25, 28)', ink: 'rgb(236, 235, 232)', muted: 'rgb(161, 157, 151)' },
+  light: { edge: 'rgb(214, 210, 203)', surface: 'rgb(255, 255, 255)', sunken: 'rgb(244, 242, 238)', ink: 'rgb(31, 30, 28)', muted: 'rgb(110, 106, 100)' },
+  dark: { edge: 'rgb(58, 58, 64)', surface: 'rgb(29, 29, 32)', sunken: 'rgb(25, 25, 28)', ink: 'rgb(236, 235, 232)', muted: 'rgb(161, 157, 151)' },
 } as const;
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 
@@ -52,12 +52,12 @@ test('transaction dialog: "Type" is a ty-segmented of "Expense" and "Income"; ti
   await expect(g.getByRole('radio')).toHaveCount(3);
   await expect(g.locator('.ty-chip')).toHaveCount(0);
   await expect(chip(d, 'Type', 'Expense')).toBeChecked();
-  await expect(d.getByRole('button', { name: 'Add expense', exact: true })).toHaveClass(/ty-btn--spend/);
+  await expect(d.getByRole('button', { name: 'Add expense', exact: true })).toHaveClass(/ty-btn--primary/);
   await expect(d.getByLabel('Subsection')).toBeVisible();
 
   await chip(d, 'Type', 'Income').check();
   await expect(d.getByRole('heading', { name: 'Add income' })).toBeVisible();
-  await expect(d.getByRole('button', { name: 'Add income', exact: true })).toHaveClass(/ty-btn--income/);
+  await expect(d.getByRole('button', { name: 'Add income', exact: true })).toHaveClass(/ty-btn--primary/);
   await expect(d.getByLabel('Subsection')).toBeHidden();
 
   await chip(d, 'Type', 'Expense').check();
@@ -137,7 +137,7 @@ for (const scheme of ['light', 'dark'] as const) {
     const n = await labels.count();
     await expect.poll(async () => (await track(d, legend).evaluate((e) => getComputedStyle(e).backgroundColor)), `${what}: track`).toBe(t.sunken);
     for (let i = 0; i < n; i++) {
-      if (i === chosen) await expect.poll(() => paint(labels.nth(i)), `${what}: chosen segment`).toEqual({ bg: t.surface, border: t.ink, fg: t.ink });
+      if (i === chosen) await expect.poll(() => paint(labels.nth(i)), `${what}: chosen segment`).toEqual({ bg: t.surface, border: t.edge, fg: t.ink }) // spec 27: the chosen segment is a white chip on a line-strong edge;
       else {
         await expect.poll(async () => (await paint(labels.nth(i))).bg, `${what}: segment ${i} has no background`).toBe(TRANSPARENT);
         await expect.poll(async () => (await paint(labels.nth(i))).fg, `${what}: segment ${i} text`).toBe(t.muted);

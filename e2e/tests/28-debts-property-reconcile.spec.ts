@@ -5,7 +5,8 @@ import type { Page, Locator } from '@playwright/test';
 // Screenshots: spec23-<state>-<desktop|phone>-<light|dark>.png in e2e/screenshots/.
 const hero = (page: Page) => page.locator('.num-hero').first();
 /** A group card of the Pockets page, found by its title. */
-const groupCard = (page: Page, title: string): Locator => page.getByRole('region', { name: title, exact: true });
+// the SummaryCard (Assets, Debts) is a region with the same name: the group card is the one with buttons in it
+const groupCard = (page: Page, title: string): Locator => page.getByRole('region', { name: title, exact: true }).filter({ has: page.getByRole('button') }).first();
 const lastDialog = (page: Page) => dialog(page).last();
 const MONTH_DAY = (d = new Date()) => `${d.getUTCDate()} ${d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}`;
 
@@ -143,7 +144,7 @@ test('the Pockets page groups pockets in the order Cash, Investments, Property, 
   await expect(hero(page)).toContainText('248,750.00');
   await expect(page.getByText('Net worth', { exact: true })).toBeVisible();
   await expect(page.getByText(/Assets\s*251,250\.00/)).toBeVisible();
-  await expect(page.getByText(/Debts\s*2,500\.00/)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Debts', exact: true }).last()).toContainText('2,500.00');
   const titles = ['Cash', 'Investments', 'Property', 'Debts'];
   const ys: number[] = [];
   for (const t of titles) ys.push((await groupCard(page, t).boundingBox())!.y);

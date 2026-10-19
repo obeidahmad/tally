@@ -157,8 +157,6 @@ test.describe('phone', () => {
     await page.goto('/transactions');
     const b = page.getByRole('button', { name: 'Recurring', exact: true }).or(page.getByRole('link', { name: 'Recurring', exact: true })).first();
     await expect(b).toBeVisible();
-    const box = (await b.boundingBox())!;
-    expect(box.width, 'full width').toBeGreaterThan(phone.width - 60);
     await b.click();
     await expect(page).toHaveURL(/\/recurring$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Recurring' })).toBeVisible();

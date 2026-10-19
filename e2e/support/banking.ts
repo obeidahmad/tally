@@ -1,6 +1,6 @@
 import { generateKeyPairSync, randomUUID } from 'node:crypto';
 import { expect, type Page } from '@playwright/test';
-import { dialog, group, selectLike } from './fixtures';
+import { dialog, group, selectLike, openTab } from './fixtures';
 
 // Spec 17. The fake Enable Banking runs next to the test server (see start-server.mjs), on the next port.
 export const BANK_BASE = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? '3210') + 1}`;
@@ -72,7 +72,7 @@ export async function pick(scope: ReturnType<typeof dialog>, label: string, text
 
 /** Settings > Connect a bank > Continue, through the fake bank and back. Ends with the success toast. */
 export async function connectBank(page: Page, bank = 'Bank of Cyprus', country = 'Cyprus') {
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await page.getByRole('button', { name: 'Connect a bank', exact: true }).click();
   const d = dialog(page);
   await pick(d, 'Country', country);

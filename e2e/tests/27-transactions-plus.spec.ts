@@ -90,19 +90,19 @@ test('From and To bound the list by date, both inclusive', async ({ page, me }) 
   const today = todayIso();
   const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   await page.goto('/transactions');
-  await expect(page.getByLabel('From')).toHaveCount(0); // hidden until the Dates chip is on
+  await expect(page.getByLabel('From', { exact: true })).toHaveCount(0); // hidden until the Dates chip is on
   await page.getByRole('checkbox', { name: 'Dates' }).or(page.getByRole('button', { name: 'Dates' })).first().click();
-  await page.getByLabel('From').fill(today);
-  await page.getByLabel('To').fill(today);
+  await page.getByLabel('From', { exact: true }).fill(today);
+  await page.getByLabel('To', { exact: true }).fill(today);
   await expect(row(page, /Alphamega/)).toBeVisible(); // today is inside both ends
-  await page.getByLabel('From').fill(tomorrow);
-  await page.getByLabel('To').fill('');
+  await page.getByLabel('From', { exact: true }).fill(tomorrow);
+  await page.getByLabel('To', { exact: true }).fill('');
   await expect(page.getByText(FILTERS_NONE)).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel('From')).toHaveValue(tomorrow); // the chip is on by itself
+  await expect(page.getByLabel('From', { exact: true })).toHaveValue(tomorrow); // the chip is on by itself
   await expect(page.getByText(FILTERS_NONE)).toBeVisible();
   await page.getByRole('checkbox', { name: 'Dates' }).or(page.getByRole('button', { name: 'Dates' })).first().click(); // off clears both
-  await expect(page.getByLabel('From')).toHaveCount(0);
+  await expect(page.getByLabel('From', { exact: true })).toHaveCount(0);
   await expect(row(page, /Alphamega/)).toBeVisible();
 });
 

@@ -67,8 +67,9 @@ test('the Recurring page has a "Bills calendar" card under the headline, with th
   await expect(c).toContainText(monthTitle());
   await expect(prev(c)).toBeVisible();
   await expect(next(c)).toBeVisible();
-  const about = (await page.getByText(/^About .* a month in/).boundingBox())!;
-  expect((await c.boundingBox())!.y, 'under the headline').toBeGreaterThan(about.y);
+  await selectTab(page, 'Upcoming'); // spec 27: the headline is on the Upcoming tab, the calendar has its own
+  await expect(page.getByText(/^About .* a month in/)).toBeVisible();
+  await selectTab(page, 'Calendar');
   await next(c).click();
   await expect(c).toContainText(monthTitle(new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1))));
   await prev(c).click();

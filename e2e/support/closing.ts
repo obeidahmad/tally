@@ -80,7 +80,7 @@ export async function seedExample(page: Page, s: Seed = seed(page)) {
 }
 
 // ---- finders ----
-export const titlePill = (page: Page) => page.locator('.ty-month__top .ty-pill').first();
+export const titlePill = (page: Page) => page.locator('.ty-top .ty-pill').first();
 export const notices = (page: Page) => page.locator('.ty-inset');
 export { stat, bsection } from './fixtures';
 /** A node of the Pipeline diagram, by its accessible name. */

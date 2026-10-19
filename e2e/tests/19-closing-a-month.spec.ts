@@ -105,7 +105,7 @@ test('closing shows the toast, drops the reminder, September reads "Closed" with
   expect(await monthsApi(page)).toEqual({ lastClosed: sepIso, toClose: null });
 
   await page.getByRole('button', { name: 'Previous month' }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: sepTitle }).first()).toBeVisible();
+  await expect(page.locator('.ty-monthnav')).toContainText(sepTitle);
   await expect(titlePill(page)).toHaveText('Closed');
   await expect(titlePill(page)).not.toHaveClass(/ty-pill--positive/);
   const n = notices(page).filter({ hasText: CLOSED_NOTICE });
@@ -142,7 +142,7 @@ for (const [size, viewport] of [['desktop', desktop], ['phone', phone]] as const
       await expect(dialog(page)).toHaveCount(0);
       // October still has them
       await page.goto('/budget');
-      await expect((size === 'phone' ? page.locator('.ty-topbar') : page).getByRole('button', { name: 'Add transaction', exact: true }).first()).toBeVisible();
+      await expect((size === 'phone' ? page.locator('.ty-top') : page).getByRole('button', { name: 'Add transaction', exact: true }).first()).toBeVisible();
       await expect(page.getByRole('button', { name: 'Add income', exact: true }).first()).toBeVisible();
     });
   });

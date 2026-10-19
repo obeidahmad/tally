@@ -106,7 +106,7 @@ test('"Pipeline" is in the sidebar right after "Budget" and opens the page, with
   await expect(page.getByRole('heading', { level: 1, name: 'Pipeline' })).toBeVisible();
   await expect(side.getByRole('link', { name: 'Pipeline' })).toHaveAttribute('aria-current', 'page');
   await expect(side.getByRole('link', { name: 'Budget' })).not.toHaveAttribute('aria-current', 'page');
-  await expect(page.getByText(monthTitle(), { exact: true }).first()).toBeVisible();
+  await expect(page.locator('.ty-monthnav')).toContainText(monthTitle());
   await expect(page.getByRole('button', { name: 'Next month', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Previous month' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Add section', exact: true })).toBeVisible();
@@ -134,7 +134,7 @@ test('the page takes ?month= and the standing steps apply to the month in view',
   const prev = new Date();
   prev.setUTCDate(1);
   prev.setUTCMonth(prev.getUTCMonth() - 1);
-  await expect(page.getByText(monthTitle(prev), { exact: true }).first()).toBeVisible();
+  await expect(page.locator('.ty-monthnav')).toContainText(monthTitle(prev));
   await expect(page).toHaveURL(/month=\d{4}-\d{2}/);
   await expect(page.getByRole('button', { name: 'Next month', exact: true })).toBeEnabled();
   // no income last month: the steps are still there and take nothing
@@ -145,7 +145,7 @@ test('the page takes ?month= and the standing steps apply to the month in view',
   await page.getByRole('button', { name: 'Next month', exact: true }).click();
   await expect(lefts(page.locator('.ty-pipe')).first()).toHaveText('2,535.00 left');
   await page.goto(`/pipeline?month=${prev.toISOString().slice(0, 7)}`);
-  await expect(page.getByText(monthTitle(prev), { exact: true }).first()).toBeVisible();
+  await expect(page.locator('.ty-monthnav')).toContainText(monthTitle(prev));
 });
 
 test.describe('phone', () => {
@@ -154,14 +154,14 @@ test.describe('phone', () => {
   test('"Pipeline" is not in the tab bar, and at 390px the page shows only the top bar and "The pipeline needs a wider screen for now."', async ({ page, me }) => {
     await seedPipeline(me.seed);
     await page.goto('/budget');
-    await expect(page.locator('.ty-tabs').getByRole('link')).toHaveText(['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']);
+    await expect(page.locator('.ty-tabbar').getByRole('link')).toHaveText(['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']);
     await page.goto('/pipeline');
     await expect(page.getByText(WIDER)).toBeVisible();
-    await expect(page.locator('.ty-topbar')).toContainText('Pipeline');
+    await expect(page.locator('.ty-top')).toContainText('Pipeline');
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
     await expect(page.locator('.ty-pipe')).toBeHidden(); // rendered or not, never shown at this width
     await expect(page.getByRole('button', { name: 'Add income source' })).toBeHidden();
-    await expect(page.locator('.ty-tabs').getByRole('link')).toHaveText(['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']);
+    await expect(page.locator('.ty-tabbar').getByRole('link')).toHaveText(['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await shot(page, 'spec06-pipeline-phone-light');
   });

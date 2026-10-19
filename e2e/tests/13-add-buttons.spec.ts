@@ -6,15 +6,15 @@ import type { Page } from '@playwright/test';
 // Spec 27 replaces the coloured buttons: top-bar actions are outline buttons with at most one primary (orange, white 600 text).
 // Only the focus ring colour (--brand) is a token here.
 const TOKENS = {
-  light: { focus: 'rgb(242, 106, 50)' },
-  dark: { focus: 'rgb(244, 122, 69)' },
+  light: { focus: 'rgb(201, 70, 26)' }, // design README: the focus ring is --primary
+  dark: { focus: 'rgb(201, 70, 26)' },
 } as const;
 const desktop = { width: 1280, height: 900 };
 const phone = { width: 390, height: 844 };
 
 const paint = (l: import('@playwright/test').Locator) =>
   l.evaluate((e) => ({ bg: getComputedStyle(e).backgroundColor, fg: getComputedStyle(e).color }));
-const rgb = (c: string) => c.match(/[d.]+/g)!.map(Number);
+const rgb = (c: string) => (c.match(/[\d.]+/g) ?? ['0', '0', '0']).map(Number); // 'transparent' has no digits
 const lum = ([r, g, b]: number[]) => [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
 /** A primary button: an orange fill with white text that passes 4.5:1. */
 const isPrimary = async (l: import('@playwright/test').Locator) => {
@@ -117,8 +117,8 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.setViewportSize(phone);
       await seedBudget(me.seed);
       await page.goto('/budget');
-      const add = page.locator('.ty-topbar').getByRole('button', { name: 'Add transaction', exact: true });
-      await expect(add).toHaveText('Add');
+      const add = page.locator('.ty-top').getByRole('button', { name: 'Add transaction', exact: true });
+      await expect(add).toHaveText('Add', { useInnerText: true });
       await isPrimary(add);
 
       const inc = addIncome(page);
@@ -149,8 +149,8 @@ for (const scheme of ['light', 'dark'] as const) {
       await shot(page, `spec03-transactions-desktop-${scheme}`);
 
       await page.setViewportSize(phone);
-      const add = page.locator('.ty-topbar').getByRole('button', { name: 'Add transaction', exact: true });
-      await expect(add).toHaveText('Add');
+      const add = page.locator('.ty-top').getByRole('button', { name: 'Add transaction', exact: true });
+      await expect(add).toHaveText('Add', { useInnerText: true });
       await isPrimary(add);
       await expect(addIncome(page)).toHaveCount(0);
       await shot(page, `spec03-transactions-phone-${scheme}`);
@@ -171,8 +171,8 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(add).toBeVisible();
       await isPrimary(add);
       await page.setViewportSize(phone);
-      const top = page.locator('.ty-topbar').getByRole('button', { name: 'Add pocket', exact: true });
-      await expect(top).toHaveText('Add');
+      const top = page.locator('.ty-top').getByRole('button', { name: 'Add pocket', exact: true });
+      await expect(top).toHaveText('Add', { useInnerText: true });
       await isPrimary(top);
     });
 

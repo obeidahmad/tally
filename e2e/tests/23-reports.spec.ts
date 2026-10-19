@@ -38,13 +38,14 @@ const tx = async (page: Page, data: object) => {
 // ("Spending by section") and the stacked bars over time, the Net worth tab the area chart.
 const TABS = { 'Cash flow': 'Cash flow', 'Spending by section': 'Spending', 'Net worth': 'Net worth' } as const;
 const TITLES = ['Spending by section', 'Cash flow', 'Net worth'] as const;
-const card = (page: Page, title: (typeof TITLES)[number] | 'Top payees'): Locator =>
+const card = (page: Page, title: string): Locator =>
   page.locator('.ty-card', { has: page.getByRole('heading', { name: title, exact: true }) });
 /** Opens /reports on the tab that holds this chart, and returns the chart's scope: its card (the Spending tab: the whole tab, since
  * the donut and the stacked bars are both "spending by section"). */
 async function chartOf(page: Page, title: (typeof TITLES)[number]): Promise<Locator> {
   await openTab(page, '/reports', TABS[title]);
-  return title === 'Spending by section' ? page.getByRole('tabpanel') : card(page, title);
+  // "Spending by section" in this file means the stacked bars over time (the donut has its own test)
+  return title === 'Spending by section' ? card(page, 'Spending by section over time') : card(page, title);
 }
 const toggle = (c: Locator) =>
   c.getByRole('button', { name: /Show as table|Show as chart/ }).or(c.getByRole('checkbox', { name: /Show as table/ })).or(c.getByRole('switch', { name: /Show as table/ })).first();
@@ -78,15 +79,7 @@ async function seedReports(page: Page, me: { seed: import('../support/fixtures')
 }
 
 /** Shows the card's table and returns its body rows' text, oldest first (the spec orders months oldest first). */
-async function tableRows(c: Locator, spending = false) {
-  if (spending) {
-    // the stacked bars over time have a column per section; the donut's table lists the sections in rows
-    const t = c.locator('table').filter({ has: c.page().locator('thead', { hasText: 'Needs' }) }).filter({ has: c.page().locator('thead', { hasText: 'Wants' }) }).first();
-    for (const b of await c.getByRole('button', { name: 'Show as table' }).all()) if (!(await t.isVisible())) await b.click();
-    await expect(t).toBeVisible();
-    await expect(t.locator('tbody tr').first()).toBeVisible();
-    return (await t.locator('tbody tr').allInnerTexts()).map(clean);
-  }
+async function tableRows(c: Locator, _spending = false) {
   const t = c.locator('table');
   if (!(await t.isVisible())) await toggle(c).click();
   await expect(t).toBeVisible();
@@ -100,7 +93,7 @@ const hasFigures = (text: string, minors: number[], what: string) => {
 
 // ============ navigation and page ============
 test('the sidebar lists Reports after Investments and opens /reports with the title and 12 months chosen', async ({ page, me }) => {
-  void me;
+  await seedReports(page, me); // with nothing to show a card has no "Show as table"
   await page.goto('/budget');
   const nav = page.getByRole('navigation').filter({ has: page.getByRole('link', { name: 'Investments' }) }).first();
   const names = (await nav.getByRole('link').allInnerTexts()).map(clean);
@@ -119,7 +112,9 @@ test('the sidebar lists Reports after Investments and opens /reports with the ti
     await expect(c.getByRole('radio', { name: '12 months' })).toBeChecked();
     await expect(toggle(c)).toContainText('Show as table');
   }
-  await expect(await chartOf(page, 'Spending by section')).toContainText('Spending by section');
+  await openTab(page, '/reports', 'Spending');
+  await expect(card(page, 'Spending by section')).toBeVisible(); // the donut
+  await expect(await chartOf(page, 'Spending by section')).toBeVisible(); // the bars over time
 });
 
 // ============ criterion 2: the tables show the server's figures ============
@@ -160,7 +155,7 @@ test('the spending table names every section and shows 0.00-month rows for month
   await seedReports(page, me);
   const c = await chartOf(page, 'Spending by section');
   await tableRows(c, true);
-  const head = clean(await c.locator('table thead').filter({ hasText: 'Needs' }).first().innerText());
+  const head = clean(await c.locator('table thead').first().innerText());
   expect(head.toLowerCase()).toContain('needs');
   expect(head.toLowerCase()).toContain('wants');
 });
@@ -232,7 +227,8 @@ test('the API refuses months outside 3, 6, 12 and 24', async ({ page, me }) => {
 // ============ criterion 3: tooltips and legends ============
 test('the legends name every section, and Cash flow names income and spending', async ({ page, me }) => {
   await seedReports(page, me);
-  const s = await chartOf(page, 'Spending by section');
+  await openTab(page, '/reports', 'Spending');
+  const s = card(page, 'Spending by section'); // the donut
   // the donut is of the chosen month: last month had Needs 300.00 and Wants 50.00
   await page.getByRole('button', { name: /^(Previous month|‹)$/ }).first().click();
   await expect(s).toContainText('Needs');

@@ -58,7 +58,7 @@ async function samBudget(s: Seed) {
 /** Alex switches to Sam's budget with the switcher in the sidebar (desktop). */
 const switcher = (page: Page): Locator => page.locator('.ty-side').getByRole('combobox', { name: 'Budget' });
 const sharingCard = (page: Page): Locator => page.locator('.ty-card', { has: page.getByRole('heading', { name: 'Sharing', exact: true }) });
-const FOOT_VIEWING = (name: string, owner: string) => new RegExp(`Signed in as ${name}\\s*·\\s*viewing the budget of ${owner}`);
+const FOOT_VIEWING = (name: string, owner: string) => new RegExp(`${name}\\s*viewing the budget of ${owner}`);
 const NOT_YOURS = 'Only Sam can change this.';
 
 async function switchTo(page: Page, option: string) {

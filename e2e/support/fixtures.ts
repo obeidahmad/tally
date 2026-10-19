@@ -221,7 +221,8 @@ export async function seedPipeline(s: Seed) {
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /** A pocket's row on the Pockets page: the tappable row that holds its name. */
-export const pocketRow = (scope: Page | Locator, name: string) => scope.getByRole('button', { name: new RegExp(esc(name), 'i') }).first();
+export const pocketRow = (scope: Page | Locator, name: string) =>
+  scope.getByRole('button', { name: new RegExp(esc(name), 'i') }).filter({ has: ('page' in scope && typeof (scope as Locator).page === 'function' ? (scope as Locator).page() : (scope as Page)).locator('.ty-emoji') }).first(); // the group heading is a button too: a pocket row holds an emoji
 /** Every pocket row of the Pockets page (a button that holds a pocket emoji). */
 export const pocketRows = (page: Page) => page.getByRole('button').filter({ has: page.locator('.ty-emoji') });
 
@@ -274,10 +275,9 @@ export const subNames = (page: Page, sectionName: string) =>
 
 /** One figure of the month summary (Income, Budgeted, Spent, Left over): the row or tile of its label. */
 export const stat = (page: Page, label: string): Locator =>
-  page.locator('.ty-sumrow, .ty-stat').filter({ has: page.getByText(label === 'Spent' ? /^Spent( so far)?$/ : label, { exact: label !== 'Spent' }) }).first();
+  page.locator('.ty-statcard').filter({ has: page.getByText(label === 'Spent' ? /^Spent( so far)?$/ : label, { exact: label !== 'Spent' }) }).first();
 /** The whole month summary: the nearest block that holds both "Income" and "Left over". */
-export const summary = (page: Page): Locator =>
-  page.getByText('Income', { exact: true }).first().locator('xpath=ancestor::*[.//text()[normalize-space()="Left over"]][1]');
+export const summary = (page: Page): Locator => page.locator('.ty-statcards').first();
 
 /** A date header of the Transactions list, e.g. "Sunday, 18 October" (spec 27). */
 export const dayHeadingRe = (d = new Date()) =>
