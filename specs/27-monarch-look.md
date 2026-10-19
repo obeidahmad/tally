@@ -220,3 +220,4 @@ Pages are built only with design-system classes. No page-level CSS beyond layout
 - **Colour token values:** the design system's values are the reference. `positive` `#17783F` and `negative` `#BE3329` in light were darkened from this spec's starting values so text reaches 4.5:1. Tests read the tokens, not the starting values.
 - **The Reports months controls** default to 12 (spec 19).
 - **Transactions at 1280:** the filter row with Dates off stays on one line (spec 22).
+- **The focus ring** uses `primary`, because `brand` is under 3:1 on `bg`. In dark mode, a card's 1px edge may be a ring shadow.
