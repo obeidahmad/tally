@@ -224,9 +224,11 @@ test('the page text uses the display face and the emoji face by their variable f
   const fam = async (loc: Locator) => loc.first().evaluate((e) => getComputedStyle(e).fontFamily);
   expect(await fam(group(d, 'Emoji').locator('.ty-emojis, label').first())).toMatch(/Noto Emoji/);
   await page.keyboard.press('Escape');
-  // The Budget page title is text-display, set in Bricolage Grotesque, which the removed override used to break.
+  // Spec 27: IBM Plex Sans everywhere; Bricolage Grotesque is gone.
   await page.goto('/budget');
-  expect(await fam(page.getByRole('heading', { level: 1 }))).toMatch(/Bricolage Grotesque/);
+  expect(await fam(page.getByRole('heading', { level: 1 }))).toMatch(/IBM Plex Sans/);
+  expect(await fam(page.getByRole('heading', { level: 1 }))).not.toMatch(/Bricolage/);
   const loaded = await page.evaluate(async () => { await document.fonts.ready; return [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family); });
-  expect(loaded.join(' | ')).toMatch(/Bricolage Grotesque/);
+  expect(loaded.join(' | ')).toMatch(/IBM Plex Sans/);
+  expect(loaded.join(' | ')).not.toMatch(/Bricolage/);
 });

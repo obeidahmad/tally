@@ -1,8 +1,8 @@
-import { test, expect, dialog, row, srow, pillOf, seedBudget, bsection, restRow, collapse, cell, ruleCell, allHeads, shownHeads, subNames, summary, stat, btable, pocketRow, dayHeadingRe, shot, type Seed } from '../support/fixtures';
+import { test, expect, dialog, row, srow, pillOf, seedBudget, bsection, restRow, collapse, cell, ruleCell, allHeads, shownHeads, subNames, summary, stat, btable, pocketRow, dayHeadingRe, shot, stickyBar, darkWhenSystemIsDark, type Seed } from '../support/fixtures';
 import { MINUS, octIso, seedExample, closeApi } from '../support/closing';
 import type { Page, Locator } from '@playwright/test';
 
-// Spec 21: a compact, columnar look. Rows, columns, collapse, the phone table, the layouts and the surfaces.
+// Spec 21: a compact, columnar look; updated for spec 27 (the Monarch look) where it changed radii, shadows, colours, type and the top bar. Rows, columns, collapse, the phone table, the layouts and the surfaces.
 // Screenshots: spec21-<page>-<desktop|phone>-<light|dark>.png in e2e/screenshots/.
 const desktop = { width: 1280, height: 800 };
 const phone = { width: 390, height: 844 };
@@ -301,32 +301,31 @@ test.describe('phone', () => {
 });
 
 // ============ the Budget screen's layout ============
-test('wide (from 1464px): the table on the left and a 300px aside with the summary in label-left, amount-right rows', async ({ page, me }) => {
+test('wide (1500px): four equal stat cards above the table with the figure centred and the label under it, and a sticky 56px top bar', async ({ page, me }) => {
   await page.setViewportSize({ width: 1500, height: 800 });
   await seedBudget(me.seed);
   await page.goto('/budget');
   await expect(srow(page, /Food/)).toBeVisible();
   const t = await box(btable(page));
-  const sum = summary(page);
-  const s = await box(sum);
-  expect(s.x, 'the aside is right of the table').toBeGreaterThanOrEqual(t.x + t.width);
-  expect(Math.round(s.x - (t.x + t.width)), 'a 16px gap between the cards').toBe(16);
-  expect(Math.round(s.width), 'a 300px aside').toBe(300);
+  const boxes: Locator[] = [];
+  let prev: { x: number; width: number } | null = null;
   for (const [label, amount] of [['Income', '2,000.00'], ['Budgeted', '1,060.00'], ['Spent', '983.12'], ['Left over', '940.00']] as const) {
     const r = stat(page, label);
     await expect(r, label).toContainText(amount);
+    boxes.push(r);
+    const rb = await box(r);
+    expect(rb.y + rb.height, `${label} is above the table`).toBeLessThanOrEqual(t.y + 1);
     const lb = await box(r.getByText(label === 'Spent' ? /^Spent/ : label, { exact: label !== 'Spent' }).first());
     const ab = await box(r.getByText(amount, { exact: true }).first());
-    expect(lb.x, `${label} label is left of its amount`).toBeLessThan(ab.x);
-    expect(Math.abs(lb.y + lb.height / 2 - (ab.y + ab.height / 2)), `${label}: label and amount on one line`).toBeLessThan(4);
-    expect(ab.x + ab.width, `${label} amount is right-aligned in the card`).toBeGreaterThan(s.x + s.width - 24);
+    expect(ab.y, `${label}: the figure is above its label`).toBeLessThan(lb.y);
+    expect(Math.abs(ab.x + ab.width / 2 - (rb.x + rb.width / 2)), `${label}: the figure is centred`).toBeLessThan(6);
+    if (prev) expect(rb.x, 'cards are side by side').toBeGreaterThan(prev.x + prev.width - 1);
+    prev = rb;
   }
-  const order = (await sum.innerText()).replace(/\s+/g, ' ');
-  expect(order.indexOf('Income')).toBeLessThan(order.indexOf('Budgeted'));
-  expect(order.indexOf('Budgeted')).toBeLessThan(order.indexOf('Spent'));
-  expect(order.indexOf('Spent')).toBeLessThan(order.indexOf('Left over'));
-  // the month header is one 48px row, with Add income and Add transaction on the right
-  expect(Math.round((await box(page.locator('.ty-month__top').first())).height)).toBe(48);
+  const widths = await Promise.all(boxes.map(async (l) => Math.round((await box(l)).width)));
+  expect(Math.max(...widths) - Math.min(...widths), 'equal cards').toBeLessThanOrEqual(2);
+  const bar = await stickyBar(page);
+  expect(Math.round(bar!.height), 'a 56px top bar').toBe(56);
 });
 
 test('narrow (under 1464px): the four stats are one row above the table, and "Moved this month" goes below it', async ({ page, me }) => {
@@ -349,7 +348,7 @@ test('narrow (under 1464px): the four stats are one row above the table, and "Mo
   expect(moved.y, '"Moved this month" is below the table').toBeGreaterThanOrEqual(t.y + t.height - 1);
 });
 
-test('wide (1500px): "Moved this month" is in the aside under the summary', async ({ page, me }) => {
+test('wide (1500px): "Moved this month" is in the aside right of the table', async ({ page, me }) => {
   await page.setViewportSize({ width: 1500, height: 800 });
   const ex = await seedExample(page, me.seed);
   await closeApi(page);
@@ -358,29 +357,28 @@ test('wide (1500px): "Moved this month" is in the aside under the summary', asyn
   await page.goto('/budget');
   await expect(srow(page, /Food/)).toBeVisible();
   const t = await box(btable(page));
-  const s = await box(summary(page));
   const m = await box(page.getByText('Moved this month', { exact: true }));
   expect(m.x).toBeGreaterThanOrEqual(t.x + t.width);
-  expect(m.y).toBeGreaterThan(s.y + s.height - 1);
 });
 
 // ============ sizes ============
-test('desktop sizes: 24/30 page title, 14/20 body, 36px buttons, 28px small buttons, rows of 40px, 28px icon buttons', async ({ page, me }) => {
+test('desktop sizes: 20/28 page title, 14/20 body, 32px top-bar buttons, 28px small buttons, rows of 40px', async ({ page, me }) => {
   await page.setViewportSize(desktop);
   await seedBudget(me.seed);
   await page.goto('/budget');
   await expect(srow(page, /Food/)).toBeVisible();
   const h1 = page.getByRole('heading', { level: 1 }).first();
-  expect(await px(h1, 'font-size')).toBe('24px');
-  expect(await px(h1, 'line-height')).toBe('30px');
+  expect(await px(h1, 'font-size')).toBe('20px');
+  expect(await px(h1, 'line-height')).toBe('28px');
+  expect(await px(h1, 'font-weight')).toBe('600');
   const food = srow(page, /Food/);
   expect(await px(await cell(page, food, 'Subsection'), 'font-size')).toBe('14px');
   expect(await px(await cell(page, food, 'Subsection'), 'line-height')).toBe('20px');
   expect(Math.round((await box(food)).height)).toBe(40);
   expect(Math.round((await box(bsection(page, 'Needs'))).height)).toBe(40);
   expect(Math.round((await box(restRow(page, 'Needs'))).height)).toBe(40);
-  expect(Math.round((await box(page.getByRole('button', { name: 'Add transaction', exact: true }))).height)).toBe(36);
-  expect(Math.round((await box(page.getByRole('button', { name: 'Add income', exact: true }))).height)).toBe(36);
+  expect(Math.round((await box(page.getByRole('button', { name: 'Add transaction', exact: true }))).height)).toBe(32);
+  expect(Math.round((await box(page.getByRole('button', { name: 'Add income', exact: true }))).height)).toBe(32);
   expect(Math.round((await box(bsection(page, 'Needs').getByRole('button', { name: 'Edit Needs', exact: true }))).height)).toBe(28);
   expect(Math.round((await box(page.getByRole('button', { name: 'Add subsection to Needs', exact: true }))).height)).toBe(28);
   await expect(page.locator('.ty-btable__add')).toHaveCount(0);
@@ -412,10 +410,11 @@ test('a touch screen keeps a hit area of 44px on every row and control', async (
 
 // ============ surfaces ============
 for (const scheme of ['light', 'dark'] as const) {
-  test(`${scheme}: cards read like Monarch's (${scheme === 'light' ? 'grey page, white card, no outline, soft shadow' : 'a card one step above the page, faint line, no shadow'})`, async ({ browser, baseURL }) => {
+  test(`${scheme}: cards read like Monarch's (${scheme === 'light' ? 'warm page, white card, no outline, soft shadow' : 'a card one step above the page, a 1px line, no shadow'})`, async ({ browser, baseURL }) => {
     const { createPerson, signInByApi, seed } = await import('../support/fixtures');
     const person = await createPerson(baseURL!);
     const ctx = await browser.newContext({ viewport: desktop, colorScheme: scheme, baseURL });
+    await ctx.addInitScript(darkWhenSystemIsDark);
     const page = await ctx.newPage();
     await signInByApi(page, person);
     await seedBudget(seed(page));
@@ -431,17 +430,16 @@ for (const scheme of ['light', 'dark'] as const) {
       return '';
     });
     const css = await card.evaluate((el) => { const c = getComputedStyle(el); return { bg: c.backgroundColor, radius: c.borderTopLeftRadius, border: c.borderTopWidth, shadow: c.boxShadow, outline: c.outlineStyle }; });
-    expect(css.radius, 'a 12px radius').toBe('12px');
-    expect(css.border, 'no outline').toBe('0px');
+    expect(css.radius, 'an 8px radius').toBe('8px');
+    expect(css.border, scheme === 'light' ? 'no border' : 'a 1px line').toBe(scheme === 'light' ? '0px' : '1px');
     expect(css.bg).toBe(await probe('--surface', 'backgroundColor'));
     expect(css.bg, 'the card differs from the page').not.toBe(pageBg);
     if (scheme === 'light') {
-      expect(pageBg, 'the page is --bg').toBe('rgb(243, 245, 241)');
+      expect(pageBg, 'the page is --bg').toBe('rgb(246, 245, 242)');
       expect(css.bg).toBe('rgb(255, 255, 255)');
-      expect(css.shadow).toContain('rgba(20, 26, 24, 0.06) 0px 1px 2px');
-      expect(css.shadow).toContain('rgba(20, 26, 24, 0.08) 0px 1px 3px');
+      expect(css.shadow).toContain('rgba(0, 0, 0, 0.05) 0px 1px 2px');
     } else {
-      expect(css.shadow, 'no shadow, only the faint line').toMatch(/^rgb\(\d+, \d+, \d+\) 0px 0px 0px 1px$/);
+      expect(css.shadow, 'no shadow in dark').toBe('none');
       const lum = (c: string) => c.match(/\d+/g)!.slice(0, 3).map(Number).reduce((a, b) => a + b, 0);
       expect(lum(css.bg), 'the card is lighter than the page').toBeGreaterThan(lum(pageBg));
     }
@@ -450,7 +448,7 @@ for (const scheme of ['light', 'dark'] as const) {
 }
 
 // ============ Transactions ============
-test('Transactions is one card with sticky 32px date headers and 44px rows, the amount on the right and income in positive', async ({ page, me }) => {
+test('Transactions is one card with sticky 36px date headers ("Sunday, 18 October" and the day total on the right) and 44px rows, the amount on the right and income in positive', async ({ page, me }) => {
   await page.setViewportSize(desktop);
   const b = await seedBudget(me.seed);
   for (let i = 1; i <= 25; i++) {
@@ -464,9 +462,11 @@ test('Transactions is one card with sticky 32px date headers and 44px rows, the 
   await expect(alpha).toBeVisible();
   const head = page.getByText(dayHeadingRe()).first();
   await expect(head).toBeVisible();
-  expect(Math.round((await box(page.locator('.ty-day').first())).height), 'a 32px date header').toBe(32);
+  expect(Math.round((await box(page.locator('.ty-day').first())).height), 'a 36px date header').toBe(36);
   expect(await px(page.locator('.ty-day').first(), 'position')).toBe('sticky');
-  expect(await px(page.locator('.ty-day').first(), 'font-size')).toBe('11px');
+  const dh = await box(page.locator('.ty-day').first());
+  const total = await box(page.locator('.ty-day').first().getByText(/d[d,]*.dd/).first());
+  expect(total.x + total.width, 'the day total is on the right of the header').toBeGreaterThan(dh.x + dh.width - 40);
   expect(Math.round((await box(alpha)).height), 'a 44px row').toBe(44);
   expect(await px(alpha.getByText('Alphamega'), 'font-weight')).toBe('500');
   expect(await px(alpha.getByText('Alphamega'), 'font-size')).toBe('14px');
@@ -504,7 +504,7 @@ test.describe('phone transactions', () => {
 });
 
 // ============ Pockets ============
-test('Pockets: net worth in num-hero 32px, the pockets in one card of 48px rows with emoji, name, kind and the balance on the right', async ({ page, me }) => {
+test('Pockets: net worth in the 30/36 hero size, the pockets in cards of 56px rows with emoji, name, kind and the balance on the right', async ({ page, me }) => {
   await page.setViewportSize(desktop);
   await seedBudget(me.seed);
   await me.seed.pocket('Wallet', 2500, 'cash');
@@ -512,24 +512,20 @@ test('Pockets: net worth in num-hero 32px, the pockets in one card of 48px rows 
   const rev = pocketRow(page, 'Revolut');
   await expect(rev).toBeVisible();
   const hero = page.locator('.num-hero').first();
-  expect(await px(hero, 'font-size')).toBe('32px');
-  expect(await px(hero, 'line-height')).toBe('38px');
-  expect(Math.round((await box(rev)).height), 'a 48px row').toBe(48);
-  expect(Math.round((await box(pocketRow(page, 'Wallet'))).height)).toBe(48);
+  expect(await px(hero, 'font-size')).toBe('30px');
+  expect(await px(hero, 'line-height')).toBe('36px');
+  expect(Math.round((await box(rev)).height), 'a 56px row').toBe(56);
+  expect(Math.round((await box(pocketRow(page, 'Wallet'))).height)).toBe(56);
   await expect(rev.locator('.ty-emoji').first()).toBeVisible();
   await expect(rev).toContainText('Bank account');
-  expect(await px(rev.getByText('Bank account'), 'font-size'), 'the kind is a caption').toBe('12px');
   const r = await box(rev);
   const bal = await box(rev.getByText('2,016.88'));
   expect(bal.x + bal.width, 'balance right-aligned').toBeGreaterThan(r.x + r.width - 40);
-  // one card: both rows are in the same container
-  const same = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll('button, [role="button"]')].filter((b) => b.querySelector('.ty-emoji') && /Revolut|Wallet/.test(b.textContent ?? ''));
-    let a: Element | null = rows[0];
-    while (a && !a.contains(rows[1])) a = a.parentElement;
-    return rows.length === 2 && !!a && getComputedStyle(a).borderTopLeftRadius === '12px';
-  });
-  expect(same, 'the pockets share one card').toBe(true);
+  // spec 27: pockets sit in group cards (8px radius); the emoji is on a 36px round avatar
+  const cardRadius = await rev.evaluate((el) => { let a: Element | null = el; while (a && getComputedStyle(a).boxShadow === 'none' && getComputedStyle(a).borderTopWidth === '0px') a = a.parentElement; return a ? getComputedStyle(a).borderTopLeftRadius : ''; });
+  expect(cardRadius, 'the group card').toBe('8px');
+  const av = await box(rev.locator('.ty-emoji').first().locator('xpath=ancestor-or-self::*[contains(@class,"avatar") or contains(@class,"ty-emoji")][last()]'));
+  expect(Math.round(av.width), 'a 36px avatar').toBe(36);
   await rev.click();
   await expect(dialog(page).getByRole('heading', { name: 'Edit pocket' })).toBeVisible();
 });

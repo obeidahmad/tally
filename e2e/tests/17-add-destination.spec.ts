@@ -9,8 +9,8 @@ const HINT = 'Each destination takes its percentage from what reaches this step.
 const OLD = ['Add another ' + 'section', 'Remove ' + 'row', 'Each percentage is ' + 'taken'];
 // rgb of --line-strong and --surface from the spec
 const PAINT = {
-  light: { border: 'rgb(134, 143, 139)', bg: 'rgb(255, 255, 255)' },
-  dark: { border: 'rgb(108, 118, 114)', bg: 'rgb(26, 30, 28)' },
+  light: { border: 'rgb(214, 210, 203)', bg: 'rgb(255, 255, 255)' },
+  dark: { border: 'rgb(58, 58, 64)', bg: 'rgb(29, 29, 32)' },
 };
 
 const add = (d: Locator) => d.getByRole('button', { name: '+ Add destination', exact: true });

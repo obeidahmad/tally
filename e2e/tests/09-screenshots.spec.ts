@@ -1,4 +1,4 @@
-import { test, expect, OWNER, signInByApi, shot, seedBudget, dialog, row, chip, em, pocketRows, bsection } from '../support/fixtures';
+import { test, expect, OWNER, signInByApi, shot, seedBudget, dialog, row, chip, em, pocketRows, bsection, openTab } from '../support/fixtures';
 
 // A screenshot of every page and dialog at desktop and phone width, in light and dark.
 // Filenames: <what>-<desktop|phone>-<light|dark>.png in e2e/screenshots/.
@@ -43,7 +43,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
 
       test('settings as owner', async ({ page }) => {
         await signInByApi(page, OWNER);
-        await page.goto('/settings');
+        await openTab(page, '/settings', 'People and sharing');
         await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
         await shot(page, `settings-owner-${tag}`);
       });

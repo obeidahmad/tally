@@ -1,4 +1,4 @@
-import { test, expect, dialog, shot, seedBudget, row, srow } from '../support/fixtures';
+import { test, expect, dialog, shot, seedBudget, row, srow, createPerson, signInByApi, seed, chooseAppearance, pageBg, THEME, stickyBar } from '../support/fixtures';
 
 const names = ['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']; // the phone tab bar
 const sidebar = ['Home', 'Budget', 'Pipeline', 'Transactions', 'Recurring', 'Pockets', 'Investments', 'Reports', 'Settings'];
@@ -23,13 +23,19 @@ test.describe('desktop', () => {
     await page.goto('/pockets');
     await expect(page.getByText('No pockets yet', { exact: false })).toBeVisible();
     const side = page.locator('.ty-side');
-    await expect(side).toContainText(`Signed in as ${me.displayName}`);
-    await expect(side).toContainText('Base currency EUR');
+    // spec 27: the footer holds the person's name, "Sign out" and the light/dark icon button
+    await expect(side).toContainText(me.displayName);
     await expect(side.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    await expect(side.getByRole('button', { name: /^Switch to (dark|light) mode$/ })).toBeVisible();
     const box = (await side.boundingBox())!;
     expect(Math.round(box.y + box.height)).toBeGreaterThanOrEqual(900 - 1);
     await expect(page.locator('.ty-tabs')).toBeHidden();
-    await expect(page.locator('.ty-topbar')).toBeHidden();
+    // spec 27: a 220px sidebar and a sticky 56px top bar with the title on every page
+    expect(Math.round(box.width)).toBe(220);
+    const bar = await stickyBar(page);
+    expect(bar, 'a sticky top bar holds the title').not.toBeNull();
+    expect(Math.round(bar!.height)).toBe(56);
+    expect(Math.round(bar!.y)).toBe(0);
   });
 
   test('no sideways scroll on any page', async ({ page, me }) => {
@@ -127,14 +133,19 @@ test.describe('phone', () => {
 });
 
 test.describe('dark', () => {
-  test.use({ colorScheme: 'dark' });
-
-  test('dark mode follows the system setting', async ({ page, me }) => {
-    await seedBudget(me.seed);
+  // Spec 27: the app is light by default; "Match system" makes it follow a system that prefers dark.
+  test('"Match system" follows the system setting', async ({ browser, baseURL }) => {
+    const person = await createPerson(baseURL!);
+    const ctx = await browser.newContext({ baseURL, colorScheme: 'dark', viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    await signInByApi(page, person);
+    await seedBudget(seed(page));
+    await chooseAppearance(page, 'Match system');
     await page.goto('/budget');
     await expect(page.getByRole('button', { name: /Food/ })).toBeVisible();
-    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(17, 20, 19)');
+    expect(await pageBg(page)).toBe(THEME.dark.bg);
     await shot(page, 'budget-desktop-dark');
+    await ctx.close();
   });
 });
 

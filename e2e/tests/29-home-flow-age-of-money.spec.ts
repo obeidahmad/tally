@@ -1,5 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
-import { test, expect, shot, row, em, seedBudget, stat, todayIso, type Seed } from '../support/fixtures';
+import { test, expect, shot, row, em, seedBudget, stat, todayIso, openTab, type Seed } from '../support/fixtures';
 import { seedImport, importFile, sortedPills } from '../support/importing';
 import { octName, sepName, norm, octIso, sepIso } from '../support/closing';
 
@@ -385,13 +385,23 @@ test('Reports starts with "Where <month>\'s money went", whose table lists every
   const c = flowCard(page);
   await expect(c).toBeVisible();
   await expect(c).toContainText(new RegExp(`Where ${octName}.s money went`));
-  expect(await page.locator('.ty-card').first().innerText()).toContain('money went'); // first on the page
+  await expect(page.getByRole('tab', { name: 'Cash flow', exact: true })).toHaveAttribute('aria-selected', 'true'); // spec 27: the first tab
   const t = await showTable(c);
   const rows = (await t.locator('tbody tr').allInnerTexts()).map(norm);
-  expect(rows).toHaveLength(f.links.length);
-  for (const l of f.links) {
+  // spec 27: the sources feed one "Income" node, which feeds the sections. The API links from a source become "<source> -> Income"
+  // with the source's total; every other link of the API is a row of its own.
+  const isSource = (id: string | number) => f.nodes.find((n) => n.id === id)!.kind === 'source';
+  const others = f.links.filter((l) => !isSource(l.from));
+  for (const l of others) {
     const hit = rows.find((r) => r.includes(label(f, l.from)) && r.includes(label(f, l.to)) && r.includes(fmt(l.minor)));
     expect(hit, `${label(f, l.from)} to ${label(f, l.to)} ${fmt(l.minor)} in ${JSON.stringify(rows)}`).toBeTruthy();
+  }
+  for (const src of f.nodes.filter((n) => n.kind === 'source')) {
+    const total = f.links.filter((l) => l.from === src.id).reduce((a, l) => a + l.minor, 0);
+    expect(rows.find((r) => r.includes(src.label) && r.includes('Income') && r.includes(fmt(total))), `${src.label} to Income ${fmt(total)}`).toBeTruthy();
+  }
+  for (const l of f.links.filter((x) => isSource(x.from))) {
+    expect(rows.find((r) => r.includes('Income') && r.includes(label(f, l.to)) && r.includes(fmt(l.minor))), `Income to ${label(f, l.to)}`).toBeTruthy();
   }
   await expect(c.getByRole('button', { name: /Show as chart/ }).or(c.getByRole('checkbox', { name: /Show as table/ })).or(c.getByRole('switch', { name: /Show as table/ })).first()).toBeVisible();
 });
@@ -413,7 +423,8 @@ test('the diagram shows the labels and amounts of its nodes, and a link\'s toolt
     const tip = tooltip(page);
     if (await tip.count()) seen.push(norm(await tip.first().innerText()));
   }
-  expect(seen, JSON.stringify(seen)).toContain('Paycheck → Needs: 1,000.00');
+  expect(seen, JSON.stringify(seen)).toContain('Income → Needs: 1,000.00'); // spec 27: the Income node sits between
+  expect(seen).toContain('Paycheck → Income: 3,000.00');
   expect(seen).toContain('Needs → Kept: 200.00');
 });
 
@@ -421,10 +432,10 @@ test('the month ‹ › of the card moves to last month, where nothing happened,
   await seedFlow(page, me.seed);
   await page.goto('/reports');
   const c = flowCard(page);
-  await c.getByRole('button', { name: /^(Previous month|‹)$/ }).click();
+  await page.getByRole('button', { name: /^(Previous month|‹)$/ }).first().click(); // spec 27: the month control is in the top bar
   await expect(c).toContainText(new RegExp(`Where ${sepName}.s money went`));
   expect((await flowApi(page, sepIso)).links).toHaveLength(0);
-  await c.getByRole('button', { name: /^(Next month|›)$/ }).click();
+  await page.getByRole('button', { name: /^(Next month|›)$/ }).first().click();
   await expect(c).toContainText(new RegExp(`Where ${octName}.s money went`));
 });
 
@@ -457,7 +468,7 @@ test('Top payees lists the top 10 by spending with count and amount, grouped by 
     { payee: 'Netflix.com', minor: 2598, count: 2 },
   ]);
 
-  await page.goto('/reports');
+  await openTab(page, '/reports', 'Spending');
   const c = card(page, 'Top payees');
   await expect(c).toBeVisible();
   const rows = (await c.locator('table tbody tr').allInnerTexts()).map(norm);

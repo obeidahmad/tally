@@ -1,5 +1,5 @@
 import type { Browser, BrowserContext, Page, Locator } from '@playwright/test';
-import { test as base, expect, createPerson, signInByApi, seed, shot, dialog, toast, row, chip, fillExpense, type Person, type Seed, pocketRow, bsection } from '../support/fixtures';
+import { test as base, expect, createPerson, signInByApi, seed, shot, dialog, toast, row, chip, fillExpense, type Person, type Seed, pocketRow, bsection, openTab, darkWhenSystemIsDark } from '../support/fixtures';
 
 // Spec 20: sharing one budget between partners. Sam (EUR) owns the budget; Alex (USD) is a member and signs in with his own account.
 // Two people, two browser contexts. Every test makes its own two (or three) fresh people, so nothing is shared between tests.
@@ -11,6 +11,7 @@ type Who = { page: Page; person: Person; ctx: BrowserContext; seed: Seed };
 
 async function signedIn(browser: Browser, baseURL: string, person: Person, viewport: Size, colorScheme: 'light' | 'dark' = 'light'): Promise<Who> {
   const ctx = await browser.newContext({ baseURL, viewport, colorScheme, locale: 'en-GB', timezoneId: 'UTC' });
+  await ctx.addInitScript(darkWhenSystemIsDark);
   const page = await ctx.newPage();
   await signInByApi(page, person);
   return { page, person, ctx, seed: seed(page) };
@@ -76,7 +77,7 @@ test('with nothing shared there is no "Budget" switcher on desktop or on the pho
   expect((await meApi(alex.page)).viewing).toBeNull();
   expect((await alex.page.request.get('/api/auth/state')).status()).toBe(200);
   await alex.page.setViewportSize(PHONE);
-  await alex.page.goto('/settings');
+  await openTab(alex.page, '/settings', 'People and sharing');
   await expect(alex.page.getByRole('heading', { name: 'Sharing', exact: true })).toBeVisible();
   await expect(alex.page.getByRole('combobox', { name: 'Budget' })).toHaveCount(0);
   await close();
@@ -102,7 +103,7 @@ test('a person nothing is shared with cannot switch to anyone: 400 "Choose a bud
 // ============ the Sharing card: adding, errors, removing ============
 test('Settings > Sharing: the card has "Share this budget with" and "Add"; adding a username lists the member with "Remove"', async ({ browser, baseURL }) => {
   const { sam, alex, close } = await pair(browser, baseURL!);
-  await sam.page.goto('/settings');
+  await openTab(sam.page, '/settings', 'People and sharing');
   const c = sharingCard(sam.page);
   await expect(c).toBeVisible();
   await expect(c.getByLabel('Share this budget with')).toBeVisible();
@@ -120,7 +121,7 @@ test('Settings > Sharing: the card has "Share this budget with" and "Add"; addin
 
 test('adding someone: an unknown username, yourself and a person already added show the contract\'s sentences', async ({ browser, baseURL }) => {
   const { sam, alex, close } = await pair(browser, baseURL!);
-  await sam.page.goto('/settings');
+  await openTab(sam.page, '/settings', 'People and sharing');
   const c = sharingCard(sam.page);
   const add = async (username: string) => {
     await c.getByLabel('Share this budget with').fill(username);
@@ -163,7 +164,7 @@ test('once Sam shares, Alex sees "Budget" above the navigation with "Your budget
   expect(swBox.y).toBeLessThan(navBox.y);
   await expect(alex.page.getByText(/viewing the budget of/)).toHaveCount(0);
 
-  await alex.page.goto('/settings');
+  await openTab(alex.page, '/settings', 'People and sharing');
   const c = sharingCard(alex.page);
   await expect(c.getByText('Budgets shared with you')).toBeVisible();
   await expect(c.getByText('Sam', { exact: true })).toBeVisible();
@@ -308,26 +309,36 @@ test('a member reaches the owner\'s data through the API as if he were the owner
 // ============ criterion 3: bank, broker and sharing settings stay the owner's ============
 test('Alex viewing Sam sees "Only Sam can change this." on the bank, Trading212 and sharing cards, with no controls', async ({ browser, baseURL }) => {
   const { alex, close } = await pair(browser, baseURL!, { share: true });
-  await alex.page.goto('/settings');
+  const A = alex.page;
+  const tab = (name: string) => A.getByRole('tab', { name, exact: true }).click();
+  await A.goto('/settings');
   // while viewing his own budget the cards have their controls
-  await expect(alex.page.getByLabel('Application ID')).toBeVisible();
-  await expect(alex.page.getByLabel('Share this budget with')).toBeVisible();
-  await expect(alex.page.getByText(NOT_YOURS)).toHaveCount(0);
+  await tab('Connections');
+  await expect(A.getByLabel('Application ID')).toBeVisible();
+  await tab('People and sharing');
+  await expect(A.getByLabel('Share this budget with')).toBeVisible();
+  await expect(A.getByText(NOT_YOURS)).toHaveCount(0);
+  await tab('Connections');
+  await expect(A.getByText(NOT_YOURS)).toHaveCount(0);
 
-  await switchTo(alex.page, 'Sam');
-  await expect(alex.page.getByText(NOT_YOURS)).toHaveCount(3);
-  for (const heading of ['Bank connections', 'Trading212', 'Sharing']) {
-    const c = alex.page.locator('.ty-card', { has: alex.page.getByRole('heading', { name: heading, exact: true }) });
+  await switchTo(A, 'Sam');
+  await tab('Connections');
+  await expect(A.getByText(NOT_YOURS)).toHaveCount(2);
+  for (const heading of ['Bank connections', 'Trading212']) {
+    const c = A.locator('.ty-card', { has: A.getByRole('heading', { name: heading, exact: true }) });
     await expect(c, heading).toContainText(NOT_YOURS);
   }
-  await expect(alex.page.getByLabel('Application ID')).toHaveCount(0);
-  await expect(alex.page.getByLabel('Private key')).toHaveCount(0);
-  await expect(alex.page.getByLabel('API key', { exact: true })).toHaveCount(0);
-  await expect(alex.page.getByRole('button', { name: 'Connect', exact: true })).toHaveCount(0);
-  await expect(alex.page.getByRole('button', { name: 'Connect a bank' })).toHaveCount(0);
-  await expect(alex.page.getByLabel('Share this budget with')).toHaveCount(0);
-  await expect(sharingCard(alex.page).getByRole('button', { name: 'Add', exact: true })).toHaveCount(0);
-  await expect(sharingCard(alex.page).getByRole('button', { name: /^Remove/ })).toHaveCount(0);
+  await expect(A.getByLabel('Application ID')).toHaveCount(0);
+  await expect(A.getByLabel('Private key')).toHaveCount(0);
+  await expect(A.getByLabel('API key', { exact: true })).toHaveCount(0);
+  await expect(A.getByRole('button', { name: 'Connect', exact: true })).toHaveCount(0);
+  await expect(A.getByRole('button', { name: 'Connect a bank' })).toHaveCount(0);
+  await tab('People and sharing');
+  await expect(A.getByText(NOT_YOURS)).toHaveCount(1);
+  await expect(sharingCard(A)).toContainText(NOT_YOURS);
+  await expect(A.getByLabel('Share this budget with')).toHaveCount(0);
+  await expect(sharingCard(A).getByRole('button', { name: 'Add', exact: true })).toHaveCount(0);
+  await expect(sharingCard(A).getByRole('button', { name: /^Remove/ })).toHaveCount(0);
   await close();
 });
 
@@ -376,7 +387,7 @@ test('Sam removes Alex: Alex\'s next page load shows his own budget, no "viewing
   await switchTo(alex.page, 'Sam');
   await expect(bsection(alex.page, 'Needs')).toBeVisible();
 
-  await sam.page.goto('/settings');
+  await openTab(sam.page, '/settings', 'People and sharing');
   const c = sharingCard(sam.page);
   await expect(c.getByText('Alex', { exact: true })).toBeVisible();
   await c.getByRole('button', { name: /^Remove/ }).click();
@@ -415,7 +426,7 @@ test('removing a member takes effect at once, without a reload: the member\'s ne
 test('Alex leaves: "Leave" removes the budget from his list and Sam no longer lists him', async ({ browser, baseURL }) => {
   const { sam, alex, close } = await pair(browser, baseURL!, { share: true });
   await samBudget(sam.seed);
-  await alex.page.goto('/settings');
+  await openTab(alex.page, '/settings', 'People and sharing');
   const c = sharingCard(alex.page);
   await c.getByRole('button', { name: /^Leave/ }).click();
   const confirm = alex.page.getByRole('dialog');
@@ -478,7 +489,7 @@ test.describe('phone', () => {
   test('on a phone the "Budget" select is at the top of Settings and switching works', async ({ browser, baseURL }) => {
     const { sam, alex, close } = await pair(browser, baseURL!, { share: true, viewport: PHONE });
     await samBudget(sam.seed);
-    await alex.page.goto('/settings');
+    await openTab(alex.page, '/settings', 'People and sharing');
     const sw = alex.page.getByRole('combobox', { name: 'Budget' });
     await expect(sw).toBeVisible();
     const swBox = (await sw.boundingBox())!;
@@ -502,7 +513,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
       const tag = `${size}-${scheme}`;
       const { sam, alex, close } = await pair(browser, baseURL!, { viewport, scheme });
       await samBudget(sam.seed);
-      await sam.page.goto('/settings');
+      await openTab(sam.page, '/settings', 'People and sharing');
       await sharingCard(sam.page).scrollIntoViewIfNeeded();
       await shot(sam.page, `sharing-card-empty-${tag}`);
       await sharingCard(sam.page).getByLabel('Share this budget with').fill(alex.person.username);
@@ -511,7 +522,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
       await sharingCard(sam.page).scrollIntoViewIfNeeded();
       await shot(sam.page, `sharing-card-owner-${tag}`);
 
-      await alex.page.goto('/settings');
+      await openTab(alex.page, '/settings', 'People and sharing');
       await expect(sharingCard(alex.page).getByRole('button', { name: /^Leave/ })).toBeVisible();
       await sharingCard(alex.page).scrollIntoViewIfNeeded();
       await shot(alex.page, `sharing-card-member-${tag}`);
@@ -519,17 +530,17 @@ for (const [size, viewport] of Object.entries(sizes)) {
       await shot(alex.page, `sharing-switcher-own-${tag}`);
       if (size === 'desktop') await switchTo(alex.page, 'Sam');
       else {
-        await alex.page.goto('/settings');
+        await openTab(alex.page, '/settings', 'People and sharing');
         // the phone select has no accessible name (reported as a finding), so the screenshot run finds it as the select in main
         await alex.page.locator('main select').first().selectOption({ label: 'Sam' });
       }
       await shot(alex.page, `sharing-switcher-viewing-${tag}`);
-      await alex.page.goto('/settings');
+      await openTab(alex.page, '/settings', 'People and sharing');
       await expect(alex.page.getByText(NOT_YOURS).first()).toBeVisible();
       await alex.page.getByRole('link', { name: 'Transactions' }).first().click();
       await expect(row(alex.page, /Alphamega/)).toContainText(/entered by Sam/i);
       await shot(alex.page, `sharing-transactions-entered-by-${tag}`);
-      await alex.page.goto('/settings');
+      await openTab(alex.page, '/settings', 'People and sharing');
       await alex.page.getByText(NOT_YOURS).first().scrollIntoViewIfNeeded();
       await shot(alex.page, `sharing-owner-only-cards-${tag}`);
       await close();

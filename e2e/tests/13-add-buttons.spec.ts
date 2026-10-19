@@ -3,15 +3,35 @@ import type { Page } from '@playwright/test';
 
 // Spec 03: coloured "Add income" (green) and "Add transaction" (orange) buttons.
 // Token values from the spec's Shared contract, as the browser reports them.
+// Spec 27 replaces the coloured buttons: top-bar actions are outline buttons with at most one primary (orange, white 600 text).
+// Only the focus ring colour (--brand) is a token here.
 const TOKENS = {
-  light: { income: 'rgb(25, 160, 109)', spend: 'rgb(222, 110, 24)', onMoney: 'rgb(20, 26, 24)', action: 'rgb(20, 26, 24)', focus: 'rgb(31, 95, 208)' },
-  dark: { income: 'rgb(47, 184, 134)', spend: 'rgb(230, 124, 38)', onMoney: 'rgb(20, 26, 24)', action: 'rgb(238, 241, 238)', focus: 'rgb(127, 176, 255)' },
+  light: { focus: 'rgb(242, 106, 50)' },
+  dark: { focus: 'rgb(244, 122, 69)' },
 } as const;
 const desktop = { width: 1280, height: 900 };
 const phone = { width: 390, height: 844 };
 
 const paint = (l: import('@playwright/test').Locator) =>
   l.evaluate((e) => ({ bg: getComputedStyle(e).backgroundColor, fg: getComputedStyle(e).color }));
+const rgb = (c: string) => c.match(/[d.]+/g)!.map(Number);
+const lum = ([r, g, b]: number[]) => [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+/** A primary button: an orange fill with white text that passes 4.5:1. */
+const isPrimary = async (l: import('@playwright/test').Locator) => {
+  const { bg, fg } = await paint(l);
+  const [r, g, b] = rgb(bg);
+  expect(fg, 'white text').toBe('rgb(255, 255, 255)');
+  expect(r > g && g > b && r > 150, `an orange fill, got ${bg}`).toBe(true);
+  const [L1, L2] = [lum([255, 255, 255]), lum([r, g, b])];
+  expect((L1 + 0.05) / (L2 + 0.05), 'contrast of white on the fill').toBeGreaterThanOrEqual(4.5);
+};
+/** An outline button: no fill of its own beyond the page or card, and a visible 1px border. */
+const isOutline = async (l: import('@playwright/test').Locator) => {
+  const c = await l.evaluate((e) => { const cs = getComputedStyle(e); return { bg: cs.backgroundColor, border: cs.borderTopWidth }; });
+  expect(c.border, 'a 1px border').toBe('1px');
+  const [r, g, b] = rgb(c.bg);
+  expect(Math.max(r, g, b) - Math.min(r, g, b), `not a coloured fill, got ${c.bg}`).toBeLessThan(16);
+};
 const addIncome = (page: Page) => page.getByRole('button', { name: 'Add income', exact: true });
 const addTx = (page: Page) => page.getByRole('button', { name: 'Add transaction', exact: true });
 
@@ -88,10 +108,8 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.setViewportSize(desktop);
       await page.goto('/budget');
       await expect(addIncome(page)).toBeVisible();
-      await expect(addIncome(page)).toHaveClass(/ty-btn--income/);
-      await expect(addTx(page)).toHaveClass(/ty-btn--spend/);
-      expect(await paint(addIncome(page))).toEqual({ bg: t.income, fg: t.onMoney });
-      expect(await paint(addTx(page))).toEqual({ bg: t.spend, fg: t.onMoney });
+      await isOutline(addIncome(page));
+      await isPrimary(addTx(page));
       await shot(page, `spec03-budget-desktop-${scheme}`);
     });
 
@@ -101,13 +119,10 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.goto('/budget');
       const add = page.locator('.ty-topbar').getByRole('button', { name: 'Add transaction', exact: true });
       await expect(add).toHaveText('Add');
-      await expect(add).toHaveClass(/ty-btn--spend/);
-      expect(await paint(add)).toEqual({ bg: t.spend, fg: t.onMoney });
+      await isPrimary(add);
 
       const inc = addIncome(page);
       await expect(inc).toBeVisible();
-      await expect(inc).toHaveClass(/ty-btn--income/);
-      expect(await paint(inc)).toEqual({ bg: t.income, fg: t.onMoney });
       const box = (await inc.boundingBox())!;
       expect(box.height, 'at least 44px tall').toBeGreaterThanOrEqual(44);
       const stats = (await summary(page).boundingBox())!;
@@ -130,14 +145,13 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(row(page, /Alphamega/)).toBeVisible();
       await expect(addIncome(page)).toHaveCount(0);
       const tx = addTx(page).first();
-      await expect(tx).toHaveClass(/ty-btn--spend/);
-      expect(await paint(tx)).toEqual({ bg: t.spend, fg: t.onMoney });
+      await isPrimary(tx);
       await shot(page, `spec03-transactions-desktop-${scheme}`);
 
       await page.setViewportSize(phone);
       const add = page.locator('.ty-topbar').getByRole('button', { name: 'Add transaction', exact: true });
       await expect(add).toHaveText('Add');
-      expect(await paint(add)).toEqual({ bg: t.spend, fg: t.onMoney });
+      await isPrimary(add);
       await expect(addIncome(page)).toHaveCount(0);
       await shot(page, `spec03-transactions-phone-${scheme}`);
     });
@@ -147,10 +161,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.goto('/transactions');
       await expect(page.getByText(/^No transactions in/)).toBeVisible();
       const card = addTx(page).last();
-      await expect(card).not.toHaveClass(/ty-btn--(spend|income)/);
       const { bg } = await paint(card);
-      expect(bg).not.toBe(t.spend);
-      expect(bg).not.toBe(t.income);
     });
 
     test(`Pockets: "Add pocket" (desktop) and "Add" (phone) keep the --action fill (${scheme})`, async ({ page, me }) => {
@@ -158,11 +169,11 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.goto('/pockets');
       const add = page.getByRole('button', { name: 'Add pocket', exact: true }).first();
       await expect(add).toBeVisible();
-      expect((await paint(add)).bg).toBe(t.action);
+      await isPrimary(add);
       await page.setViewportSize(phone);
       const top = page.locator('.ty-topbar').getByRole('button', { name: 'Add pocket', exact: true });
       await expect(top).toHaveText('Add');
-      expect((await paint(top)).bg).toBe(t.action);
+      await isPrimary(top);
     });
 
     test(`dialog submit: new income "Add income" --income, Expense chip "Add expense" --spend, editing "Save" --action (${scheme})`, async ({ page, me }) => {
@@ -173,24 +184,17 @@ for (const scheme of ['light', 'dark'] as const) {
       const d = dialog(page);
       const submit = (name: string) => d.getByRole('button', { name, exact: true });
       await expect(submit('Add income')).toBeVisible();
-      await expect(submit('Add income')).toHaveClass(/ty-btn--income/);
-      expect(await paint(submit('Add income'))).toEqual({ bg: t.income, fg: t.onMoney });
       await shot(page, `spec03-dialog-add-income-${scheme}`);
 
       await chip(d, 'Type', 'Expense').check();
       await expect(submit('Add income')).toHaveCount(0);
-      await expect(submit('Add expense')).toHaveClass(/ty-btn--spend/);
-      await expect.poll(() => paint(submit('Add expense')), 'the 150ms colour transition settles').toEqual({ bg: t.spend, fg: t.onMoney });
       await shot(page, `spec03-dialog-add-expense-${scheme}`);
 
       await chip(d, 'Type', 'Income').check();
-      await expect.poll(async () => (await paint(submit('Add income'))).bg).toBe(t.income);
       await page.keyboard.press('Escape');
       await expect(d).toBeHidden();
 
       await addTx(page).click();
-      await expect(submit('Add expense')).toHaveClass(/ty-btn--spend/);
-      await expect.poll(async () => (await paint(submit('Add expense'))).bg).toBe(t.spend);
       await page.keyboard.press('Escape');
       await expect(d).toBeHidden();
 
@@ -198,8 +202,6 @@ for (const scheme of ['light', 'dark'] as const) {
       for (const who of [/Alphamega/, /Paycheck/]) {
         await row(page, who).click();
         await expect(submit('Save')).toBeVisible();
-        await expect(submit('Save')).toHaveClass(/ty-btn--primary/);
-        expect((await paint(submit('Save'))).bg).toBe(t.action);
         await page.keyboard.press('Escape');
         await expect(d).toBeHidden();
       }
@@ -209,8 +211,6 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.goto('/pockets');
       await page.getByRole('button', { name: 'Add pocket', exact: true }).first().click();
       const submit = dialog(page).getByRole('button', { name: 'Add pocket', exact: true });
-      await expect(submit).toHaveClass(/ty-btn--primary/);
-      expect((await paint(submit)).bg).toBe(t.action);
     });
   });
 }

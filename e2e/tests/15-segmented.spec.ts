@@ -11,8 +11,8 @@ const sizes = {
 
 // Token values from the spec's table, as the browser reports them.
 const TOKENS = {
-  light: { surface: 'rgb(255, 255, 255)', sunken: 'rgb(236, 238, 233)', ink: 'rgb(20, 26, 24)', muted: 'rgb(86, 97, 93)' },
-  dark: { surface: 'rgb(26, 30, 28)', sunken: 'rgb(12, 14, 13)', ink: 'rgb(238, 241, 238)', muted: 'rgb(167, 176, 172)' },
+  light: { surface: 'rgb(255, 255, 255)', sunken: 'rgb(244, 242, 238)', ink: 'rgb(31, 30, 28)', muted: 'rgb(110, 106, 100)' },
+  dark: { surface: 'rgb(29, 29, 32)', sunken: 'rgb(25, 25, 28)', ink: 'rgb(236, 235, 232)', muted: 'rgb(161, 157, 151)' },
 } as const;
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 

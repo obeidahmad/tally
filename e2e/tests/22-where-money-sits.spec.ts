@@ -1,5 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
-import { test, expect, dialog, shot, row, chip, selectLike, currencyPocket, todayIso, thisMonth, group, pocketRow, srow, cell } from '../support/fixtures';
+import { test, expect, dialog, shot, row, chip, selectLike, currencyPocket, todayIso, thisMonth, group, pocketRow, srow, cell, openTab } from '../support/fixtures';
 
 // Spec 14: where money sits and investments. Browser acceptance criteria 2 to 6.
 // Fixture rates: today 1 EUR = 1.0860 USD, so 2,310.00 USD is about 2,127.07 EUR and 2,100.00 USD about 1,933.70 EUR.
@@ -292,7 +292,7 @@ test('changing the home pocket in Settings moves the untransferred money to that
   await page.goto('/pockets');
   expect(await cellText(page, 'Car', 'Bank')).toBe('6,000.00');
 
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Account');
   const sel = page.getByLabel('Home pocket');
   await expect(sel).toBeVisible();
   await expect(page.getByText('Money sits here unless you move it with a transfer.')).toBeVisible();
@@ -310,7 +310,7 @@ test('changing the home pocket in Settings moves the untransferred money to that
 
 test('the home pocket defaults to the oldest pocket and is a select of the person\'s pockets', async ({ page, me }) => {
   await seedWhere(page, me);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Account');
   const sel = page.getByLabel('Home pocket');
   await expect(sel.locator('option')).toHaveCount(2);
   const opts = await sel.locator('option').allTextContents();
@@ -395,7 +395,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
         await shot(page, `investments-dialog-sell-loss-${tag}`);
         await page.keyboard.press('Escape');
 
-        await page.goto('/settings');
+        await openTab(page, '/settings', 'Account');
         await shot(page, `settings-home-pocket-${tag}`);
         void group;
       });

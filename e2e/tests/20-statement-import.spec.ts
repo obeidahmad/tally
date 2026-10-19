@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, row, chip, group, shot, pocketsApi, srow } from '../support/fixtures';
+import { test, expect, dialog, toast, row, chip, group, shot, pocketsApi, srow, openTab } from '../support/fixtures';
 import { openCloseDialog, closeApi, sepDay, stat, notices } from '../support/closing';
 import {
   seedImport, rulesApi, unsortedApi, chooseNeedsSorting, sortedPills, importFile, toMapping, sel, checkedText, csv, day1, SORT_MSG, UNSORTED_CLOSE,
@@ -175,7 +175,7 @@ test('Settings > Rules: "Add rule" makes a rule that sorts waiting rows, its row
   const d0 = await importFile(page, 'lidl-semicolon.csv');
   await d0.getByRole('button', { name: 'Done', exact: true }).click();
 
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await expect(page.getByRole('heading', { name: 'Rules' })).toBeVisible();
   await page.getByRole('button', { name: 'Add rule', exact: true }).click();
   const d = dialog(page);
@@ -203,7 +203,7 @@ test('Settings > Rules: "Add rule" makes a rule that sorts waiting rows, its row
   await expect(sortedPills(page)).toHaveCount(3);
   await expect(row(page, /LIDL Limassol.*23\.50/)).toContainText('Food');
 
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await expect(line).toBeVisible();
   await line.locator('xpath=ancestor::*[.//button[normalize-space()="Delete"]][1]').getByRole('button', { name: 'Delete' }).click();
   await expect(line).toHaveCount(0);
@@ -369,7 +369,7 @@ for (const [size, viewport] of [['desktop', { width: 1280, height: 900 }], ['pho
         await shot(page, `spec15-transaction-dialog-imported-${tag}`);
         await page.keyboard.press('Escape');
         await rulesApi(page, { match: 'Netflix', subsectionId: w.food.id });
-        await page.goto('/settings');
+        await openTab(page, '/settings', 'Connections');
         await expect(page.getByText(/Payee contains .Netflix. → Food/)).toBeVisible();
         await shot(page, `spec15-settings-rules-${tag}`);
         await page.getByRole('button', { name: 'Add rule', exact: true }).click();

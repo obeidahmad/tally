@@ -1,5 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
-import { test, expect, shot, monthTitle, type Seed } from '../support/fixtures';
+import { test, expect, shot, monthTitle, selectTab, type Seed } from '../support/fixtures';
 import { norm } from '../support/closing';
 
 // Spec 25: the bills calendar, paid or due or missed, and price rises. Dates are counted from today (UTC), so the tests pass on any day.
@@ -36,9 +36,10 @@ const item = async (page: Page, payee: string) => {
   expect(found, `${payee} detected`).toBeTruthy();
   return found!;
 };
-const goto = async (page: Page) => {
+const goto = async (page: Page, tab = 'Upcoming') => {
   await page.goto('/recurring');
   await expect(page.getByRole('heading', { level: 1, name: 'Recurring' })).toBeVisible();
+  await selectTab(page, tab);
 };
 const calendar = (page: Page): Locator => page.locator('.ty-card').filter({ has: page.getByText('Bills calendar', { exact: true }) }).first();
 const prev = (c: Locator) => c.getByRole('button', { name: /^(Previous month|‹)$/ });
@@ -60,7 +61,7 @@ const allRowOf = (page: Page, payee: string): Locator =>
 
 test('the Recurring page has a "Bills calendar" card under the headline, with the month title and previous and next buttons', async ({ page, me }) => {
   await pays(me.seed, 'Netflix', 1299, [-60, -30, 0]);
-  await goto(page);
+  await goto(page, 'Calendar');
   const c = calendar(page);
   await expect(c).toBeVisible();
   await expect(c).toContainText(monthTitle());
@@ -76,7 +77,7 @@ test('the Recurring page has a "Bills calendar" card under the headline, with th
 
 test('the grid has seven day columns, Monday first', async ({ page, me }) => {
   await pays(me.seed, 'Netflix', 1299, [-60, -30, 0]);
-  await goto(page);
+  await goto(page, 'Calendar');
   await expect(calendar(page)).not.toContainText('Loading');
   const text = norm(await calendar(page).innerText());
   const order = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((d) => text.toUpperCase().indexOf(d));
@@ -86,7 +87,7 @@ test('the grid has seven day columns, Monday first', async ({ page, me }) => {
 
 test('a bill paid today is in this month with "Paid", and the expected next one is in the month it falls in without "Paid", and is not counted twice', async ({ page, me }) => {
   await pays(me.seed, 'Netflix', 1299, [-60, -30, 0]);
-  await goto(page);
+  await goto(page, 'Calendar');
   let c = calendar(page);
   await expect(c).toContainText('Netflix');
   await expect(c).toContainText('12.99');
@@ -218,7 +219,7 @@ for (const [size, viewport] of [['desktop', { width: 1280, height: 900 }], ['pho
       await pays(me.seed, 'Rent Storage', 4500, [-100, -70, -40]);
       await pays(me.seed, 'Due Item', 3000, [-725, -360]);
       await pays(me.seed, 'Gym Weekly', 500, [-16, -8, 0]);
-      await goto(page);
+      await goto(page, 'Calendar');
       await expect(calendar(page)).toContainText('Netflix');
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scroll').toBe(true);
       await shot(page, `spec25-recurring-${size}-${scheme}`);
@@ -231,7 +232,7 @@ for (const [size, viewport] of [['desktop', { width: 1280, height: 900 }], ['pho
 test('on a phone the calendar lists the days that have bills, with the payee, the amount and "Paid"', async ({ page, me }) => {
   await page.setViewportSize(phone);
   await pays(me.seed, 'Netflix', 1299, [-60, -30, 0]);
-  await goto(page);
+  await goto(page, 'Calendar');
   const c = calendar(page);
   await expect(c).toContainText('Netflix');
   await expect(c).toContainText('12.99');

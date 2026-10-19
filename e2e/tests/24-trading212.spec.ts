@@ -1,5 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
-import { test, expect, shot, selectLike, todayIso, group, createPerson, signInByApi, type Seed, pocketRow } from '../support/fixtures';
+import { test, expect, shot, selectLike, todayIso, group, createPerson, signInByApi, type Seed, pocketRow, openTab } from '../support/fixtures';
 import { sepDay, closeApi } from '../support/closing';
 import {
   fakeKey, fakeSet, fakeLog, connectApi, syncApi, connectionApi, holdingsApi, incomesApi, connectBody,
@@ -50,7 +50,7 @@ async function pickIn(scope: Page | Locator, label: string, text: string) {
 }
 /** Fills the unconnected Settings card. */
 async function fillCard(page: Page, o: { key: string; secret?: string; pocket?: string; sub?: string; env?: 'Live' | 'Demo' }) {
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   const c = card(page);
   await pickIn(c, 'Pocket', o.pocket ?? 'Trading212');
   if (o.env) await group(c, 'Environment').getByRole('radio', { name: o.env }).check();
@@ -64,7 +64,7 @@ async function fillCard(page: Page, o: { key: string; secret?: string; pocket?: 
 test('Settings > Trading212: an unconnected card shows its fields, Live / Demo and "Connect"; the pocket choice is broker pockets only', async ({ page, me }) => {
   await seedT212(me);
   await me.seed.pocket('Everyday bank', 0, 'bank');
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   const c = card(page);
   await expect(c).toBeVisible();
   for (const l of ['Pocket', 'API key', 'API secret (optional)', 'Holdings go to']) await expect(c.getByLabel(l, { exact: true })).toBeVisible();
@@ -167,7 +167,7 @@ test('the API refuses an empty key, a short key, a pocket that is not a broker a
 
 test('Connect with no key shows "Paste your Trading212 API key."', async ({ page, me }) => {
   await seedT212(me);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await card(page).getByRole('button', { name: 'Connect', exact: true }).click();
   await expect(page.getByText('Paste your Trading212 API key.')).toBeVisible();
   expect(await connectionApi(page)).toBeNull();
@@ -178,7 +178,7 @@ test('Sync now fills the Investments page: holdings named after their instrument
   const w = await seedT212(me);
   const k = await fakeKey();
   await connectApi(page, k, w.pocket.id, w.sub.id);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await card(page).getByRole('button', { name: 'Sync now' }).click();
   await expect.poll(async () => (await holdingsApi(page)).length, { timeout: 30_000 }).toBe(3);
   await expect(card(page)).toContainText(/synced/);
@@ -303,7 +303,7 @@ test('a position that disappears is marked sold: it moves under "Sold" with no t
   const w = await synced(page, me);
   const before = (await monthTxs(page)).length;
   await fakeSet(w.key, { positions: [VUSA, AAPL] });
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await card(page).getByRole('button', { name: 'Sync now' }).click();
   await expect.poll(async () => (await holdingsApi(page)).find((h) => h.name === 'Microsoft')?.soldDate, { timeout: 30_000 }).toBe(new Date().toLocaleDateString('en-CA'));
   await page.goto('/investments');
@@ -352,7 +352,7 @@ test('a failed sync keeps the holdings, shows the error in the card as a warning
     await expect.poll(async () => (await connectionApi(page))?.error, { timeout: 40_000 }).toBe(text);
     expect(await holdingsApi(page)).toEqual(before);
   }
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await expect(card(page).locator('.ty-pill--warning').filter({ hasText: ERR_SLOW })).toBeVisible();
   await fakeSet(w.key, { mode: 'ok', positions: [VUSA, AAPL, MSFT], free: CASH });
   await card(page).getByRole('button', { name: 'Sync now' }).click();
@@ -364,7 +364,7 @@ test('a failed sync keeps the holdings, shows the error in the card as a warning
 // ============ disconnecting ============
 test('Disconnect keeps the holdings and from then on they are typed by hand', async ({ page, me }) => {
   await synced(page, me);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await card(page).getByRole('button', { name: 'Disconnect' }).click();
   const confirm = page.getByRole('dialog');
   if (await confirm.isVisible().catch(() => false)) await confirm.getByRole('button', { name: 'Disconnect' }).click();
@@ -408,13 +408,13 @@ for (const [size, viewport] of Object.entries(sizes)) {
       test('settings card (empty, connected, with an error), investments with broker holdings, the pockets page', async ({ page, me }) => {
         const tag = `${size}-${scheme}`;
         const w = await seedT212(me);
-        await page.goto('/settings');
+        await openTab(page, '/settings', 'Connections');
         await card(page).scrollIntoViewIfNeeded();
         await shot(page, `trading212-settings-empty-${tag}`);
         const k = await fakeKey();
         await connectApi(page, k, w.pocket.id, w.sub.id);
         await syncApi(page);
-        await page.goto('/settings');
+        await openTab(page, '/settings', 'Connections');
         await expect(card(page)).toContainText('key ending K9x2');
         await card(page).scrollIntoViewIfNeeded();
         await shot(page, `trading212-settings-connected-${tag}`);

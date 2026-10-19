@@ -97,6 +97,15 @@ export async function seedBudget(s: Seed) {
 
 type Fixtures = { me: Person & { seed: Seed } };
 
+/**
+ * Spec 27: the app is light unless the person chose Dark (localStorage tally.theme), whatever the system prefers.
+ * Most tests only want "dark" to mean a dark app, so a browser that prefers dark gets the Dark choice stored before the page loads.
+ * The theme tests open their own context without this script.
+ */
+export const darkWhenSystemIsDark = () => {
+  try { if (matchMedia('(prefers-color-scheme: dark)').matches) localStorage.setItem('tally.theme', 'dark'); } catch { /* storage blocked */ }
+};
+
 /** Spec 12: a pocket in another currency, made through the API. */
 export async function currencyPocket(page: Page, name: string, currency: string, openingBalanceMinor = 0, kind = 'bank') {
   const res = await page.request.post('/api/pockets', { data: { name, kind, currency, openingBalanceMinor } });
@@ -106,6 +115,10 @@ export async function currencyPocket(page: Page, name: string, currency: string,
 
 /** `me` is a brand-new person who is already signed in on `page`. */
 export const test = base.extend<Fixtures>({
+  context: async ({ context }, use) => {
+    await context.addInitScript(darkWhenSystemIsDark);
+    await use(context);
+  },
   me: async ({ page, baseURL }, use) => {
     const person = await createPerson(baseURL!);
     await signInByApi(page, person);
@@ -266,6 +279,40 @@ export const stat = (page: Page, label: string): Locator =>
 export const summary = (page: Page): Locator =>
   page.getByText('Income', { exact: true }).first().locator('xpath=ancestor::*[.//text()[normalize-space()="Left over"]][1]');
 
-/** A date header of the Transactions list, e.g. "FRI 16 OCT", matched without regard to case. */
+/** A date header of the Transactions list, e.g. "Sunday, 18 October" (spec 27). */
 export const dayHeadingRe = (d = new Date()) =>
-  new RegExp(`${d.toLocaleString('en-GB', { weekday: 'short', timeZone: 'UTC' })}\\w*\\.?,?\\s+${d.getUTCDate()}\\s+${d.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}`, 'i');
+  new RegExp(`${d.toLocaleString('en-GB', { weekday: 'long', timeZone: 'UTC' })},?\\s+${d.getUTCDate()}\\s+${d.toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' })}`, 'i');
+
+// ---- spec 27: page tabs ----
+/** Opens `path` and selects the tab with that name (the page's Tabs component: role=tablist, role=tab). */
+export async function openTab(page: Page, path: string, tab: string) {
+  await page.goto(path);
+  await selectTab(page, tab);
+}
+export async function selectTab(page: Page, tab: string) {
+  const t = page.getByRole('tab', { name: tab, exact: true });
+  await t.click();
+  await expect(t).toHaveAttribute('aria-selected', 'true');
+}
+/** Settings > Appearance: picks "Light", "Dark" or "Match system" (the spec names the choices, not the control). */
+export async function chooseAppearance(page: Page, choice: 'Light' | 'Dark' | 'Match system') {
+  await openTab(page, '/settings', 'Appearance');
+  const c = page.getByRole('radio', { name: choice, exact: true }).or(page.getByRole('button', { name: choice, exact: true })).first();
+  await c.click();
+}
+/** The page's background colour as the browser reports it, and the --bg token for comparison. */
+export const pageBg = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+export const THEME = {
+  light: { bg: 'rgb(246, 245, 242)', surface: 'rgb(255, 255, 255)' },
+  dark: { bg: 'rgb(20, 20, 22)', surface: 'rgb(29, 29, 32)' },
+} as const;
+
+/** The sticky ancestor of the page title: the top bar (spec 27: 56px, sticky). Null when there is none. */
+export const stickyBar = (page: Page) => page.evaluate(() => {
+  let e: Element | null = document.querySelector('h1');
+  while (e) {
+    if (getComputedStyle(e).position === 'sticky') { const r = e.getBoundingClientRect(); return { y: r.y, height: r.height, width: r.width }; }
+    e = e.parentElement;
+  }
+  return null;
+});

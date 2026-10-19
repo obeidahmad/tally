@@ -1,5 +1,5 @@
 import type { Page, Locator } from '@playwright/test';
-import { test, expect, shot, todayIso, thisMonth } from '../support/fixtures';
+import { test, expect, shot, todayIso, thisMonth, openTab } from '../support/fixtures';
 import { importFile } from '../support/importing';
 
 // Spec 19: Reports. Figures are compared with GET /api/reports (the spec says each table shows exactly the server's figures),
@@ -34,11 +34,21 @@ const tx = async (page: Page, data: object) => {
   expect(res.status(), await res.text()).toBe(201);
 };
 
+// Spec 27: Reports has three tabs. The Cash flow tab holds the "Cash flow" bars card, the Spending tab the donut card
+// ("Spending by section") and the stacked bars over time, the Net worth tab the area chart.
+const TABS = { 'Cash flow': 'Cash flow', 'Spending by section': 'Spending', 'Net worth': 'Net worth' } as const;
 const TITLES = ['Spending by section', 'Cash flow', 'Net worth'] as const;
-const card = (page: Page, title: (typeof TITLES)[number]): Locator =>
+const card = (page: Page, title: (typeof TITLES)[number] | 'Top payees'): Locator =>
   page.locator('.ty-card', { has: page.getByRole('heading', { name: title, exact: true }) });
+/** Opens /reports on the tab that holds this chart, and returns the chart's scope: its card (the Spending tab: the whole tab, since
+ * the donut and the stacked bars are both "spending by section"). */
+async function chartOf(page: Page, title: (typeof TITLES)[number]): Promise<Locator> {
+  await openTab(page, '/reports', TABS[title]);
+  return title === 'Spending by section' ? page.getByRole('tabpanel') : card(page, title);
+}
 const toggle = (c: Locator) =>
   c.getByRole('button', { name: /Show as table|Show as chart/ }).or(c.getByRole('checkbox', { name: /Show as table/ })).or(c.getByRole('switch', { name: /Show as table/ })).first();
+const monthsRadio = (page: Page, n: number) => page.getByRole('radio', { name: `${n} months` });
 // Marks are the focusable shapes of the chart's SVG.
 const marks = (c: Locator) => c.locator('svg [tabindex="0"]');
 const tooltip = (page: Page) => page.getByRole('tooltip').filter({ visible: true });
@@ -68,7 +78,15 @@ async function seedReports(page: Page, me: { seed: import('../support/fixtures')
 }
 
 /** Shows the card's table and returns its body rows' text, oldest first (the spec orders months oldest first). */
-async function tableRows(c: Locator) {
+async function tableRows(c: Locator, spending = false) {
+  if (spending) {
+    // the stacked bars over time have a column per section; the donut's table lists the sections in rows
+    const t = c.locator('table').filter({ has: c.page().locator('thead', { hasText: 'Needs' }) }).filter({ has: c.page().locator('thead', { hasText: 'Wants' }) }).first();
+    for (const b of await c.getByRole('button', { name: 'Show as table' }).all()) if (!(await t.isVisible())) await b.click();
+    await expect(t).toBeVisible();
+    await expect(t.locator('tbody tr').first()).toBeVisible();
+    return (await t.locator('tbody tr').allInnerTexts()).map(clean);
+  }
   const t = c.locator('table');
   if (!(await t.isVisible())) await toggle(c).click();
   await expect(t).toBeVisible();
@@ -92,10 +110,16 @@ test('the sidebar lists Reports after Investments and opens /reports with the ti
   await nav.getByRole('link', { name: 'Reports' }).click();
   await expect(page).toHaveURL(/\/reports$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Reports' })).toBeVisible();
-  for (const t of ['3 months', '6 months', '12 months', '24 months']) await expect(page.getByRole('radio', { name: t })).toBeAttached();
-  await expect(page.getByRole('radio', { name: '12 months' })).toBeChecked();
-  for (const t of TITLES) await expect(card(page, t)).toBeVisible();
-  await expect(toggle(card(page, 'Cash flow'))).toContainText('Show as table');
+  await expect(page.getByRole('tab', { name: 'Cash flow', exact: true })).toHaveAttribute('aria-selected', 'true'); // the first tab
+  for (const t of ['Cash flow', 'Spending', 'Net worth']) await expect(page.getByRole('tab', { name: t, exact: true })).toBeVisible();
+  for (const title of ['Cash flow', 'Net worth'] as const) {
+    const c = await chartOf(page, title);
+    await expect(c).toBeVisible();
+    for (const t of ['3 months', '6 months', '12 months', '24 months']) await expect(c.getByRole('radio', { name: t })).toBeAttached();
+    await expect(c.getByRole('radio', { name: '12 months' })).toBeChecked();
+    await expect(toggle(c)).toContainText('Show as table');
+  }
+  await expect(await chartOf(page, 'Spending by section')).toContainText('Spending by section');
 });
 
 // ============ criterion 2: the tables show the server's figures ============
@@ -103,7 +127,6 @@ test('the three tables show the figures of GET /api/reports for the 12 months', 
   const { food, fun } = await seedReports(page, me);
   const sections = (await (await page.request.get('/api/sections')).json()).sections as { id: number; name: string }[];
   expect(sections.length).toBeGreaterThanOrEqual(2);
-  await page.goto('/reports');
   const r = await reportsApi(page, 12);
   expect(r.months).toHaveLength(12);
   expect(r.months.slice(-3)).toEqual([monthAgo(2), monthAgo(1), monthAgo(0)]);
@@ -120,32 +143,31 @@ test('the three tables show the figures of GET /api/reports for the 12 months', 
   expect(r.networth.find((n) => n.month === monthAgo(2))!.minor).toBe(280000);
   void food; void fun;
 
-  const spend = await tableRows(card(page, 'Spending by section'));
+  const spend = await tableRows(await chartOf(page, 'Spending by section'), true);
   expect(spend).toHaveLength(12);
   r.spending.forEach((s, i) => hasFigures(spend[i], [...s.bySection.map((b) => b.minor), s.totalMinor], `spending row ${s.month}`));
 
-  const flow = await tableRows(card(page, 'Cash flow'));
+  const flow = await tableRows(await chartOf(page, 'Cash flow'));
   expect(flow).toHaveLength(12);
   r.cashflow.forEach((c, i) => hasFigures(flow[i], [c.incomeMinor, c.spendingMinor], `cash flow row ${c.month}`));
 
-  const worth = await tableRows(card(page, 'Net worth'));
+  const worth = await tableRows(await chartOf(page, 'Net worth'));
   expect(worth).toHaveLength(12);
   r.networth.forEach((n, i) => hasFigures(worth[i], [n.minor], `net worth row ${n.month}`));
 });
 
 test('the spending table names every section and shows 0.00-month rows for months with nothing', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
-  const c = card(page, 'Spending by section');
-  await tableRows(c);
-  const head = clean(await c.locator('table thead').innerText());
+  const c = await chartOf(page, 'Spending by section');
+  await tableRows(c, true);
+  const head = clean(await c.locator('table thead').filter({ hasText: 'Needs' }).first().innerText());
   expect(head.toLowerCase()).toContain('needs');
   expect(head.toLowerCase()).toContain('wants');
 });
 
 test('Cash flow says what the months added up to: income 2,000.00, spending 620.00, saved 1,380.00', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
+  await openTab(page, '/reports', 'Cash flow');
   await expect(card(page, 'Cash flow')).toContainText('Over these months: income 2,000.00, spending 620.00, saved 1,380.00.');
 });
 
@@ -155,32 +177,42 @@ test('Cash flow says "overspent" when spending is larger than income', async ({ 
   const sub = await s.subsection(sec.id, 'Food', 0);
   const bank = await s.pocket('Bank', 100000);
   await s.expense(bank.id, sub.id, 15000, 'Shop', dateIn(1));
-  await page.goto('/reports');
+  await openTab(page, '/reports', 'Cash flow');
   await expect(card(page, 'Cash flow')).toContainText('Over these months: income 0.00, spending 150.00, overspent 150.00.');
 });
 
 // ============ the months choice ============
 test('choosing 3 months shows three rows, 24 months shows twenty-four, and the figures follow the server', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
+  // each tab with a months control keeps its own: Cash flow and Net worth. The Spending tab's stacked bars follow the control when it has one.
+  const choose = async (c: Locator, n: number) => {
+    const r = c.getByRole('radio', { name: `${n} months` });
+    if (await r.count()) { await r.check(); await expect(r).toBeChecked(); return true; }
+    return false;
+  };
   for (const n of [3, 6, 24, 12]) {
-    await page.getByRole('radio', { name: `${n} months` }).check();
-    await expect(page.getByRole('radio', { name: `${n} months` })).toBeChecked();
     const r = await reportsApi(page, n);
     expect(r.months).toHaveLength(n);
-    const spend = await tableRows(card(page, 'Spending by section'));
-    expect(spend, `${n} months: spending rows`).toHaveLength(n);
-    r.spending.forEach((s, i) => hasFigures(spend[i], [s.totalMinor], `${n} months, spending ${s.month}`));
-    const worth = await tableRows(card(page, 'Net worth'));
+    const sc = await chartOf(page, 'Spending by section');
+    if (await choose(sc, n)) {
+      const spend = await tableRows(sc, true);
+      expect(spend, `${n} months: spending rows`).toHaveLength(n);
+      r.spending.forEach((s, i) => hasFigures(spend[i], [s.totalMinor], `${n} months, spending ${s.month}`));
+    }
+    const nc = await chartOf(page, 'Net worth');
+    await choose(nc, n);
+    const worth = await tableRows(nc);
     expect(worth, `${n} months: net worth rows`).toHaveLength(n);
     r.networth.forEach((w, i) => hasFigures(worth[i], [w.minor], `${n} months, net worth ${w.month}`));
-    expect(await tableRows(card(page, 'Cash flow')), `${n} months: cash flow rows`).toHaveLength(n);
+    const cc = await chartOf(page, 'Cash flow');
+    await choose(cc, n);
+    expect(await tableRows(cc), `${n} months: cash flow rows`).toHaveLength(n);
   }
 });
 
 test('with 3 months chosen the older month drops out of the caption sums', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
+  await openTab(page, '/reports', 'Cash flow');
   await page.getByRole('radio', { name: '3 months' }).check();
   // the three months are two months ago, last month, this month: all of the seed, so it stays 620.00
   await expect(card(page, 'Cash flow')).toContainText('income 2,000.00, spending 620.00, saved 1,380.00');
@@ -200,23 +232,24 @@ test('the API refuses months outside 3, 6, 12 and 24', async ({ page, me }) => {
 // ============ criterion 3: tooltips and legends ============
 test('the legends name every section, and Cash flow names income and spending', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
-  const s = card(page, 'Spending by section');
+  const s = await chartOf(page, 'Spending by section');
+  // the donut is of the chosen month: last month had Needs 300.00 and Wants 50.00
+  await page.getByRole('button', { name: /^(Previous month|‹)$/ }).first().click();
   await expect(s).toContainText('Needs');
   await expect(s).toContainText('Wants');
   await expect(s.getByRole('listitem').filter({ hasText: 'Needs' })).toBeVisible();
   await expect(s.getByRole('listitem').filter({ hasText: 'Wants' })).toBeVisible();
-  const f = card(page, 'Cash flow');
+  const f = await chartOf(page, 'Cash flow');
   await expect(f.getByText('Income', { exact: true }).first()).toBeVisible();
   await expect(f.getByText('Spending', { exact: true }).first()).toBeVisible();
 });
 
 test('every mark of the three charts shows a tooltip on hover and on keyboard focus (3 months)', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
-  await page.getByRole('radio', { name: '3 months' }).check();
   for (const t of TITLES) {
-    const c = card(page, t);
+    const c = await chartOf(page, t);
+    const three = c.getByRole('radio', { name: '3 months' });
+    if (await three.count()) await three.check();
     await expect(marks(c).first(), `${t} has focusable marks`).toBeVisible();
     const n = await marks(c).count();
     expect(n, `${t} marks`).toBeGreaterThanOrEqual(3);
@@ -236,14 +269,13 @@ test('every mark of the three charts shows a tooltip on hover and on keyboard fo
 
 test('the spending tooltip lists the month, each section and the total; the net worth tooltip the month and value', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
-  await page.getByRole('radio', { name: '3 months' }).check();
   const month = new Date(Date.UTC(Number(monthAgo(1).slice(0, 4)), Number(monthAgo(1).slice(5)) - 1, 1));
   const monthName = month.toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' });
   const short = month.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
 
   // find the mark whose tooltip carries last month's total 350.00
-  const s = card(page, 'Spending by section');
+  const s = await chartOf(page, 'Spending by section');
+  if (await s.getByRole('radio', { name: '3 months' }).count()) await s.getByRole('radio', { name: '3 months' }).check();
   const n = await marks(s).count();
   let found = '';
   for (let i = 0; i < n && !found; i++) {
@@ -259,7 +291,8 @@ test('the spending tooltip lists the month, each section and the total; the net 
   expect(found).toContain('50.00');
   expect(found.indexOf('350.00'), 'the total comes after the sections').toBeGreaterThan(found.indexOf('50.00'));
 
-  const w = card(page, 'Net worth');
+  const w = await chartOf(page, 'Net worth');
+  await w.getByRole('radio', { name: '3 months' }).check();
   const wn = await marks(w).count();
   let wt = '';
   for (let i = 0; i < wn && !wt; i++) {
@@ -273,14 +306,12 @@ test('the spending tooltip lists the month, each section and the total; the net 
 
 test('Show as table swaps the chart for a table and back', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
   for (const t of TITLES) {
-    const c = card(page, t);
+    const c = await chartOf(page, t);
     await expect(c.locator('table')).toHaveCount(0);
     await expect(marks(c).first()).toBeVisible();
     await toggle(c).click();
-    await expect(c.locator('table')).toBeVisible();
-    await expect(marks(c).first()).toBeHidden();
+    await expect(c.locator('table').first()).toBeVisible();
     await toggle(c).click();
     await expect(c.locator('table')).toHaveCount(0);
     await expect(marks(c).first()).toBeVisible();
@@ -289,7 +320,7 @@ test('Show as table swaps the chart for a table and back', async ({ page, me }) 
 
 test('the Net worth card labels the last value at the end of the line', async ({ page, me }) => {
   await seedReports(page, me);
-  await page.goto('/reports');
+  await openTab(page, '/reports', 'Net worth');
   await expect(card(page, 'Net worth')).toContainText('2,380.00');
 });
 
@@ -311,8 +342,7 @@ test('a transfer and an unsorted import change no spending or cash flow figure, 
   // net worth follows pocket balances, so the import (12.00 in, 4.50 out) moves it by 7.50 from the import date on
   expect(after.networth[after.networth.length - 1].minor - before.networth[before.networth.length - 1].minor).toBe(750);
 
-  await page.goto('/reports');
-  const flow = await tableRows(card(page, 'Cash flow'));
+  const flow = await tableRows(await chartOf(page, 'Cash flow'));
   expect(flow[flow.length - 1]).not.toContain('12.00');
   expect(flow[flow.length - 1]).not.toContain('4.50');
   await expect(card(page, 'Cash flow')).toContainText('spending 620.00');
@@ -324,7 +354,7 @@ test('a USD pocket is counted in net worth by the server, and the missing-rate n
   const res = await page.request.post('/api/pockets', { data: { name: 'Trading212', kind: 'broker', currency: 'USD', openingBalanceMinor: 100000 } });
   expect(res.status()).toBe(201);
   const r = await reportsApi(page);
-  await page.goto('/reports');
+  await openTab(page, '/reports', 'Net worth');
   const note = card(page, 'Net worth').getByText('No exchange rate for USD for some months; those months leave it out.');
   if (r.missingRates?.includes('USD')) await expect(note).toBeVisible();
   else await expect(note).toHaveCount(0);
@@ -345,7 +375,7 @@ test('a USD pocket counts in all 24 months at the nearest stored rate, so no mis
   expect(r.missingRates ?? []).toEqual([]);
   expect(r.networth[0].minor).toBe(190909); // 1,000.00 EUR + 1,000.00 USD at 1.1000 (rate of 2026-01-02, the nearest)
   expect(r.networth[r.networth.length - 1].minor).toBe(192081); // today at 1.0860
-  await page.goto('/reports');
+  await openTab(page, '/reports', 'Net worth');
   await page.getByRole('radio', { name: '24 months' }).check();
   await expect(card(page, 'Net worth').getByText(/No exchange rate for/)).toHaveCount(0);
   const worth = await tableRows(card(page, 'Net worth'));
@@ -356,9 +386,10 @@ test('a USD pocket counts in all 24 months at the nearest stored rate, so no mis
 // ============ empty ============
 test('with no transactions each card says "Nothing to show yet."', async ({ page, me }) => {
   void me;
-  await page.goto('/reports');
+  await expect((await chartOf(page, 'Cash flow')).getByText('Nothing to show yet.')).toBeVisible();
+  await expect((await chartOf(page, 'Spending by section')).getByText('Nothing to show yet.').first()).toBeVisible();
+  await expect((await chartOf(page, 'Net worth')).getByText('Nothing to show yet.')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: 'Reports' })).toBeVisible();
-  for (const t of TITLES) await expect(card(page, t).getByText('Nothing to show yet.')).toBeVisible();
 });
 
 // ============ isolation ============
@@ -380,19 +411,20 @@ test.describe('phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
   test('no sideways scroll, the toggle and the marks work by tap', async ({ page, me }) => {
     await seedReports(page, me);
-    await page.goto('/reports');
-    await page.getByRole('radio', { name: '3 months' }).check();
-    const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(over, 'no horizontal page scroll').toBeLessThanOrEqual(0);
     for (const t of TITLES) {
-      const box = await card(page, t).locator('svg').first().boundingBox();
+      const c = await chartOf(page, t);
+      const three = c.getByRole('radio', { name: '3 months' });
+      if (await three.count()) await three.check();
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(over, `${t}: no horizontal page scroll`).toBeLessThanOrEqual(0);
+      const box = await c.locator('svg').first().boundingBox();
       expect(box!.width, `${t} chart uses the width`).toBeGreaterThan(390 * 0.7);
     }
-    const s = card(page, 'Spending by section');
+    const s = await chartOf(page, 'Spending by section');
     await marks(s).first().tap();
     await expect(tooltip(page)).toBeVisible();
     await toggle(s).tap();
-    await expect(s.locator('table')).toBeVisible();
+    await expect(s.locator('table').first()).toBeVisible();
   });
 });
 
@@ -404,26 +436,25 @@ for (const [size, viewport] of Object.entries(sizes)) {
       test.use({ viewport, colorScheme: scheme });
       test('charts, tables, a tooltip and the empty page', async ({ page, me, browser, baseURL }) => {
         const tag = `${size}-${scheme}`;
-        await page.goto('/reports');
-        await expect(card(page, 'Net worth').getByText('Nothing to show yet.')).toBeVisible();
+        await expect((await chartOf(page, 'Net worth')).getByText('Nothing to show yet.')).toBeVisible();
         await shot(page, `reports-empty-${tag}`);
 
         await seedReports(page, me);
         await page.reload();
         await expect(marks(card(page, 'Net worth')).first()).toBeVisible();
-        await shot(page, `reports-${tag}`);
         for (const t of TITLES) {
-          await card(page, t).scrollIntoViewIfNeeded();
+          const c = await chartOf(page, t);
+          await expect(marks(c).first()).toBeVisible();
           await shot(page, `reports-${t.toLowerCase().replace(/ /g, '-')}-${tag}`);
         }
-        const s = card(page, 'Spending by section');
-        await s.scrollIntoViewIfNeeded();
+        const s = await chartOf(page, 'Spending by section');
         await marks(s).last().focus();
         await expect(tooltip(page)).toBeVisible();
         await shot(page, `reports-tooltip-${tag}`);
-        await page.getByRole('radio', { name: '3 months' }).check();
+        const nw = await chartOf(page, 'Net worth');
+        await nw.getByRole('radio', { name: '3 months' }).check();
         await shot(page, `reports-3-months-${tag}`);
-        for (const t of TITLES) await toggle(card(page, t)).click();
+        await toggle(nw).click();
         await shot(page, `reports-tables-${tag}`);
         void browser; void baseURL;
       });

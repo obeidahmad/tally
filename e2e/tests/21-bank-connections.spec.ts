@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, dialog, toast, shot, pocketsApi, selectLike, currencyPocket, type Seed, pocketRow } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, pocketsApi, selectLike, currencyPocket, type Seed, pocketRow, openTab } from '../support/fixtures';
 import { seedImport, rulesApi, unsortedApi } from '../support/importing';
 import { notices } from '../support/closing';
 import {
@@ -26,7 +26,7 @@ async function linked(page: Page, me: { seed: Seed }, app: FakeApp) {
 // ============ criterion 2: a registration saves, its key never comes back ============
 test('Settings > Bank connections: a new person sees the two fields, the hint and "Save"; wrong values show the spec\'s sentences', async ({ page, me }) => {
   expect((await (await page.request.get('/api/banks/registration')).json()).configured).toBe(false);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await expect(page.getByRole('heading', { name: 'Bank connections' })).toBeVisible();
   await expect(page.getByText('From your own registration at enablebanking.com. Its redirect URL must be', { exact: false })).toBeVisible();
   await expect(page.getByText(`${TEST_BASE}/api/banks/callback`, { exact: false })).toBeVisible();
@@ -48,7 +48,7 @@ test('Settings > Bank connections: a new person sees the two fields, the hint an
 
 test('saving a registration shows "Connect a bank"; the server answers with the application ID only, never the key', async ({ page, me }) => {
   const app = await fakeApp();
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await page.getByLabel('Application ID').fill(app.applicationId);
   await page.getByLabel('Private key').fill(app.privateKey);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -79,7 +79,7 @@ test('the API refuses a bad application ID or key with the spec\'s sentences and
 test('Connect a bank: Cyprus is the first country, the dialog lists the country\'s banks, Continue goes through the bank and back with "Bank connected."', async ({ page, me }) => {
   const app = await fakeApp({ validUntils: [inDays(100)] });
   await register(page, app);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await page.getByRole('button', { name: 'Connect a bank', exact: true }).click();
   const d = dialog(page);
   await expect(d.getByLabel('Country', { exact: true }).or(d.getByRole('group', { name: 'Country', exact: true }))).toBeVisible();
@@ -270,7 +270,7 @@ test('Disconnect forgets the connection and keeps the imported transactions', as
   await linked(page, me, app);
   await page.getByRole('button', { name: 'Sync now', exact: true }).click();
   await expect.poll(async () => (await txApi(page)).length).toBe(4);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Connections');
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
   // a confirmation may ask first; the spec does not say
   const d = dialog(page);
@@ -347,7 +347,7 @@ for (const [size, viewport] of [['desktop', { width: 1280, height: 800 }], ['pho
       await linked(page, me, app);
       await page.getByRole('button', { name: 'Sync now', exact: true }).click();
       await expect.poll(async () => (await txApi(page)).length).toBe(4);
-      await page.goto('/settings');
+      await openTab(page, '/settings', 'Connections');
       await expect(page.getByRole('button', { name: 'Sync now', exact: true })).toBeVisible();
       await page.getByRole('heading', { name: 'Bank connections' }).evaluate((e) => e.scrollIntoView({ block: 'start' }));
       await shot(page, `settings-bank-connections-${size}-${scheme}`);
@@ -370,7 +370,7 @@ test('screenshots: the registration form (desktop and phone, light and dark)', a
     for (const scheme of ['light', 'dark'] as const) {
       await page.setViewportSize(viewport);
       await page.emulateMedia({ colorScheme: scheme });
-      await page.goto('/settings');
+      await openTab(page, '/settings', 'Connections');
       await page.getByRole('heading', { name: 'Bank connections' }).evaluate((e) => e.scrollIntoView({ block: 'start' }));
       await shot(page, `settings-bank-registration-${size}-${scheme}`);
     }
