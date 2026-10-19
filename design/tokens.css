@@ -9,6 +9,7 @@
   --ink-muted: #6e6a64;
   --line: #e8e5e0;
   --line-strong: #d6d2cb;
+  --line-input: #918d87;
   --brand: #f26a32;
   --primary: #c9461a;
   --on-primary: #ffffff;
@@ -56,6 +57,7 @@
     --ink-muted: #a19d97;
     --line: #2c2c31;
     --line-strong: #3a3a40;
+    --line-input: #6c6862;
     --brand: #f47a45;
     --primary: #c9461a;
     --on-primary: #ffffff;
@@ -91,6 +93,7 @@
   --ink-muted: #a19d97;
   --line: #2c2c31;
   --line-strong: #3a3a40;
+  --line-input: #6c6862;
   --brand: #f47a45;
   --primary: #c9461a;
   --on-primary: #ffffff;
