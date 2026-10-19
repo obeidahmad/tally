@@ -49,11 +49,10 @@ function ChangePassword() {
   );
 }
 
-function HomePocket() {
+function HomePocket({ pockets }: { pockets: Pocket[] }) {
   const { user, setUser } = useAuth();
   const toast = useToast();
   const f = useForm();
-  const pockets = useLoad(() => api<{ pockets: Pocket[] }>('GET', '/pockets').then((r) => r.pockets), []).data ?? [];
   if (pockets.length === 0) return null;
   const change = (id: string) => f.on(async () => {
     const r = await api<{ user: User }>('PATCH', '/me', { homePocketId: Number(id) });
@@ -226,12 +225,13 @@ export default function SettingsPage() {
   }, [bank]);
   const signOut = async () => { await api('POST', '/auth/logout').catch(() => {}); setUser(null); };
   const [tab, setTab] = useTab(TABS.map((t) => t.value));
+  const pockets = useLoad(() => api<{ pockets: Pocket[] }>('GET', '/pockets').then((r) => r.pockets), []);
   return (
     <>
       <Topbar title="Settings" tabs={<Tabs label="Settings" tabs={TABS} value={tab} onChange={setTab} />} />
       <TabPanel>
-      {tab === 'account' && <>
       <div className="app-phone-block"><BudgetSwitcher /></div>
+      {tab === 'account' && <Load state={pockets}>{(list) => <>
       <section className="ty-card ty-stack" aria-labelledby="acct-h">
         <h2 className="text-title" id="acct-h" style={{ margin: 0 }}>Your account</h2>
         <dl className="app-facts">
@@ -239,11 +239,11 @@ export default function SettingsPage() {
           <dt className="ty-label">Username</dt><dd>{user.username}</dd>
           <dt className="ty-label">Base currency</dt><dd>{user.baseCurrency}</dd>
         </dl>
-        {!user.viewing && <HomePocket />}
+        {!user.viewing && <HomePocket pockets={list} />}
       </section>
       <ChangePassword />
       <div><button className="ty-btn app-phone-only" onClick={signOut}>Sign out</button></div>
-      </>}
+      </>}</Load>}
       {tab === 'people' && <>
         {user.isOwner && <People currency={user.baseCurrency} />}
         {user.viewing ? <OwnerOnly title="Sharing" id="share-h" /> : <SharingCard />}

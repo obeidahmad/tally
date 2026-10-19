@@ -531,7 +531,8 @@ function FlowCard({ sections, month }: { sections: Section[]; month: string }) {
       const out: string[] = [];
       for (const n of [...g.nodes].sort((p, q) => q.h - p.h)) {
         const el = labels.current.get(n.id);
-        if (!el || n.h < SHORT) continue;
+        if (n.h < SHORT) continue;
+        if (!el) { out.push(n.id); continue; } // already dropped by an earlier pass (fit also runs when the font loads)
         const r = el.getBoundingClientRect();
         if (r.left < card.left || r.right > card.right || kept.some((o) => overlap(o, r))) out.push(n.id); else kept.push(r);
       }
@@ -577,7 +578,10 @@ function FlowCard({ sections, month }: { sections: Section[]; month: string }) {
                 );
               })}
               {g.nodes.map((n) => {
-                const end = n.col >= 2, lx = end ? n.x - 8 : n.x + NODE_W + 8, cy = n.y + n.h / 2;
+                const end = n.col >= 2, lx = end ? n.x - 8 : n.x + NODE_W + 8;
+                // Income's label sits inside its largest outgoing band, so it does not cross a band edge
+                const big = n.col === 1 ? g.links.filter((l) => l.a === n).sort((p, q) => q.minor - p.minor)[0] : undefined;
+                const cy = big && g.thick(n, big.minor) >= 40 ? big.y0 + g.thick(n, big.minor) / 2 : n.y + n.h / 2;
                 const amt = `${formatMinor(n.value)} (${pct(n.value, g.total)})`;
                 // A short or crowded node has no label: hovering or focusing it shows the same text as a tooltip.
                 const shown = n.h >= SHORT && !hide.has(n.id);

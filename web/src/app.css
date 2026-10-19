@@ -37,6 +37,7 @@
 .app-foot-start { display: flex; gap: var(--space-2); margin-right: auto; }
 
 @media (max-width: 640px) {
+  .ty-top__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .app-phone-only { display: inline-flex; }
   .app-phone-card { display: block; }
   .app-phone-block { display: block; }

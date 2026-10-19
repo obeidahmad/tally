@@ -212,7 +212,7 @@ export default function BudgetPage() {
             </div>
           );
           const leftOver = budget.totals.leftOverMinor > 0 && (
-            <div className="ty-cap">
+            <div className="ty-cap ty-wide">
               {formatMinor(budget.totals.leftOverMinor)} is left over: no step in the pipeline takes it.{' '}
               <Link className="ty-link" to={month === now ? '/pipeline' : `/pipeline?month=${month}`}>Open the pipeline</Link>
             </div>

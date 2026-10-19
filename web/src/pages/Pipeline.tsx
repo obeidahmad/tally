@@ -170,13 +170,13 @@ export default function PipelinePage() {
       <Topbar
         title="Pipeline"
         month={{ label: monthTitle(month), onPrev: () => go(shiftMonth(month, -1)), onNext: () => go(shiftMonth(month, 1)), nextDisabled: month >= now }}
-        actions={state.data && (<>
+        actions={state.data && (<span className="ty-wide" style={{ display: 'contents' }}>
           <StatePill closed={state.data.pipeline.closed} />
           {!state.data.pipeline.closed && (<>
             <button className="ty-btn" onClick={() => setDialog({ t: 'section' })}>Add section</button>
             <button className="ty-btn ty-btn--primary" onClick={() => setDialog({ t: 'source' })}>Add income source</button>
           </>)}
-        </>)}
+        </span>)}
       />
       <div className="app-phone-card ty-card">The pipeline needs a wider screen for now.</div>
       <div className="ty-wide app-pipe-wrap">
