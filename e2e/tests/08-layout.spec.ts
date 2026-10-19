@@ -1,6 +1,6 @@
 import { test, expect, dialog, shot, seedBudget, row, srow, createPerson, signInByApi, seed, chooseAppearance, pageBg, THEME, stickyBar } from '../support/fixtures';
 
-const names = ['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']; // the phone tab bar
+const names = ['Home', 'Budget', 'Transactions', 'Pockets', 'More']; // the phone tab bar (spec 27 polish: Settings moved into More)
 const sidebar = ['Home', 'Budget', 'Pipeline', 'Transactions', 'Recurring', 'Pockets', 'Investments', 'Reports', 'Settings'];
 
 test.describe('desktop', () => {
@@ -51,12 +51,12 @@ test.describe('desktop', () => {
 test.describe('phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('the tab bar shows the same five pages (Settings, not More) and the sidebar is gone', async ({ page, me }) => {
+  test('the phone tab bar shows Home, Budget, Transactions, Pockets and More, and the sidebar is gone', async ({ page, me }) => {
     await page.goto('/budget');
     await expect(page.locator('.ty-side')).toBeHidden();
     const tabs = page.locator('.ty-tabbar');
-    await expect(tabs.getByRole('link')).toHaveText(names);
-    for (const n of ['Transactions', 'Pockets', 'Settings', 'Budget']) {
+    await expect(tabs.locator('a, button')).toHaveText(names);
+    for (const n of ['Transactions', 'Pockets', 'Budget']) {
       await tabs.getByRole('link', { name: n }).click();
       await expect(page).toHaveURL(new RegExp(`/${n.toLowerCase()}$`));
       await expect(tabs.getByRole('link', { name: n })).toHaveAttribute('aria-current', 'page');

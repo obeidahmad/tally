@@ -1,6 +1,7 @@
 import type { Page, Locator } from '@playwright/test';
 import { test, expect, shot, seedBudget, openTab, selectTab, chooseAppearance, pageBg, THEME, createPerson, signInByApi, seed, todayIso, em, type Seed } from '../support/fixtures';
 import { norm } from '../support/closing';
+import { seedRich, syncRevolut } from '../support/rich';
 
 // Spec 27: the Monarch look. Light by default, the Appearance choice, the page tabs, the stat cards, the Sankey and the donut.
 // Screenshots: spec27-<page>-<1280|1600|phone>-<light|dark>.png in e2e/screenshots/.
@@ -818,16 +819,6 @@ test('Pockets: a net worth card with 3M, 6M, 12M and 24M (6M at first), the chan
 });
 
 // ============ screenshots ============
-async function richData(page: Page, s: Seed) {
-  const b = await seedBudget(s);
-  await s.pocket('Wallet', 2500, 'cash');
-  await s.pocket('Savings pot', 150000, 'fund', em('Seedling'));
-  await s.expense(b.pocket.id, b.subs.id, 999, 'Spotify', new Date(Date.now() - 80 * 864e5).toISOString().slice(0, 10));
-  await s.expense(b.pocket.id, b.subs.id, 999, 'Spotify', new Date(Date.now() - 50 * 864e5).toISOString().slice(0, 10));
-  await s.expense(b.pocket.id, b.subs.id, 999, 'Spotify', new Date(Date.now() - 20 * 864e5).toISOString().slice(0, 10));
-  await s.expense(b.pocket.id, b.food.id, 4500, 'Lidl', new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10));
-  return b;
-}
 const PAGES: [string, string, string | null][] = [
   ['home', '/home', null], ['budget', '/budget', null], ['pipeline', '/pipeline', null], ['transactions', '/transactions', null],
   ['recurring-upcoming', '/recurring', 'Upcoming'], ['recurring-calendar', '/recurring', 'Calendar'], ['pockets', '/pockets', null], ['investments', '/investments', null],
@@ -839,9 +830,10 @@ for (const [size, viewport] of [['1280', { width: 1280, height: 800 }], ['1600',
     test.describe(`screenshots ${size} ${scheme}`, () => {
       test.use({ viewport, colorScheme: scheme });
       test('every page and the dialogs', async ({ page, me }) => {
-        test.setTimeout(120_000);
+        test.setTimeout(180_000);
         const tag = `${size}-${scheme}`;
-        await richData(page, me.seed);
+        await seedRich(page, me.seed);
+        await syncRevolut(page); // a pocket that reads "Synced … from Bank of Cyprus"
         for (const [name, path, tab] of PAGES) {
           await page.goto(path);
           if (!(size === 'phone' && name === 'pipeline')) await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible(); // Pipeline has no phone layout
@@ -858,7 +850,7 @@ for (const [size, viewport] of [['1280', { width: 1280, height: 800 }], ['1600',
         await expect(page.getByRole('dialog')).toBeVisible();
         await shot(page, `spec27-dialog-add-transaction-${tag}`);
         await page.keyboard.press('Escape');
-        await page.locator('.ty-btable__row[role="button"]').filter({ hasText: 'Food' }).first().click();
+        await page.locator('.ty-btable__row[role="button"]').filter({ hasText: 'Groceries' }).first().click();
         await expect(page.getByRole('dialog')).toBeVisible();
         await shot(page, `spec27-dialog-subsection-${tag}`);
         await page.keyboard.press('Escape');

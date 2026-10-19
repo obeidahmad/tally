@@ -154,14 +154,14 @@ test.describe('phone', () => {
   test('"Pipeline" is not in the tab bar, and at 390px the page shows only the top bar and "The pipeline needs a wider screen for now."', async ({ page, me }) => {
     await seedPipeline(me.seed);
     await page.goto('/budget');
-    await expect(page.locator('.ty-tabbar').getByRole('link')).toHaveText(['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']);
+    await expect(page.locator('.ty-tabbar').locator('a, button')).toHaveText(['Home', 'Budget', 'Transactions', 'Pockets', 'More']);
     await page.goto('/pipeline');
     await expect(page.getByText(WIDER)).toBeVisible();
     await expect(page.locator('.ty-top')).toContainText('Pipeline');
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
     await expect(page.locator('.ty-pipe')).toBeHidden(); // rendered or not, never shown at this width
     await expect(page.getByRole('button', { name: 'Add income source' })).toBeHidden();
-    await expect(page.locator('.ty-tabbar').getByRole('link')).toHaveText(['Home', 'Budget', 'Transactions', 'Pockets', 'Settings']);
+    await expect(page.locator('.ty-tabbar').locator('a, button')).toHaveText(['Home', 'Budget', 'Transactions', 'Pockets', 'More']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await shot(page, 'spec06-pipeline-phone-light');
   });
