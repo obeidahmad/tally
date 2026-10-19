@@ -209,3 +209,14 @@ Pages are built only with design-system classes. No page-level CSS beyond layout
 - **Percentages** in the Sankey and the donut have one decimal ("37.2%").
 - **The date header** in Transactions stays sticky.
 - **Dialog submit buttons:** an income dialog's submit keeps the `positive` fill and a spending one is `primary`.
+
+## Decisions after the first build
+
+- **The Sankey follows Monarch's structure,** so no band crosses the chart. The figures come from `GET /api/reports/flow` and are reshaped in the browser. The route stays as it is.
+  - **Columns:** sources ("From last month" included) → "Income" (their total) → "Not spent" (Income − total spent; left out if 0) plus one node per section holding **what the section spent** → that section's subsections, by what they spent.
+  - **Order:** "Not spent" first, then sections by spent (largest first). Subsections sit in their section's order, largest first, so bands never cross.
+  - **Spending more than income:** a source node "Earlier money" of (spent − income) is added, and "Not spent" is left out.
+  - **The pipeline's own split** stays on the Pipeline page. The table toggle lists every link.
+- **Colour token values:** the design system's values are the reference. `positive` `#17783F` and `negative` `#BE3329` in light were darkened from this spec's starting values so text reaches 4.5:1. Tests read the tokens, not the starting values.
+- **The Reports months controls** default to 12 (spec 19).
+- **Transactions at 1280:** the filter row with Dates off stays on one line (spec 22).
