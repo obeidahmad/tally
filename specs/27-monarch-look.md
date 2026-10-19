@@ -183,3 +183,29 @@ Pages are built only with design-system classes. No page-level CSS beyond layout
 3. Placed beside the reference frames, the Reports Cash flow tab, the Pockets page and the Transactions list have the same feel: warm light page, white cards, colour in figures and charts, small radii, tabs.
 4. The Sankey's labels are readable, inside the card, and never overlap.
 5. The design system matches the app and is published.
+
+## Exact values (so the developers and the tester agree)
+
+- **Tab values in the URL:**
+
+  | Page | Values |
+  |---|---|
+  | Reports | `cash-flow`, `spending`, `net-worth` |
+  | Recurring | `upcoming`, `calendar` |
+  | Settings | `account`, `people`, `connections`, `appearance` |
+
+  An unknown or missing value opens the first tab.
+- **`tally.theme`** stores `light`, `dark` or `system`. When missing or unreadable, the theme is light.
+- **Appearance** is a `Segmented` control with the legend "Appearance" and the options "Light", "Dark" and "Match system".
+- **Settings tabs:**
+  - **Account:** name, base currency, home pocket, change password.
+  - **People and sharing:** people (owner), sharing.
+  - **Connections:** bank connections, Trading212, import rules.
+  - **Appearance.**
+  - "Sign out" stays in the sidebar footer.
+- **Sidebar footer:** the person's name, the base currency in muted text, the theme button, and "Sign out".
+- **Reports Spending tab:** the stacked bars card is titled "Spending by section over time" and keeps its 3/6/12/24 `Segmented`.
+- **Budget:** the aside summary is replaced by the `StatCards` row above the table. "Moved this month" and the goals line go in a card to the right of the table from 1464px, or below it.
+- **Percentages** in the Sankey and the donut have one decimal ("37.2%").
+- **The date header** in Transactions stays sticky.
+- **Dialog submit buttons:** an income dialog's submit keeps the `positive` fill and a spending one is `primary`.
