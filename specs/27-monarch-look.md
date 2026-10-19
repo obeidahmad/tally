@@ -221,3 +221,13 @@ Pages are built only with design-system classes. No page-level CSS beyond layout
 - **The Reports months controls** default to 12 (spec 19).
 - **Transactions at 1280:** the filter row with Dates off stays on one line (spec 22).
 - **The focus ring** uses `primary`, because `brand` is under 3:1 on `bg`. In dark mode, a card's 1px edge may be a ring shadow.
+
+## Polish after review
+
+- **The top bar** lines up with the page content: its inner row has the same max width and centring as `ty-main`.
+- **Tabs** carry full ARIA: each tab has an `id` and `aria-controls`, and the panel has `aria-labelledby`. On phones, `scroll-margin-inline` keeps the selected tab off the screen edge.
+- **Transaction rows** start with a 28px round avatar, as in Monarch, showing the subsection's emoji on its section's tint. A row without an emoji shows the payee's first letter, and a split shows "⋯".
+- **The phone tab bar:**
+  - The bar is Home, Budget, Transactions, Pockets and "More".
+  - "More" opens a sheet listing Pipeline, Recurring, Investments, Reports and Settings, each with its icon.
+  - Every page is reachable from it.
