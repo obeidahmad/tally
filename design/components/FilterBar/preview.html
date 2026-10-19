@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>FilterBar</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<head><meta charset="utf-8"><title>FilterBar</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
 <body>
 <div class="ty-demo ty-demo--col" style="align-items:stretch">
 <div class="ty-filters">
@@ -18,22 +18,22 @@
 <div class="ty-selbar" role="toolbar" aria-label="Selected transactions"><b>2 selected</b><span class="ty-grow"></span><button class="ty-btn">Change subsection</button><button class="ty-btn">Add tag</button><button class="ty-btn">Remove tag</button><button class="ty-btn ty-btn--danger">Delete</button><button class="ty-btn ty-btn--quiet">Cancel</button></div>
 <section class="ty-section ty-sel--on" aria-label="Transactions">
 <label class="ty-sel ty-sel--head"><input type="checkbox"><span class="ty-label">Select all shown</span></label>
-<div class="ty-day ty-label">Fri 16 Oct</div>
+<div class="ty-day"><span>Friday, 16 October</span><span>−260.20</span></div>
 <div class="ty-sel">
   <input type="checkbox" class="ty-sel__box" aria-label="Select Alphamega" checked>
   <div class="ty-trow" role="button" tabindex="0">
     <div class="ty-trow__who"><span class="ty-payee"><b>Alphamega</b><svg class="ty-clip" viewBox="0 0 16 16" role="img" aria-label="Has receipt" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7.5 7.8 12.7a3 3 0 0 1-4.2-4.2l5.5-5.5a2 2 0 0 1 2.8 2.8L6.5 11.2a1 1 0 0 1-1.4-1.4L10 5"/></svg></span><span class="ty-cap ty-trow__meta">Food · <span class="ty-emoji">💳</span> Revolut</span></div>
-    <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--1"></span>Food</div>
-    <div class="ty-wide"><span class="ty-emoji">💳</span> Revolut</div>
+    <div class="ty-tag ty-wide"><span class="ty-emoji" aria-hidden="true">🛒</span>Food</div>
+    <div class="ty-tag ty-wide"><span class="ty-emoji">💳</span>Revolut</div>
     <div class="ty-num ty-right">−48.20</div>
   </div>
 </div>
 <div class="ty-sel">
   <input type="checkbox" class="ty-sel__box" aria-label="Select Ryanair">
   <div class="ty-trow" role="button" tabindex="0">
-    <div class="ty-trow__who"><span class="ty-payee"><b>Ryanair</b><span class="ty-tags ty-wide"><span class="ty-pill">holiday</span><span class="ty-pill">cyprus</span></span></span><span class="ty-cap">From a statement</span><span class="ty-cap ty-trow__meta">Wants · <span class="ty-emoji">💳</span> Revolut</span></div>
-    <div class="ty-tag ty-wide"><span class="ty-dot ty-dot--2"></span>Wants</div>
-    <div class="ty-wide"><span class="ty-emoji">💳</span> Revolut</div>
+    <div class="ty-trow__who"><span class="ty-payee"><b>Ryanair</b><span class="ty-tags ty-wide"><span class="ty-pill">holiday</span><span class="ty-pill">cyprus</span></span></span><span class="ty-cap ty-trow__meta">Wants · <span class="ty-emoji">💳</span> Revolut</span></div>
+    <div class="ty-tag ty-wide">Wants</div>
+    <div class="ty-tag ty-wide"><span class="ty-emoji">💳</span>Revolut</div>
     <div class="ty-num ty-right">−212.00</div>
   </div>
 </div>

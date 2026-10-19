@@ -1,6 +1,6 @@
 # HomeCards
 
-The Home page's cards: a grid (`ty-home`) of `ty-card ty-stack`, one column on phones and two from 900px. Each card has a `text-heading` title and one idea.
+The Home page's cards: a grid (`ty-home`) of `ty-card ty-stack`, one column on phones and two from 900px. Each card has a `text-title` title, a quiet `ty-viewall` link where a page exists, and one idea.
 
 - **This month so far:** spent of budgeted in `num-lg` and `ty-cap`, one meter (the budget's, the only meter on the page besides goals), what is left, then "Over budget" with a negative Pill per subsection, and a link to the budget.
 - **Net worth:** the figure and a Pill for the change since last month (`ty-inline` keeps them on one line), then the sparkline, then a quiet "Show as table" button that swaps the chart for a `ty-table`.

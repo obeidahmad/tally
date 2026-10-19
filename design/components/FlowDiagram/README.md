@@ -1,9 +1,11 @@
 # FlowDiagram
 
-The Reports and Home flow card: a Sankey of where a month's money went, hand-built svg, tokens only.
+The Reports Cash flow card: a Sankey of where a month's money went. Hand-built svg, tokens only. Titled "Where {Month}'s money went".
 
-- A card with a title (`text-heading ty-flowtitle`, a full line on phones) and the month's controls. The svg sits in `ty-flowbox`, which scrolls sideways when the card is narrower than the drawing, so the page never does.
-- Columns of nodes from income sources to sections to subsections. Each node is a plain rect: income `ink-muted`, a section in its `sec-1` to `sec-8` colour.
-- A flow (`ty-flow`) is filled with the colour of the section it feeds at 40% opacity, 60% on hover or focus. Each flow is a focusable `ty-chart-hit` with an accessible name ("Income to Needs 975.00"), so the picture is never read by colour alone.
-- A label sits beside its node: the name in `ty-nodelabel`, then the amount in `ty-nodeamt` (`ink-muted`, tabular). A label over a flow gets a chip behind it (`ty-labelbg`, `surface` at 92%) so it stays readable. The text also has a `surface` halo.
-- The Reports charts use the same family of classes (`ty-chart-plot`, `-axis`, `-grid`, `-seg`, `-col`, `-legend`, `-tip` and the rest).
+- **Size.** The full card width (the svg scales); height = max(480px, 34px × the number of nodes in the busiest column). Draw the viewBox at that height and let the width scale.
+- **Columns.** Sources ("From last month" included) → one "Income" node holding the total → sections and "Left over" → subsections and "Kept".
+- **Nodes** (`ty-snode`): solid 10px-wide bars, as tall as their value at one scale for the whole diagram, with an 8px gap. Sources are `ty-snode--src` (teal), Income `ty-snode--income` (`positive`), sections and their subsections `ty-snode--1` to `--8` (the section's colour), "Left over" and "Kept" `ty-snode--rest` (neutral grey).
+- **Bands** (`ty-band`): each a filled path with a linear gradient from the source node's colour to the target's (`stop-color` set to the node's colour variable), no stroke, at 30% opacity; hover or focus raises it to 50% and shows a tooltip "{from} → {to}: {amount}". Each band is focusable (`ty-chart-hit`) with that text as its accessible name.
+- **Labels** are two lines: the name (13px 500 `ink-muted`, `ty-slabel__name`, emoji first) and "{amount} ({pct}%)" (14px 600 `ink`, `ty-slabel__amt`), where pct is a share of total income. The first two columns put them just right of the node bar, over the band. The other columns put them just left of the bar, right-aligned (`ty-slabel--end`).
+- A node shorter than 30px has its label in a `ty-slabel--hover` group, shown on hover or focus of its `ty-sgroup` (focusable, with the full label as its accessible name). Every figure is in the "Show as table" toggle.
+- **Phones.** The svg keeps a 720px minimum width and scrolls sideways inside `ty-flowbox`, never the page.

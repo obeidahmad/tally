@@ -1,3 +1,3 @@
 # BudgetPhone
 
-The Budget page on a phone: a top bar with the month, one row of compact stats, then BudgetTable with only the Subsection, Spent and Available columns, and the bottom tab bar.
+The Budget page on a phone: a glass top bar with the title and "Add", the month stepper, the four StatCards two to a row, then the BudgetTable with only Subsection, Spent and Available, and the bottom tab bar.
