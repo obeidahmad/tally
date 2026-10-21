@@ -1,215 +1,224 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>BudgetScreen</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<head><meta charset="utf-8"><title>BudgetScreen</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
 <body>
 <div class="ty-shell">
 <aside class="ty-side">
-  <div class="ty-word">Tally</div>
-  <nav class="ty-nav" aria-label="Main"><a href="#" aria-current="page">Budget</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">Investments</a><a href="#">Settings</a></nav>
-  <div class="ty-side__foot ty-cap">Signed in as Sam<br>Base currency EUR</div>
+  <div class="ty-logo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6"/><path d="M7.5 7v10M11 7v10M14.5 7v10M5.5 15L17 9"/></svg>Tally</div>
+  <nav class="ty-nav" aria-label="Main"><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5"/><path d="M6 10v9h12v-9"/></svg>Home</a><a href="#" aria-current="page"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="11" height="4" rx="1"/><rect x="4" y="17" width="7" height="3" rx="1"/></svg>Budget</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h3c3 0 3 6 7 6M8 18h3c3 0 3-6 7-6"/></svg>Pipeline</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>Transactions</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Recurring</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h11v2"/><rect x="4" y="8" width="16" height="11" rx="2"/><circle cx="16" cy="13.5" r="1"/></svg>Pockets</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8"/><path d="M15 7h5v5"/></svg>Investments</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 1 0 8 8h-8z"/><path d="M15 3.5A8 8 0 0 1 20.5 9H15z"/></svg>Reports</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>Settings</a></nav>
+  <div class="ty-side__foot"><div class="ty-side__who"><b>Sam</b><a class="ty-link ty-cap" href="#">Sign out</a></div><button class="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Switch to dark mode"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button></div>
 </aside>
+<div class="ty-page">
+<header class="ty-top"><h1 class="text-display ty-top__title">Budget</h1><div class="ty-top__actions"><span class="ty-monthnav"><button class="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Previous month">‹</button>October 2026<button class="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Next month" disabled>›</button></span><span class="ty-pill ty-pill--positive">Open</span><button class="ty-btn">Add income</button><button class="ty-btn ty-btn--primary">Add transaction</button></div></header>
 <main class="ty-main">
-<header class="ty-month">
-  <div class="ty-month__top">
-    <button class="ty-btn ty-btn--icon" aria-label="Previous month">‹</button>
-    <h1 class="text-display">October 2026</h1>
-    <button class="ty-btn ty-btn--icon" aria-label="Next month" disabled>›</button>
-    <span class="ty-pill ty-pill--positive">Open</span>
-    <span class="ty-grow"></span>
-    <button class="ty-btn">Close month</button>
-    <button class="ty-btn ty-btn--income">Add income</button>
-    <button class="ty-btn ty-btn--spend">Add transaction</button>
-  </div>
-  <div class="ty-stats"><div class="ty-stat"><span class="ty-label">Income</span><span class="num-lg">2,400.00</span></div><div class="ty-stat"><span class="ty-label">Budgeted</span><span class="num-lg">2,400.00</span></div><div class="ty-stat"><span class="ty-label">Spent so far</span><span class="num-lg">1,145.62</span></div><div class="ty-stat"><span class="ty-label">Rest so far</span><span class="num-lg">75.00</span></div></div>
-  <button class="ty-btn ty-btn--income ty-month__add">Add income</button>
-</header>
-<div class="ty-card ty-stack" style="gap:24px"><div class="ty-alloc">
-  <div class="ty-alloc__head"><b>Paycheck</b><span class="ty-num">2,000.00</span><span class="ty-cap">Zakat takes 50.00 first, the other 1,950.00 is split</span></div>
-  <div class="ty-alloc__bar" role="img" aria-label="Zakat 50.00, Needs 975.00, Wants 390.00, Savings 585.00"><span class="ty-seg--4" style="flex:50"></span><span class="ty-seg--1" style="flex:975"></span><span class="ty-seg--2" style="flex:390"></span><span class="ty-seg--3" style="flex:585"></span></div>
-  <ul class="ty-alloc__legend">
-    <li><span class="ty-dot ty-dot--4"></span>Zakat <span class="ty-num">50.00</span><span class="ty-cap">2.5% first</span></li>
-    <li><span class="ty-dot ty-dot--1"></span>Needs <span class="ty-num">975.00</span><span class="ty-cap">50%</span></li>
-    <li><span class="ty-dot ty-dot--2"></span>Wants <span class="ty-num">390.00</span><span class="ty-cap">20%</span></li>
-    <li><span class="ty-dot ty-dot--3"></span>Savings <span class="ty-num">585.00</span><span class="ty-cap">30%</span></li>
-  </ul>
-</div><div class="ty-alloc">
-  <div class="ty-alloc__head"><b>Leftover from September</b><span class="ty-num">400.00</span><span class="ty-cap">no Zakat on this income</span></div>
-  <div class="ty-alloc__bar" role="img" aria-label="Needs 200.00, Savings 200.00"><span class="ty-seg--1" style="flex:1"></span><span class="ty-seg--3" style="flex:1"></span></div>
-  <ul class="ty-alloc__legend">
-    <li><span class="ty-dot ty-dot--1"></span>Needs <span class="ty-num">200.00</span><span class="ty-cap">50%</span></li>
-    <li><span class="ty-dot ty-dot--3"></span>Savings <span class="ty-num">200.00</span><span class="ty-cap">50%</span></li>
-  </ul>
-</div></div>
-<div class="ty-stack">
-<section class="ty-section" aria-label="Zakat">
-<div class="ty-shead">
-  <div class="ty-shead__name"><span class="ty-dot ty-dot--4"></span><b>Zakat</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span><span class="ty-cap">2.5% of Paycheck, taken first</span><span class="ty-cap ty-shead__sub">0.00 of 50.00 spent</span></div>
-  <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">50.00</span></div>
-  <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">0.00</span></div>
-  <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">50.00</span></div>
+<div class="ty-statcards"><div class="ty-statcard"><span class="ty-statcard__num ty-statcard__num--pos">2,400.00</span><span class="ty-label">Income</span></div><div class="ty-statcard"><span class="ty-statcard__num">2,400.00</span><span class="ty-label">Budgeted</span></div><div class="ty-statcard"><span class="ty-statcard__num ty-statcard__num--neg">1,145.62</span><span class="ty-label">Spent</span></div><div class="ty-statcard"><span class="ty-statcard__num">0.00</span><span class="ty-label">Left over</span></div></div>
+<div class="ty-budget">
+  <div class="ty-budget__main">
+    <div class="ty-btable ty-btable--moved">
+<div class="ty-btable__head ty-label"><span>Subsection</span><span class="ty-x">Rule</span><span class="ty-x ty-right" title="From last month">Carried</span><span class="ty-x ty-m ty-right">Moved</span><span class="ty-x ty-right">Budgeted</span><span class="ty-right">Spent</span><span class="ty-right">Available</span></div>
+<section class="ty-btable__sect" aria-label="Zakat">
+<div class="ty-btable__sec">
+  <div class="ty-btable__name"><button class="ty-chev" aria-expanded="true" aria-label="Zakat subsections"></button><span class="ty-dot ty-dot--4"></span><b class="text-heading">Zakat</b><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Edit Zakat" title="Edit Zakat">✎</button><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Add subsection to Zakat" title="Add subsection to Zakat">+</button></div>
+  <span class="ty-x"></span>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">50.00</div>
+  <div class="ty-num ty-right ty-sp">0.00</div>
+  <div class="ty-num ty-right">50.00</div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Zakat</span><span class="ty-cap">paid once a year</span></div>
-    <div class="ty-meter" role="img" aria-label="0.00 of 50.00 spent"><span style="width:0%"></span></div>
-    <div class="ty-cap ty-brow__sub">0.00 of 50.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">50.00</div>
-  <div class="ty-num ty-right ty-wide">0.00</div>
-  <div class="ty-right"><span class="ty-pill ty-pill--positive">50.00</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Zakat</span></div>
+  <div class="ty-btable__rule ty-x" title="paid once a year">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">50.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="50.00 left" title="50.00 left">50.00</span></div>
 </div>
-<div class="ty-section__add"><button class="ty-btn ty-btn--quiet ty-btn--sm">Add subsection</button></div>
+<div class="ty-btable__row">
+  <div class="ty-btable__name"><span class="ty-btable__text">Rest</span></div>
+  <div class="ty-btable__rule ty-x" title="to next month's income">to next month's income</div>
+  <span class="ty-x"></span><span class="ty-x ty-m"></span><span class="ty-x"></span><span></span>
+  <div class="ty-right"><span class="ty-pill">0.00</span></div>
+</div>
 </section>
-<section class="ty-section" aria-label="Needs">
-<div class="ty-shead">
-  <div class="ty-shead__name"><span class="ty-dot ty-dot--1"></span><b>Needs</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 75.00</span><span class="ty-cap">50% of Paycheck, 50% of Leftover</span><span class="ty-cap ty-shead__sub">990.15 of 1,175.00 spent</span></div>
-  <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">1,175.00</span></div>
-  <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">990.15</span></div>
-  <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">184.85</span></div>
+<section class="ty-btable__sect" aria-label="Needs">
+<div class="ty-btable__sec">
+  <div class="ty-btable__name"><button class="ty-chev" aria-expanded="true" aria-label="Needs subsections"></button><span class="ty-dot ty-dot--1"></span><b class="text-heading">Needs</b><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Edit Needs" title="Edit Needs">✎</button><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Add subsection to Needs" title="Add subsection to Needs">+</button></div>
+  <span class="ty-x"></span>
+  <div class="ty-num ty-right ty-x">49.99</div>
+  <div class="ty-num ty-right ty-x ty-m">20.00</div>
+  <div class="ty-num ty-right ty-x">1,175.00</div>
+  <div class="ty-num ty-right ty-sp">990.15</div>
+  <div class="ty-num ty-right">254.84</div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Mortgage</span><span class="ty-cap"></span></div>
-    <div class="ty-meter" role="img" aria-label="600.00 of 600.00 spent"><span style="width:100%"></span></div>
-    <div class="ty-cap ty-brow__sub">600.00 of 600.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">600.00</div>
-  <div class="ty-num ty-right ty-wide">600.00</div>
-  <div class="ty-right"><span class="ty-pill">0.00 left</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🏠</span> Mortgage</span></div>
+  <div class="ty-btable__rule ty-x" title="Does not roll over">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">600.00</div>
+  <div class="ty-num ty-right">600.00</div>
+  <div class="ty-right"><span class="ty-pill" role="img" aria-label="0.00 left" title="0.00 left">0.00</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Food</span><span class="ty-cap">rolls over up to 100.00</span></div>
-    <div class="ty-meter" role="img" aria-label="212.40 of 300.00 spent"><span style="width:71%"></span></div>
-    <div class="ty-cap ty-brow__sub">212.40 of 300.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">300.00</div>
-  <div class="ty-num ty-right ty-wide">212.40</div>
-  <div class="ty-right"><span class="ty-pill ty-pill--positive">87.60</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🛒</span> Food</span></div>
+  <div class="ty-btable__rule ty-x" title="rolls over up to 100.00">Fixed</div>
+  <div class="ty-num ty-right ty-x">49.99</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">300.00</div>
+  <div class="ty-num ty-right">212.40</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="137.59 left" title="137.59 left">137.59</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Utilities</span><span class="ty-cap"></span></div>
-    <div class="ty-meter ty-meter--negative" role="img" aria-label="131.75 of 120.00 spent"><span style="width:100%"></span></div>
-    <div class="ty-cap ty-brow__sub">131.75 of 120.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">120.00</div>
-  <div class="ty-num ty-right ty-wide">131.75</div>
-  <div class="ty-right"><span class="ty-pill ty-pill--negative">−11.75 over</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Utilities</span></div>
+  <div class="ty-btable__rule ty-x" title="Does not roll over">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">20.00</div>
+  <div class="ty-num ty-right ty-x">120.00</div>
+  <div class="ty-num ty-right">131.75</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--warning" role="img" aria-label="8.25 left" title="8.25 left">8.25</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Transport</span><span class="ty-cap">rolls over up to 50.00</span></div>
-    <div class="ty-meter" role="img" aria-label="46.00 of 80.00 spent"><span style="width:57%"></span></div>
-    <div class="ty-cap ty-brow__sub">46.00 of 80.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">80.00</div>
-  <div class="ty-num ty-right ty-wide">46.00</div>
-  <div class="ty-right"><span class="ty-pill ty-pill--positive">34.00</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🚗</span> Transport</span></div>
+  <div class="ty-btable__rule ty-x" title="rolls over up to 50.00">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">80.00</div>
+  <div class="ty-num ty-right">46.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="34.00 left" title="34.00 left">34.00</span></div>
 </div>
-<div class="ty-section__add"><button class="ty-btn ty-btn--quiet ty-btn--sm">Add subsection</button></div>
+<div class="ty-btable__row">
+  <div class="ty-btable__name"><span class="ty-btable__text">Rest</span></div>
+  <div class="ty-btable__rule ty-x" title="kept in Needs">kept in Needs</div>
+  <span class="ty-x"></span><span class="ty-x ty-m"></span><span class="ty-x"></span><span></span>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive">75.00</span></div>
+</div>
 </section>
-<section class="ty-section" aria-label="Wants">
-<div class="ty-shead">
-  <div class="ty-shead__name"><span class="ty-dot ty-dot--2"></span><b>Wants</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span><span class="ty-cap">20% of Paycheck</span><span class="ty-cap ty-shead__sub">155.47 of 390.00 spent</span></div>
-  <div class="ty-shead__tot ty-wide"><span class="ty-label">Budgeted</span><span class="ty-num">390.00</span></div>
-  <div class="ty-shead__tot ty-wide"><span class="ty-label">Spent</span><span class="ty-num">155.47</span></div>
-  <div class="ty-shead__tot"><span class="ty-label">Available</span><span class="ty-num">234.53</span></div>
+<section class="ty-btable__sect" aria-label="Wants">
+<div class="ty-btable__sec">
+  <div class="ty-btable__name"><button class="ty-chev" aria-expanded="true" aria-label="Wants subsections"></button><span class="ty-dot ty-dot--2"></span><b class="text-heading">Wants</b><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Edit Wants" title="Edit Wants">✎</button><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Add subsection to Wants" title="Add subsection to Wants">+</button></div>
+  <span class="ty-x"></span>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">390.00</div>
+  <div class="ty-num ty-right ty-sp">155.47</div>
+  <div class="ty-num ty-right">234.53</div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Eating out</span><span class="ty-cap"></span></div>
-    <div class="ty-meter" role="img" aria-label="96.50 of 150.00 spent"><span style="width:64%"></span></div>
-    <div class="ty-cap ty-brow__sub">96.50 of 150.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">150.00</div>
-  <div class="ty-num ty-right ty-wide">96.50</div>
-  <div class="ty-right"><span class="ty-pill ty-pill--positive">53.50</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Eating out</span></div>
+  <div class="ty-btable__rule ty-x" title="Does not roll over">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">150.00</div>
+  <div class="ty-num ty-right">96.50</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="53.50 left" title="53.50 left">53.50</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Subscriptions</span><span class="ty-cap"></span></div>
-    <div class="ty-meter ty-meter--warning" role="img" aria-label="38.97 of 40.00 spent"><span style="width:97%"></span></div>
-    <div class="ty-cap ty-brow__sub">38.97 of 40.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">40.00</div>
-  <div class="ty-num ty-right ty-wide">38.97</div>
-  <div class="ty-right"><span class="ty-pill ty-pill--warning">1.03 left</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Subscriptions</span></div>
+  <div class="ty-btable__rule ty-x" title="Does not roll over">Fixed</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">40.00</div>
+  <div class="ty-num ty-right">38.97</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--warning" role="img" aria-label="1.03 left" title="1.03 left">1.03</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Hobbies</span><span class="ty-cap">60% of what is left</span></div>
-    <div class="ty-meter" role="img" aria-label="20.00 of 120.00 spent"><span style="width:17%"></span></div>
-    <div class="ty-cap ty-brow__sub">20.00 of 120.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">120.00</div>
-  <div class="ty-num ty-right ty-wide">20.00</div>
-  <div class="ty-right"><span class="ty-pill ty-pill--positive">100.00</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Hobbies</span></div>
+  <div class="ty-btable__rule ty-x" title="60% of what is left">60%</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">120.00</div>
+  <div class="ty-num ty-right">20.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="100.00 left" title="100.00 left">100.00</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Gifts</span><span class="ty-cap">40% of what is left</span></div>
-    <div class="ty-meter" role="img" aria-label="0.00 of 80.00 spent"><span style="width:0%"></span></div>
-    <div class="ty-cap ty-brow__sub">0.00 of 80.00 spent</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">80.00</div>
-  <div class="ty-num ty-right ty-wide">0.00</div>
-  <div class="ty-right"><span class="ty-pill ty-pill--positive">80.00</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🎁</span> Gifts</span></div>
+  <div class="ty-btable__rule ty-x" title="40% of what is left">40%</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">80.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill ty-pill--positive" role="img" aria-label="80.00 left" title="80.00 left">80.00</span></div>
 </div>
-<div class="ty-section__add"><button class="ty-btn ty-btn--quiet ty-btn--sm">Add subsection</button></div>
+<div class="ty-btable__row">
+  <div class="ty-btable__name"><span class="ty-btable__text">Rest</span></div>
+  <div class="ty-btable__rule ty-x" title="to next month's income">to next month's income</div>
+  <span class="ty-x"></span><span class="ty-x ty-m"></span><span class="ty-x"></span><span></span>
+  <div class="ty-right"><span class="ty-pill">0.00</span></div>
+</div>
 </section>
-<section class="ty-section" aria-label="Savings">
-<div class="ty-shead">
-  <div class="ty-shead__name"><span class="ty-dot ty-dot--3"></span><b>Savings</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-pill">Rest 0.00</span><span class="ty-cap">30% of Paycheck, 50% of Leftover</span></div>
-  <div class="ty-shead__tot ty-wide"><span class="ty-label">This month</span><span class="ty-num">785.00</span></div>
-  <div class="ty-shead__tot ty-wide"><span class="ty-label">Saved</span><span class="ty-num">11,041.80</span></div>
-  <div class="ty-shead__tot"><span class="ty-label">Target</span><span class="ty-num"> </span></div>
+<section class="ty-btable__sect" aria-label="Savings">
+<div class="ty-btable__sec">
+  <div class="ty-btable__name"><button class="ty-chev" aria-expanded="true" aria-label="Savings subsections"></button><span class="ty-dot ty-dot--3"></span><b class="text-heading">Savings</b><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Edit Savings" title="Edit Savings">✎</button><button class="ty-btn ty-btn--quiet ty-btn--sm ty-btn--icon" aria-label="Add subsection to Savings" title="Add subsection to Savings">+</button></div>
+  <span class="ty-x"></span>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">785.00</div>
+  <div class="ty-num ty-right ty-sp">0.00</div>
+  <div class="ty-num ty-right">11,041.80</div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Car</span><span class="ty-cap">fills to 15,000.00</span></div>
-    <div class="ty-meter ty-meter--goal" role="img" aria-label="6,300.00 of 15,000.00 saved"><span style="width:42%"></span></div>
-    <div class="ty-cap ty-brow__sub">6,300.00 of 15,000.00 saved</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">300.00</div>
-  <div class="ty-num ty-right ty-wide">6,300.00</div>
-  <div class="ty-right"><span class="ty-pill">42% of 15,000</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text"><span class="ty-emoji" aria-hidden="true">🚗</span> Car</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 15,000.00 · 42% saved">15,000.00 by Jun 2027</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x ty-warn" title="Needs 842.50 a month to reach 15,000.00 by Jun 2027">300.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill">6,300.00</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Emergencies</span><span class="ty-cap">fills to 3,000.00</span></div>
-    <div class="ty-meter ty-meter--goal" role="img" aria-label="2,400.00 of 3,000.00 saved"><span style="width:80%"></span></div>
-    <div class="ty-cap ty-brow__sub">2,400.00 of 3,000.00 saved</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">200.00</div>
-  <div class="ty-num ty-right ty-wide">2,400.00</div>
-  <div class="ty-right"><span class="ty-pill">80% of 3,000</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Emergencies</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 3,000.00 · 80% saved">3,000.00 by Dec 2027</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">200.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill">2,400.00</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Long-term investing</span><span class="ty-cap">paid 1,200.00 · worth 1,260.00</span></div>
-    <div class="ty-meter ty-meter--goal" role="img" aria-label="1,200.00 of 20,000.00 saved"><span style="width:6%"></span></div>
-    <div class="ty-cap ty-brow__sub">1,200.00 of 20,000.00 saved</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">200.00</div>
-  <div class="ty-num ty-right ty-wide">1,200.00</div>
-  <div class="ty-right"><span class="ty-pill">6% of 20,000</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Long-term investing</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 20,000.00">Goal 20,000.00 · 6%</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">200.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill">1,200.00</span></div>
 </div>
-<div class="ty-brow">
-  <div class="ty-brow__name">
-    <div class="ty-brow__title"><span>Parents</span><span class="ty-cap">held in USD · ≈ 1,141.80 EUR</span></div>
-    <div class="ty-meter ty-meter--goal" role="img" aria-label="1,141.80 of 2,000.00 saved"><span style="width:57%"></span></div>
-    <div class="ty-cap ty-brow__sub">1,141.80 of 2,000.00 saved</div>
-  </div>
-  <div class="ty-num ty-right ty-wide">85.00</div>
-  <div class="ty-num ty-right ty-wide">1,240.00<span class="ty-cur">USD</span></div>
-  <div class="ty-right"><span class="ty-pill">57% of 2,000</span></div>
+<div class="ty-btable__row" role="button" tabindex="0">
+  <div class="ty-btable__name"><span class="ty-btable__text">Parents</span></div>
+  <div class="ty-btable__rule ty-x" title="Fills to 2,000.00">Goal 2,000.00 · 57%</div>
+  <div class="ty-num ty-right ty-x">—</div>
+  <div class="ty-num ty-right ty-x ty-m">—</div>
+  <div class="ty-num ty-right ty-x">85.00</div>
+  <div class="ty-num ty-right">0.00</div>
+  <div class="ty-right"><span class="ty-pill">1,240.00<span class="ty-cur">USD</span></span></div>
 </div>
-<div class="ty-section__add"><button class="ty-btn ty-btn--quiet ty-btn--sm">Add subsection</button></div>
+<div class="ty-btable__row">
+  <div class="ty-btable__name"><span class="ty-btable__text">Rest</span></div>
+  <div class="ty-btable__rule ty-x" title="kept in Savings">kept in Savings</div>
+  <span class="ty-x"></span><span class="ty-x ty-m"></span><span class="ty-x"></span><span></span>
+  <div class="ty-right"><span class="ty-pill">0.00</span></div>
+</div>
 </section>
+</div>
+    <div><button class="ty-btn">Add section</button></div>
+  </div>
+  <aside class="ty-budget__aside">
+    <section class="ty-card ty-stack" style="gap:8px" aria-label="Month summary">
+      <div class="ty-sumrow"><span>Income</span><span class="ty-num">2,400.00</span></div><div class="ty-sumrow"><span>Budgeted</span><span class="ty-num">2,400.00</span></div><div class="ty-sumrow"><span>Spent</span><span class="ty-num">1,145.62</span></div><div class="ty-sumrow"><span>Left over</span><span class="ty-num">0.00</span></div>
+      <p class="ty-cap" style="margin:0">Everything the pipeline sends is budgeted. Nothing is left over.</p>
+      <div class="ty-inset"><span>September 2026 has ended. Close it to carry what is left into October.</span><div><button class="ty-btn ty-btn--sm">Close September</button></div></div>
+    </section>
+    <section class="ty-card ty-stack" aria-label="Moved this month">
+  <h2 class="text-title" style="margin:0">Moved this month</h2>
+  <div class="ty-sumrow"><div><div>20.00 from Wants to Utilities</div><div class="ty-cap">Utilities ran over</div></div><button class="ty-btn ty-btn--quiet ty-btn--sm">Undo</button></div>
+</section>
+  </aside>
 </div>
 </main>
-<nav class="ty-tabs" aria-label="Main"><a href="#" aria-current="page">Budget</a><a href="#">Transactions</a><a href="#">Pockets</a><a href="#">More</a></nav>
+</div>
+<nav class="ty-tabbar" aria-label="Main"><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5"/><path d="M6 10v9h12v-9"/></svg>Home</a><a href="#" aria-current="page"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="11" height="4" rx="1"/><rect x="4" y="17" width="7" height="3" rx="1"/></svg>Budget</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>Transactions</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h11v2"/><rect x="4" y="8" width="16" height="11" rx="2"/><circle cx="16" cy="13.5" r="1"/></svg>Pockets</a><button type="button" aria-haspopup="dialog" aria-expanded="false"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg>More</button></nav>
 </div>
 </body>
 </html>

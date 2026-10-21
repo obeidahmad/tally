@@ -30,14 +30,39 @@ export async function burnTime(pw: string) {
   await verifyPassword(pw, await dummy);
 }
 
-export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string };
-export const USER_COLS = 'id, username, display_name AS displayName, is_owner AS isOwner, base_currency AS baseCurrency';
+export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; homePocketId: number | null };
+export const USER_COLS = 'id, username, display_name AS displayName, is_owner AS isOwner, base_currency AS baseCurrency, home_pocket_id AS homePocketId';
 export const toUser = (row: any): User => ({ ...row, isOwner: !!row.isOwner });
+
+export type Viewing = { ownerId: number; displayName: string; baseCurrency: string };
+
+// Resolves whose budget a request acts on, once. A viewing owner who no longer lists the person is dropped.
+export function actingBudget(db: Db, me: User): { user: User; viewing: Viewing | null } {
+  const v = db
+    .prepare(`SELECT o.id AS ownerId, o.display_name AS displayName, o.base_currency AS baseCurrency, o.home_pocket_id AS homePocketId
+              FROM users u JOIN budget_members m ON m.owner_id = u.viewing_owner_id AND m.member_id = u.id
+              JOIN users o ON o.id = m.owner_id WHERE u.id = ?`)
+    .get(me.id) as (Viewing & { homePocketId: number | null }) | undefined;
+  if (!v) {
+    db.prepare('UPDATE users SET viewing_owner_id = NULL WHERE id = ? AND viewing_owner_id IS NOT NULL').run(me.id);
+    return { user: me, viewing: null };
+  }
+  const { homePocketId, ...viewing } = v;
+  return { user: { ...me, id: v.ownerId, baseCurrency: v.baseCurrency, homePocketId }, viewing };
+}
+
+// Bank, Trading212 and sharing settings belong to the budget's owner.
+export const ownerOnlyBudget: RequestHandler = (req, _res, next) =>
+  next(req.viewing ? new HttpError(403, 'owner_only', `Only ${req.viewing.displayName} can change this.`) : undefined);
 
 declare global {
   namespace Express {
     interface Request {
+      /** The acting budget: id, base currency and home pocket are the budget owner's. Every data route reads this. */
       user: User;
+      /** The signed-in person. Only /me, passwords, accounts and sharing use this. */
+      me: User;
+      viewing: Viewing | null;
       sessionHash: string;
     }
   }
@@ -67,7 +92,7 @@ export function currentSession(db: Db, token: unknown): { user: User; hash: stri
   const hash = sha256(token);
   const row = db
     .prepare(`SELECT s.expires_at AS exp, u.id, u.username, u.display_name AS displayName,
-                     u.is_owner AS isOwner, u.base_currency AS baseCurrency
+                     u.is_owner AS isOwner, u.base_currency AS baseCurrency, u.home_pocket_id AS homePocketId
               FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`)
     .get(hash) as any;
   if (!row) return null;
@@ -82,7 +107,8 @@ export function currentSession(db: Db, token: unknown): { user: User; hash: stri
 export const requireAuth = (db: Db): RequestHandler => (req, _res, next) => {
   const s = currentSession(db, req.cookies?.[COOKIE]);
   if (!s) return next(new HttpError(401, 'unauthenticated', 'Sign in to continue.'));
-  req.user = s.user;
+  req.me = s.user;
+  ({ user: req.user, viewing: req.viewing } = actingBudget(db, s.user));
   req.sessionHash = s.hash;
   next();
 };

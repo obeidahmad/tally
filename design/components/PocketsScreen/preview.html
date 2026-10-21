@@ -1,50 +1,52 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>PocketsScreen</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<head><meta charset="utf-8"><title>PocketsScreen</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
 <body>
 <div class="ty-shell">
 <aside class="ty-side">
-  <div class="ty-word">Tally</div>
-  <nav class="ty-nav" aria-label="Main"><a href="#">Budget</a><a href="#">Transactions</a><a href="#" aria-current="page">Pockets</a><a href="#">Investments</a><a href="#">Settings</a></nav>
-  <div class="ty-side__foot ty-cap">Signed in as Sam<br>Base currency EUR</div>
+  <div class="ty-logo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6"/><path d="M7.5 7v10M11 7v10M14.5 7v10M5.5 15L17 9"/></svg>Tally</div>
+  <nav class="ty-nav" aria-label="Main"><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5"/><path d="M6 10v9h12v-9"/></svg>Home</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="11" height="4" rx="1"/><rect x="4" y="17" width="7" height="3" rx="1"/></svg>Budget</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h3c3 0 3 6 7 6M8 18h3c3 0 3-6 7-6"/></svg>Pipeline</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>Transactions</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Recurring</a><a href="#" aria-current="page"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h11v2"/><rect x="4" y="8" width="16" height="11" rx="2"/><circle cx="16" cy="13.5" r="1"/></svg>Pockets</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8"/><path d="M15 7h5v5"/></svg>Investments</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 1 0 8 8h-8z"/><path d="M15 3.5A8 8 0 0 1 20.5 9H15z"/></svg>Reports</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>Settings</a></nav>
+  <div class="ty-side__foot"><div class="ty-side__who"><b>Sam</b><a class="ty-link ty-cap" href="#">Sign out</a></div><button class="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Switch to dark mode"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button></div>
 </aside>
+<div class="ty-page">
+<header class="ty-top"><h1 class="text-display ty-top__title">Pockets</h1><div class="ty-top__actions"><button class="ty-btn">Transfer</button><button class="ty-btn ty-btn--primary">Add pocket</button></div></header>
 <main class="ty-main">
-<header class="ty-month__top"><div><div class="ty-label">Net worth</div><div class="num-hero">12,211.40<span class="ty-cur">EUR</span></div><div class="ty-cap">8,942.55 in EUR · 3,550.00 USD, worth 3,268.85 EUR at 0.9208</div></div><span class="ty-grow"></span><button class="ty-btn">Transfer</button><button class="ty-btn ty-btn--primary">Add pocket</button></header>
-<div class="ty-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))"><article class="ty-card ty-pocket">
-  <div class="ty-pocket__top"><div class="ty-grow"><b><span class="ty-emoji">🏦</span> Bank of Cyprus</b><span class="ty-cap">Bank account</span></div><span class="ty-pill">EUR</span></div>
-  <div><div class="num-lg">3,180.40<span class="ty-cur">EUR</span></div><div class="ty-cap"> </div></div>
-  <div class="ty-cap">Synced 2 hours ago</div>
-</article><article class="ty-card ty-pocket">
-  <div class="ty-pocket__top"><div class="ty-grow"><b><span class="ty-emoji">💳</span> Revolut</b><span class="ty-cap">Bank account</span></div><span class="ty-pill">EUR</span></div>
-  <div><div class="num-lg">642.15<span class="ty-cur">EUR</span></div><div class="ty-cap"> </div></div>
-  <div class="ty-cap">Synced 2 hours ago</div>
-</article><article class="ty-card ty-pocket">
-  <div class="ty-pocket__top"><div class="ty-grow"><b><span class="ty-emoji">💵</span> Cash</b><span class="ty-cap">Cash</span></div><span class="ty-pill">EUR</span></div>
-  <div><div class="num-lg">120.00<span class="ty-cur">EUR</span></div><div class="ty-cap"> </div></div>
-  <div class="ty-cap">Entered by hand</div>
-</article><article class="ty-card ty-pocket">
-  <div class="ty-pocket__top"><div class="ty-grow"><b><span class="ty-emoji">🌍</span> Revolut USD</b><span class="ty-cap">Bank account</span></div><span class="ty-pill">USD</span></div>
-  <div><div class="num-lg">1,240.00<span class="ty-cur">USD</span></div><div class="ty-cap">≈ 1,141.80 EUR</div></div>
-  <div class="ty-cap">Synced 2 hours ago</div>
-</article><article class="ty-card ty-pocket">
-  <div class="ty-pocket__top"><div class="ty-grow"><b><span class="ty-emoji">📈</span> Trading212</b><span class="ty-cap">Broker</span></div><span class="ty-pill">USD</span></div>
-  <div><div class="num-lg">2,310.00<span class="ty-cur">USD</span></div><div class="ty-cap">≈ 2,127.05 EUR · paid 2,100.00 USD</div></div>
-  <div class="ty-cap">Synced today</div>
-</article><article class="ty-card ty-pocket">
-  <div class="ty-pocket__top"><div class="ty-grow"><b><span class="ty-emoji">🌱</span> Daily income fund</b><span class="ty-cap">Fund</span></div><span class="ty-pill">EUR</span></div>
-  <div><div class="num-lg">5,000.00<span class="ty-cur">EUR</span></div><div class="ty-cap">paid out 0.41 yesterday</div></div>
-  <div class="ty-cap">Entered by hand</div>
-</article></div>
+<section class="ty-card ty-stack" style="gap:16px" aria-label="Net worth">
+<div class="ty-card__head"><div class="ty-areahead"><span class="ty-label">Net worth</span><span class="num-hero">12,211.40<span class="ty-cur">EUR</span></span><span class="ty-delta">↑ 2,371.40 (24.1%) <span>since September</span></span></div><span class="ty-grow"></span><div class="ty-segmented"><label><input type="radio" name="range">3M</label><label><input type="radio" name="range" checked>6M</label><label><input type="radio" name="range">12M</label><label><input type="radio" name="range">24M</label></div></div>
+<div class="ty-chart-plot"><svg style="width:100%;height:auto" viewBox="0 0 1000 260" role="img" aria-label="Net worth, last month: 9,840.00 to 12,211.40">
+<defs><linearGradient id="nwfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="ty-area-stop" stop-opacity="0.25"/><stop offset="1" class="ty-area-stop" stop-opacity="0"/></linearGradient></defs>
+<g class="ty-chart-axis"><line class="ty-chart-grid" x1="48" x2="992" y1="232" y2="232"/><text x="40" y="236" text-anchor="end">9K</text><line class="ty-chart-grid" x1="48" x2="992" y1="176" y2="176"/><text x="40" y="180" text-anchor="end">10K</text><line class="ty-chart-grid" x1="48" x2="992" y1="120" y2="120"/><text x="40" y="124" text-anchor="end">11K</text><line class="ty-chart-grid" x1="48" x2="992" y1="64" y2="64"/><text x="40" y="68" text-anchor="end">12K</text><line class="ty-chart-grid" x1="48" x2="992" y1="8" y2="8"/><text x="40" y="12" text-anchor="end">13K</text><text x="48" y="254" text-anchor="middle">Sep 25</text><text x="205.33333333333334" y="254" text-anchor="middle">Oct 1</text><text x="362.6666666666667" y="254" text-anchor="middle">Oct 5</text><text x="520" y="254" text-anchor="middle">Oct 9</text><text x="677.3333333333334" y="254" text-anchor="middle">Oct 13</text><text x="834.6666666666666" y="254" text-anchor="middle">Oct 17</text><text x="992" y="254" text-anchor="middle">Oct 21</text></g>
+<path d="M48.0,185.0L87.3,181.0L126.7,182.2L166.0,174.9L205.3,169.8L244.7,171.0L284.0,162.6L323.3,157.5L362.7,159.2L402.0,150.8L441.3,146.9L480.7,141.8L520.0,143.5L559.3,133.4L598.7,126.2L638.0,122.2L677.3,118.9L716.7,111.6L756.0,107.1L795.3,109.4L834.7,96.5L874.0,85.8L913.3,76.3L952.7,66.2L992.0,52.2L992,232L48,232Z" fill="url(#nwfill)"/>
+<path class="ty-area-line" d="M48.0,185.0L87.3,181.0L126.7,182.2L166.0,174.9L205.3,169.8L244.7,171.0L284.0,162.6L323.3,157.5L362.7,159.2L402.0,150.8L441.3,146.9L480.7,141.8L520.0,143.5L559.3,133.4L598.7,126.2L638.0,122.2L677.3,118.9L716.7,111.6L756.0,107.1L795.3,109.4L834.7,96.5L874.0,85.8L913.3,76.3L952.7,66.2L992.0,52.2"/>
+<line class="ty-area-cross" x1="716.6666666666666" x2="716.6666666666666" y1="8" y2="232"/><circle class="ty-area-dot" cx="716.6666666666666" cy="111.60000000000001" r="5"/>
+</svg>
+<div class="ty-chart-tip" style="right:29.5%;top:19.8%"><div class="ty-chart-tip__title">Sunday, 18 October</div><div class="ty-chart-tip__row"><span class="ty-chart-tip__key" style="background:var(--sec-7)"></span><span class="ty-cap">Net worth</span><span class="ty-chart-tip__val">11,150.00</span></div></div></div>
+<div><button type="button" class="ty-btn ty-btn--quiet ty-btn--sm">Show as table</button></div></section>
+<div class="ty-accounts"><div class="ty-accounts__main"><section class="ty-section" aria-label="Cash"><div class="ty-agroup__head"><button class="ty-chev" aria-expanded="true" aria-label="Cash pockets"></button><h2 class="text-title">Cash</h2><span class="ty-agroup__total">3,942.55</span></div>
+<div class="ty-arow" role="button" tabindex="0"><span class="ty-avatar ty-avatar--5"><span class="ty-emoji">🏦</span></span><div class="ty-arow__who"><b>Bank of Cyprus</b><span class="ty-cap">Bank account</span></div><div class="ty-arow__bal"><span class="ty-num">3,180.40</span><span class="ty-cap">Synced 2 h ago</span></div></div>
+<div class="ty-arow" role="button" tabindex="0"><span class="ty-avatar ty-avatar--5"><span class="ty-emoji">💳</span></span><div class="ty-arow__who"><b>Revolut</b><span class="ty-cap">Bank account</span></div><div class="ty-arow__bal"><span class="ty-num">642.15</span><span class="ty-cap">Synced 2 h ago</span></div></div>
+<div class="ty-arow" role="button" tabindex="0"><span class="ty-avatar ty-avatar--5"><span class="ty-emoji">💵</span></span><div class="ty-arow__who"><b>Cash</b><span class="ty-cap">Cash</span></div><div class="ty-arow__bal"><span class="ty-num">120.00</span><span class="ty-cap">Reconciled 16 Oct</span></div></div></section>
+<section class="ty-section" aria-label="Investments"><div class="ty-agroup__head"><button class="ty-chev" aria-expanded="true" aria-label="Investments pockets"></button><h2 class="text-title">Investments</h2><span class="ty-agroup__total">10,269.80</span></div>
+<div class="ty-arow" role="button" tabindex="0"><span class="ty-avatar ty-avatar--1"><span class="ty-emoji">📈</span></span><div class="ty-arow__who"><b>Trading212</b><span class="ty-cap">Broker</span></div><div class="ty-arow__bal"><span class="ty-num">2,310.00<span class="ty-cur">USD</span></span><span class="ty-cap">Synced today</span></div></div>
+<div class="ty-arow" role="button" tabindex="0"><span class="ty-avatar ty-avatar--1"><span class="ty-emoji">🌱</span></span><div class="ty-arow__who"><b>Daily income fund</b><span class="ty-cap">Fund</span></div><div class="ty-arow__bal"><span class="ty-num">5,000.00</span><span class="ty-cap">Reconciled 16 Oct</span></div></div>
+<div class="ty-arow" role="button" tabindex="0"><span class="ty-avatar ty-avatar--1"><span class="ty-emoji">🌍</span></span><div class="ty-arow__who"><b>Revolut USD</b><span class="ty-cap">Bank account</span></div><div class="ty-arow__bal"><span class="ty-num">1,240.00<span class="ty-cur">USD</span></span><span class="ty-cap">Synced 2 h ago</span></div></div></section>
+<section class="ty-section" aria-label="Debts"><div class="ty-agroup__head"><button class="ty-chev" aria-expanded="true" aria-label="Debts pockets"></button><h2 class="text-title">Debts</h2><span class="ty-agroup__total ty-num--neg">−4,881.15</span></div>
+<div class="ty-arow" role="button" tabindex="0"><span class="ty-avatar ty-avatar--6"><span class="ty-emoji">🚗</span></span><div class="ty-arow__who"><b>Car loan</b><span class="ty-cap">Loan</span></div><div class="ty-arow__bal"><span class="ty-num ty-num--neg">−4,881.15</span><span class="ty-cap">Reconciled 1 Oct</span></div></div></section></div><div class="ty-accounts__side"><section class="ty-summary" aria-label="Assets"><div class="ty-summary__head"><h2 class="text-title">Assets</h2><span class="ty-num">17,092.55</span></div>
+<div class="ty-stackbar" role="img" aria-label="Investments 60%, Cash 40%"><span class="ty-seg--1" style="flex:10269.8"></span><span class="ty-seg--5" style="flex:6822.75"></span></div>
+<ul class="ty-keys"><li><span class="ty-dot ty-dot--1"></span><span>Investments</span><span class="ty-num">10,269.80</span></li><li><span class="ty-dot ty-dot--5"></span><span>Cash</span><span class="ty-num">6,822.75</span></li></ul></section>
+<section class="ty-summary" aria-label="Debts"><div class="ty-summary__head"><h2 class="text-title">Debts</h2><span class="ty-num ty-num--neg">−4,881.15</span></div>
+<div class="ty-stackbar" role="img" aria-label="Car loan 100%"><span class="ty-seg--6" style="flex:1"></span></div>
+<ul class="ty-keys"><li><span class="ty-dot ty-dot--6"></span><span>Car loan</span><span class="ty-num">−4,881.15</span></li></ul></section></div></div>
 <section class="ty-stack"><h2 class="text-title" style="margin:0">Where each subsection's money sits</h2>
 <div class="ty-section"><table class="ty-table">
 <tr><th>Subsection</th><th>Bank of Cyprus</th><th>Revolut USD</th><th>Trading212</th><th>Daily income fund</th><th>Total in EUR</th></tr>
 <tr><td><span class="ty-tag"><span class="ty-dot ty-dot--3"></span>Car</span></td><td class="ty-num">1,300.00</td><td class="ty-muted">–</td><td class="ty-muted">–</td><td class="ty-num">5,000.00</td><td class="ty-num">6,300.00</td></tr>
 <tr><td><span class="ty-tag"><span class="ty-dot ty-dot--3"></span>Emergencies</span></td><td class="ty-num">2,400.00</td><td class="ty-muted">–</td><td class="ty-muted">–</td><td class="ty-muted">–</td><td class="ty-num">2,400.00</td></tr>
-<tr><td><span class="ty-tag"><span class="ty-dot ty-dot--3"></span>Long-term investing</span></td><td class="ty-muted">–</td><td class="ty-muted">–</td><td class="ty-num">1,368.00<span class="ty-cur">USD</span></td><td class="ty-muted">–</td><td class="ty-num">1,260.00</td></tr>
 <tr><td><span class="ty-tag"><span class="ty-dot ty-dot--3"></span>Parents</span></td><td class="ty-muted">–</td><td class="ty-num">1,240.00<span class="ty-cur">USD</span></td><td class="ty-muted">–</td><td class="ty-muted">–</td><td class="ty-num">1,141.80</td></tr>
 </table></div></section>
 </main>
-<nav class="ty-tabs" aria-label="Main"><a href="#">Budget</a><a href="#">Transactions</a><a href="#" aria-current="page">Pockets</a><a href="#">More</a></nav>
+</div>
+<nav class="ty-tabbar" aria-label="Main"><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5"/><path d="M6 10v9h12v-9"/></svg>Home</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="11" height="4" rx="1"/><rect x="4" y="17" width="7" height="3" rx="1"/></svg>Budget</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>Transactions</a><a href="#" aria-current="page"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h11v2"/><rect x="4" y="8" width="16" height="11" rx="2"/><circle cx="16" cy="13.5" r="1"/></svg>Pockets</a><button type="button" aria-haspopup="dialog" aria-expanded="false"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg>More</button></nav>
 </div>
 </body>
 </html>

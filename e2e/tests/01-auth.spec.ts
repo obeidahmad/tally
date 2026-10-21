@@ -1,4 +1,4 @@
-import { test, expect, shot, toast } from '../support/fixtures';
+import { test, expect, shot, toast, openTab } from '../support/fixtures';
 
 test('a signed-out visitor is sent to the sign-in page', async ({ page }) => {
   await page.goto('/budget');
@@ -9,8 +9,8 @@ test('a signed-out visitor is sent to the sign-in page', async ({ page }) => {
 
 test('sign out, a wrong password, then the right one', async ({ page, me }) => {
   await page.goto('/budget');
-  await expect(page.getByText(`Signed in as ${me.displayName}`)).toBeVisible();
-  await expect(page.getByText('Base currency EUR')).toBeVisible();
+  await expect(page.locator('.ty-side').getByText(me.displayName)).toBeVisible();
+  await expect(page.locator('.ty-side').getByText('EUR', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
 
@@ -24,7 +24,7 @@ test('sign out, a wrong password, then the right one', async ({ page, me }) => {
 
   await page.getByLabel('Password').fill(me.password);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/budget$/);
+  await expect(page).toHaveURL(/\/home$/);
 });
 
 test('signing out ends the session: the app no longer opens', async ({ page, me }) => {
@@ -44,7 +44,7 @@ test('a 401 from any later call returns the person to sign-in', async ({ page, m
 });
 
 test('change password: the new one signs in', async ({ page, me }) => {
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Account');
   const newPassword = 'a brand new password 7';
   await page.getByLabel('Current password').fill(me.password);
   await page.getByLabel('New password').fill(newPassword);
@@ -57,21 +57,21 @@ test('change password: the new one signs in', async ({ page, me }) => {
   await page.getByLabel('Username').fill(me.username);
   await page.getByLabel('Password').fill(newPassword);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(/\/budget$/);
+  await expect(page).toHaveURL(/\/home$/);
 });
 
 test('change password with a wrong current password shows the error under the field', async ({ page, me }) => {
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Account');
   await page.getByLabel('Current password').fill('this is not it at all');
   await page.getByLabel('New password').fill('a brand new password 7');
   await page.getByRole('button', { name: 'Change password' }).click();
   await expect(page.getByLabel('Current password')).toHaveClass(/ty-input--error/);
   await expect(page.locator('.ty-error')).toBeVisible();
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/settings(\?tab=[\w-]+)?$/);
 });
 
 test('a new password that is too short is refused under its field', async ({ page, me }) => {
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Account');
   await page.getByLabel('Current password').fill(me.password);
   await page.getByLabel('New password').fill('short');
   await page.getByRole('button', { name: 'Change password' }).click();

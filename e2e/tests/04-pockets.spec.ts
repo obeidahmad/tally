@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, shot, row, seedBudget, em } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, row, seedBudget, em, pocketRow, pocketRows } from '../support/fixtures';
 
 test('empty Pockets shows one card with the empty line and Add pocket', async ({ page, me }) => {
   await page.goto('/pockets');
@@ -22,13 +22,13 @@ test('add a pocket: the card shows name, kind in words, currency, balance and so
   await dialog(page).getByLabel('Opening balance').fill('1,000.00');
   await dialog(page).getByRole('button', { name: 'Add pocket' }).click();
   await expect(dialog(page)).toBeHidden();
-  const card = page.locator('.ty-pocket', { hasText: 'Revolut' });
+  const card = pocketRow(page, 'Revolut');
   await expect(card).toContainText('Bank account');
   await expect(card.locator('.ty-emoji').first()).toHaveText(em('Bank'));
   await expect(card).toContainText('EUR');
   await expect(card).toContainText('1,000.00');
-  await expect(card).toContainText('Entered by hand');
-  await expect(page.getByText('Total in pockets')).toBeVisible();
+  await expect(card).not.toContainText('Entered by hand');
+  await expect(page.getByText('Net worth', { exact: true })).toBeVisible();
   await expect(page.locator('.num-hero').first()).toContainText('1,000.00');
   await expect(page.locator('.num-hero').first()).toContainText('EUR');
   await shot(page, 'pockets-desktop-light');
@@ -40,10 +40,10 @@ test('the four kinds are named in words', async ({ page, me }) => {
   await me.seed.pocket('C', 0, 'fund');
   await me.seed.pocket('D', 0, 'broker');
   await page.goto('/pockets');
-  await expect(page.locator('.ty-pocket')).toHaveCount(4);
+  await expect(pocketRows(page)).toHaveCount(4);
   for (const [n, kind] of [['A', 'Bank account'], ['B', 'Cash'], ['C', 'Fund'], ['D', 'Broker']]) {
     // The name follows its emoji, so match the end of the title line.
-    await expect(page.locator('.ty-pocket').filter({ has: page.locator('b', { hasText: new RegExp(`\\s${n}$`) }) })).toContainText(kind);
+    await expect(pocketRows(page).filter({ hasText: new RegExp(`${n}\\s*${kind}`) })).toHaveCount(1);
   }
 });
 
@@ -51,8 +51,8 @@ test('the total is the sum of all balances, and a balance is opening + income - 
   await seedBudget(me.seed); // Revolut: 1,000.00 + 2,000.00 - 983.12 = 2,016.88
   await me.seed.pocket('Wallet', -2500, 'cash');
   await page.goto('/pockets');
-  await expect(page.locator('.ty-pocket', { hasText: 'Revolut' })).toContainText('2,016.88');
-  await expect(page.locator('.ty-pocket', { hasText: 'Wallet' })).toContainText('−25.00');
+  await expect(pocketRow(page, 'Revolut')).toContainText('2,016.88');
+  await expect(pocketRow(page, 'Wallet')).toContainText('−25.00');
   await expect(page.locator('.num-hero').first()).toContainText('1,991.88');
 });
 
@@ -78,7 +78,7 @@ test('edit a pocket: rename, change kind and opening balance', async ({ page, me
   await dialog(page).getByRole('button', { name: 'Save' }).click();
   await expect(dialog(page)).toBeHidden();
   await expect(toast(page)).toContainText('Saved');
-  const card = page.locator('.ty-pocket', { hasText: 'Savings jar' });
+  const card = pocketRow(page, 'Savings jar');
   await expect(card).toContainText('Cash');
   await expect(card).toContainText('250.50');
   await expect(page.getByText('Revolut')).toHaveCount(0);

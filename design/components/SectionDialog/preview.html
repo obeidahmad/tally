@@ -1,13 +1,11 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><title>SectionDialog</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<head><meta charset="utf-8"><title>SectionDialog</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
 <body>
 <div class="ty-scrim">
 <div class="ty-dialog" role="dialog" aria-labelledby="st">
   <h2 class="text-title" id="st">Add section</h2>
   <div class="ty-field"><label class="ty-label" for="sn">Name</label><input class="ty-input" id="sn" value="Needs"></div>
-  <fieldset class="ty-fieldset"><legend class="ty-label">Budget</legend><div class="ty-segmented"><label><input type="radio" name="budget" checked>Percentage</label><label><input type="radio" name="budget">Fixed amount</label><label><input type="radio" name="budget">Subsections</label></div></fieldset>
-  <div class="ty-field"><label class="ty-label" for="sp">Percentage</label><div class="ty-affix"><input class="ty-input ty-input--amount" id="sp" value="50" inputmode="decimal" aria-describedby="sh"><span class="ty-muted">%</span></div><span class="ty-cap" id="sh">Of the month's income left after fixed-amount sections.</span></div>
   <div class="ty-dialog__foot"><button class="ty-btn ty-btn--quiet">Cancel</button><button class="ty-btn ty-btn--primary">Add section</button></div>
 </div></div>
 </body>

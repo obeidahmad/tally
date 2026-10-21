@@ -1,7 +1,7 @@
-import { test, expect, OWNER, createPerson, signInByApi, seedBudget, dialog, shot, row } from '../support/fixtures';
+import { test, expect, OWNER, createPerson, signInByApi, seedBudget, dialog, shot, row, openTab } from '../support/fixtures';
 
 test('Settings shows the account read-only, and no People list to a non-owner', async ({ page, me }) => {
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'Account');
   await expect(page.getByRole('heading', { name: 'Your account' })).toBeVisible();
   const main = page.getByRole('main').first();
   for (const v of [me.displayName, me.username, 'EUR']) {
@@ -15,7 +15,7 @@ test('Settings shows the account read-only, and no People list to a non-owner', 
 
 test('the owner sees the people with an Owner pill, adds a person, and that person signs in and changes their password', async ({ page, browser, baseURL }) => {
   await signInByApi(page, OWNER);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'People and sharing');
   await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
   await expect(page.locator('.ty-pill', { hasText: 'Owner' })).toBeVisible();
   await expect(page.locator('.ty-section', { hasText: OWNER.username })).toContainText(OWNER.displayName);
@@ -39,9 +39,10 @@ test('the owner sees the people with an Owner pill, adds a person, and that pers
   await p2.getByLabel('Username').fill(username);
   await p2.getByLabel('Password').fill('temporary pass 1');
   await p2.getByRole('button', { name: 'Sign in' }).click();
-  await expect(p2).toHaveURL(/\/budget$/);
+  await expect(p2).toHaveURL(/\/home$/);
+  await p2.goto('/budget');
   await expect(p2.getByText('No sections yet', { exact: false })).toBeVisible();
-  await p2.goto('/settings');
+  await openTab(p2, '/settings', 'Account');
   await expect(p2.getByRole('heading', { name: 'People' })).toHaveCount(0);
   await p2.getByLabel('Current password').fill('temporary pass 1');
   await p2.getByLabel('New password').fill('lina chose this one');
@@ -52,7 +53,7 @@ test('the owner sees the people with an Owner pill, adds a person, and that pers
 
 test('adding a person with a taken username shows the error under the field', async ({ page, me }) => {
   await signInByApi(page, OWNER);
-  await page.goto('/settings');
+  await openTab(page, '/settings', 'People and sharing');
   await page.getByRole('button', { name: 'Add a person' }).click();
   const d = dialog(page);
   await d.getByLabel('Display name').fill('Copy');
@@ -83,7 +84,7 @@ test('a second person sees none of the first person\'s data on any page', async 
   await p2.goto('/pockets');
   await expect(p2.getByText('No pockets yet', { exact: false })).toBeVisible();
   await expect(p2.getByText('Revolut')).toHaveCount(0);
-  await expect(p2.getByText('Signed in as Otto')).toBeVisible();
+  await expect(p2.locator('.ty-side').getByText('Otto')).toBeVisible();
   await shot(p2, 'second-person-pockets-desktop-light');
   await ctx.close();
 });

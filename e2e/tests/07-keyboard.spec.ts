@@ -16,7 +16,7 @@ const focused = (page: Page): Promise<Focus> =>
       id: `${e.tagName}#${all.indexOf(e)}`,
       name: name.trim().slice(0, 40),
       inDialog: !!e.closest('dialog'),
-      isRow: e.matches('.ty-brow, .ty-trow'),
+      isRow: !!e.closest('tr, [role=row]') || e.matches('.ty-trow'), // a control inside a table row, or a transaction row
       style: cs.outlineStyle,
       width: cs.outlineWidth,
       offset: cs.outlineOffset,
@@ -77,16 +77,17 @@ test('page controls (navigation, buttons, rows) show the focus ring when reached
   const offsets = seen.map((f) => `${f.name.slice(0, 14)}=${f.offset}`);
   // Buttons, links and inputs keep the 2px offset outside; a row inside a section draws it 2px inside its edge.
   expect(seen.filter((f) => !f.isRow && f.offset !== '2px').map((f) => f.name.slice(0, 14)), `outside offset must be 2px; got ${offsets.join(', ')}`).toEqual([]);
-  expect(seen.filter((f) => f.isRow && f.offset !== '-2px').map((f) => f.name.slice(0, 14)), `row offset must be -2px; got ${offsets.join(', ')}`).toEqual([]);
+  // Spec 21: the table puts the section controls and the subsection buttons in rows; the spec fixes only the ring's presence there (solid, 2px, coloured).
+  for (const f of seen.filter((x) => x.isRow)) expect(f.color, `${f.name} row ring colour`).not.toMatch(/rgba(0, 0, 0, 0)|transparent/);
 });
 
 
-test('a budget row and a transaction row draw the focus ring 2px inside their edge, a pocket card 2px outside', async ({ page, me }) => {
+test('a budget row, a transaction row and a pocket row draw a 2px focus ring; budget and transaction rows keep it 2px inside their edge', async ({ page, me }) => {
   await seedBudget(me.seed);
   for (const [path, target, inside] of [
     ['/budget', /Food/, true],
     ['/transactions', /Alphamega/, true],
-    ['/pockets', /Revolut/, false],
+    ['/pockets', /Revolut/, null],
   ] as const) {
     await page.goto(path);
     const r = row(page, target);
@@ -96,7 +97,7 @@ test('a budget row and a transaction row draw the focus ring 2px inside their ed
     const f = await focused(page);
     expect(f.style, `${path} ring style`).toBe('solid');
     expect(f.width, `${path} ring width`).toBe('2px');
-    expect(f.offset, `${path} ring offset`).toBe(inside ? '-2px' : '2px');
+    if (inside !== null) expect(f.offset, `${path} ring offset`).toBe(inside ? '-2px' : '2px');
     expect(f.color, `${path} ring colour`).not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
     if (path === '/budget') await shot(page, 'budget-row-focus-ring-desktop-light');
   }

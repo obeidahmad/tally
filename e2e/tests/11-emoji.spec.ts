@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, shot, row, group, em, EMOJI, DEFAULT_EMOJI, KIND_LABEL, noVs, checkedEmoji, pocketsApi } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, row, group, em, EMOJI, DEFAULT_EMOJI, KIND_LABEL, noVs, checkedEmoji, pocketsApi, pocketRow, pocketRows } from '../support/fixtures';
 import type { Page, Locator } from '@playwright/test';
 
 const sizes = { desktop: { width: 1280, height: 900 }, phone: { width: 390, height: 844 } } as const;
@@ -109,7 +109,7 @@ test('a pocket added with no pick takes the default emoji of its kind', async ({
   expect(byKind).toEqual({ bank: em('Bank'), cash: em('Banknote'), fund: em('Seedling'), broker: em('Chart') });
   await page.goto('/pockets');
   for (const kind of ['bank', 'cash', 'fund', 'broker'] as const) {
-    const card = page.locator('.ty-pocket', { hasText: KIND_LABEL[kind] });
+    const card = pocketRow(page, KIND_LABEL[kind]);
     await expect(card.locator('.ty-emoji').first(), kind).toHaveText(em(DEFAULT_EMOJI[kind]));
   }
 });
@@ -132,7 +132,7 @@ test('Edit pocket shows the pocket\'s own emoji, and a new one changes the card,
   await d.getByRole('button', { name: 'Save' }).click();
   await expect(d).toBeHidden();
   await expect(toast(page)).toContainText('Saved');
-  const card = page.locator('.ty-pocket', { hasText: 'Revolut' });
+  const card = pocketRow(page, 'Revolut');
   await expect(card.locator('.ty-emoji').first()).toHaveText(em('Gem'));
   expect((await pocketsApi(page))[0].emoji).toBe(em('Gem'));
   // reopen: the new one is shown as chosen
@@ -158,13 +158,12 @@ for (const [size, viewport] of Object.entries(sizes)) {
       // Cards.
       await page.goto('/pockets');
       for (const [name, e] of shown) {
-        const title = page.locator('.ty-pocket', { hasText: name }).locator('b').first();
-        await expect(title.locator('.ty-emoji')).toHaveText(e);
-        expect((await title.innerText()).replace(/\s+/g, ' ').trim(), `card ${name}`).toBe(`${e} ${name}`);
-        // the emoji element comes first inside the title
-        expect(await title.evaluate((b) => (b.firstElementChild as HTMLElement | null)?.className ?? '')).toContain('ty-emoji');
+        const r = pocketRow(page, name);
+        await expect(r.locator('.ty-emoji').first()).toHaveText(e);
+        // the emoji sits right before the name
+        expect((await r.innerText()).replace(/\s+/g, ' ').trim(), `row ${name}`).toMatch(new RegExp(`^${e}\\s*${name}`));
       }
-      await expect(page.locator('.ty-pocket').first().locator('.ty-emoji').first()).toHaveClass(/ty-emoji/);
+      await expect(pocketRows(page).first().locator('.ty-emoji').first()).toHaveClass(/ty-emoji/);
       await shot(page, `pockets-emoji-cards-${size}-light`);
 
       // Rows: every visible emoji in a row sits right before the pocket's name.
@@ -225,9 +224,11 @@ test('the page text uses the display face and the emoji face by their variable f
   const fam = async (loc: Locator) => loc.first().evaluate((e) => getComputedStyle(e).fontFamily);
   expect(await fam(group(d, 'Emoji').locator('.ty-emojis, label').first())).toMatch(/Noto Emoji/);
   await page.keyboard.press('Escape');
-  // The Budget page title is text-display, set in Bricolage Grotesque, which the removed override used to break.
+  // Spec 27: IBM Plex Sans everywhere; Bricolage Grotesque is gone.
   await page.goto('/budget');
-  expect(await fam(page.getByRole('heading', { level: 1 }))).toMatch(/Bricolage Grotesque/);
+  expect(await fam(page.getByRole('heading', { level: 1 }))).toMatch(/IBM Plex Sans/);
+  expect(await fam(page.getByRole('heading', { level: 1 }))).not.toMatch(/Bricolage/);
   const loaded = await page.evaluate(async () => { await document.fonts.ready; return [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family); });
-  expect(loaded.join(' | ')).toMatch(/Bricolage Grotesque/);
+  expect(loaded.join(' | ')).toMatch(/IBM Plex Sans/);
+  expect(loaded.join(' | ')).not.toMatch(/Bricolage/);
 });

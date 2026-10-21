@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, shot, row, pillOf, seedBudget, monthTitle, dayHeading, chip, group, selectLike, em } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, row, pillOf, seedBudget, monthTitle, dayHeadingRe, srow, summary, chip, group, selectLike, em } from '../support/fixtures';
 
 const lastMonth = () => {
   const d = new Date();
@@ -17,17 +17,16 @@ test('empty Transactions shows one card with "No transactions in {month}." and A
 test('the list is grouped under day headings with signs, dots and source lines', async ({ page, me }) => {
   await seedBudget(me.seed);
   await page.goto('/transactions');
-  await expect(page.locator('.ty-day', { hasText: dayHeading() })).toBeVisible();
+  await expect(page.getByText(dayHeadingRe()).first()).toBeVisible();
   const alpha = row(page, /Alphamega/);
   await expect(alpha).toContainText('−212.40');
-  await expect(alpha).toContainText('Entered by hand');
+  await expect(alpha).not.toContainText('Entered by hand');
   await expect(alpha).toContainText('Food');
-  await expect(alpha.locator('.ty-dot').first()).toHaveClass(/ty-dot--1/);
   const pay = row(page, /Paycheck/);
   await expect(pay).toContainText('+2,000.00');
   await expect(pay.locator('.ty-num--pos')).toBeVisible();
   await expect(pay).toContainText('Income');
-  await expect(pay).toContainText(/Income · entered by hand/i);
+  await expect(pay).not.toContainText(/entered by hand/i);
   await shot(page, 'transactions-desktop-light');
 });
 
@@ -59,12 +58,12 @@ test('filters: Month, Subsection and Pocket narrow the list', async ({ page, me 
   await expect(row(page, /Bakery/)).toBeVisible();
   await expect(row(page, /Alphamega/)).toHaveCount(0);
 
-  await page.getByLabel('Pocket').selectOption({ label: 'All pockets' });
+  await page.getByLabel('Pocket').selectOption({ label: 'Pocket' });
   await page.getByLabel('Subsection').selectOption({ label: 'Utilities' });
   await expect(row(page, /EAC electricity/)).toBeVisible();
   await expect(row(page, /Alphamega/)).toHaveCount(0);
 
-  await page.getByLabel('Subsection').selectOption({ label: 'All subsections' });
+  await page.getByLabel('Subsection').selectOption({ label: 'Subsection' });
   await page.getByLabel('Month').selectOption({ label: monthTitle(prev) });
   await expect(row(page, /Last month shop/)).toBeVisible();
   await expect(row(page, /Alphamega/)).toHaveCount(0);
@@ -81,7 +80,7 @@ test('the transaction dialog has its fields in order and defaults to Expense and
   await expect(group(d, 'Type')).toBeVisible();
   await expect(d.getByRole('radio', { name: 'Expense' })).toBeChecked();
   await expect(d.getByRole('radio', { name: 'Income' })).not.toBeChecked();
-  await expect(group(d, 'Type').locator('.ty-segmented label')).toHaveCount(2);
+  await expect(group(d, 'Type').locator('.ty-segmented label')).toHaveCount(3);
   await expect(group(d, 'Type').locator('.ty-chip')).toHaveCount(0);
   await expect(d.getByLabel('Date')).toHaveValue(new Date().toISOString().slice(0, 10));
   await expect(d.getByLabel('Amount')).toHaveClass(/ty-input--amount/);
@@ -152,8 +151,8 @@ test('add, edit and delete a transaction update Budget and the pocket balance wi
   await page.goto('/budget');
   await page.evaluate(() => ((window as unknown as { __kept: boolean }).__kept = true));
   const kept = () => page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept === true);
-  const food = () => pillOf(row(page, /Food/));
-  await expect(food()).toHaveText('87.60');
+  const food = () => pillOf(srow(page, /Food/));
+  await expect(food()).toContainText('87.60');
 
   // add
   await page.getByRole('button', { name: 'Add transaction' }).first().click();
@@ -164,8 +163,8 @@ test('add, edit and delete a transaction update Budget and the pocket balance wi
   await chip(d, 'Pocket', /Revolut/).check();
   await d.getByRole('button', { name: 'Add expense' }).click();
   await expect(d).toBeHidden();
-  await expect(food()).toHaveText('77.60');
-  await expect(page.locator('.ty-stats').first()).toContainText('993.12');
+  await expect(food()).toContainText('77.60');
+  await expect(summary(page)).toContainText('993.12');
 
   // pocket balance: 1,000.00 + 2,000.00 - 212.40 - 600 - 131.75 - 38.97 - 10 = 2,006.88
   await page.getByRole('link', { name: 'Pockets' }).first().click();
@@ -181,7 +180,7 @@ test('add, edit and delete a transaction update Budget and the pocket balance wi
   await expect(toast(page)).toContainText('Saved');
   await expect(row(page, /Kiosk/)).toContainText('−15.50');
   await page.getByRole('link', { name: 'Budget' }).first().click();
-  await expect(food()).toHaveText('72.10');
+  await expect(food()).toContainText('72.10');
   await page.getByRole('link', { name: 'Pockets' }).first().click();
   await expect(page.getByText('2,001.38').first()).toBeVisible();
 
@@ -192,10 +191,10 @@ test('add, edit and delete a transaction update Budget and the pocket balance wi
   await expect(d).toBeHidden();
   await expect(row(page, /Kiosk/)).toHaveCount(0);
   await page.getByRole('link', { name: 'Budget' }).first().click();
-  await expect(food()).toHaveText('87.60');
+  await expect(food()).toContainText('87.60');
   await expect(toast(page).getByRole('button', { name: 'Undo' })).toBeVisible();
   await toast(page).getByRole('button', { name: 'Undo' }).click();
-  await expect(food()).toHaveText('72.10');
+  await expect(food()).toContainText('72.10');
   await page.getByRole('link', { name: 'Pockets' }).first().click();
   await expect(page.getByText('2,001.38').first()).toBeVisible();
   expect(await kept(), 'the page was reloaded').toBe(true);
@@ -224,7 +223,9 @@ test('income has no subsection and shows with a plus sign', async ({ page, me })
   await chip(d, 'Type', 'Income').check();
   await expect(d.getByRole('heading', { name: 'Add income' })).toBeVisible();
   await d.getByLabel('Amount').fill('75');
-  await d.getByLabel('Payee').fill('Gift from Mum');
+  // No source yet, so the "+ Add source" panel is open (spec 06).
+  await expect(d.getByLabel('Payee')).toHaveCount(0);
+  await d.getByLabel('Source name').fill('Gift from Mum');
   await chip(d, 'Pocket', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();

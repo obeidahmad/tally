@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>PipelineScreen</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<body>
+<div class="ty-shell">
+<aside class="ty-side">
+  <div class="ty-logo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6"/><path d="M7.5 7v10M11 7v10M14.5 7v10M5.5 15L17 9"/></svg>Tally</div>
+  <nav class="ty-nav" aria-label="Main"><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5"/><path d="M6 10v9h12v-9"/></svg>Home</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="11" height="4" rx="1"/><rect x="4" y="17" width="7" height="3" rx="1"/></svg>Budget</a><a href="#" aria-current="page"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 6h3c3 0 3 6 7 6M8 18h3c3 0 3-6 7-6"/></svg>Pipeline</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>Transactions</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>Recurring</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h11v2"/><rect x="4" y="8" width="16" height="11" rx="2"/><circle cx="16" cy="13.5" r="1"/></svg>Pockets</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l5-5 4 3 7-8"/><path d="M15 7h5v5"/></svg>Investments</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 1 0 8 8h-8z"/><path d="M15 3.5A8 8 0 0 1 20.5 9H15z"/></svg>Reports</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>Settings</a></nav>
+  <div class="ty-side__foot"><div class="ty-side__who"><b>Sam</b><a class="ty-link ty-cap" href="#">Sign out</a></div><button class="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Switch to dark mode"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button></div>
+</aside>
+<div class="ty-page">
+<header class="ty-top"><h1 class="text-display ty-top__title">Pipeline</h1><div class="ty-top__actions"><span class="ty-monthnav"><button class="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Previous month">‹</button>October 2026<button class="ty-btn ty-btn--quiet ty-btn--icon" aria-label="Next month" disabled>›</button></span><button class="ty-btn">Add section</button><button class="ty-btn ty-btn--primary">Add income source</button></div></header>
+<main class="ty-main">
+<div class="ty-pipe">
+<div class="ty-pipe__col"><div class="ty-label">Income</div><div class="ty-pipe__stack">
+<article class="ty-node" aria-label="Paycheck and Second job">
+  <div class="ty-node__src"><b>Paycheck</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-grow"></span><span class="ty-num">2,000.00</span></div>  <div class="ty-node__src"><b>Second job</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-grow"></span><span class="ty-num">600.00</span></div><div class="ty-node__head ty-node__head--sum"><span class="ty-label">Together</span><span class="ty-grow"></span><span class="ty-num">2,600.00</span></div>
+  <div class="ty-pipe__step" role="button" tabindex="0" aria-label="Step 1: 2.5% to Zakat"><div class="ty-step"><span class="ty-step__n">1</span><span class="ty-step__rule">2.5%</span><span class="ty-tag"><span class="ty-dot ty-dot--4"></span>Zakat</span><span class="ty-num">65.00</span></div></div><div class="ty-pipe__left">2,535.00 left</div>  <div class="ty-pipe__step" role="button" tabindex="0" aria-label="Step 2: 500.00 to Family"><div class="ty-step"><span class="ty-step__n">2</span><span class="ty-step__rule">500.00</span><span class="ty-tag"><span class="ty-dot ty-dot--5"></span>Family</span><span class="ty-num">500.00</span></div></div><div class="ty-pipe__left">2,035.00 left</div>  <div class="ty-pipe__step" role="button" tabindex="0" aria-label="Step 3: 50% to Needs, 30% to Wants, 20% to Savings"><div class="ty-step"><span class="ty-step__n">3</span><span class="ty-step__rule">50%</span><span class="ty-tag"><span class="ty-dot ty-dot--1"></span>Needs</span><span class="ty-num">1,017.50</span></div><div class="ty-step"><span class="ty-step__n"></span><span class="ty-step__rule">30%</span><span class="ty-tag"><span class="ty-dot ty-dot--2"></span>Wants</span><span class="ty-num">610.50</span></div><div class="ty-step"><span class="ty-step__n"></span><span class="ty-step__rule">20%</span><span class="ty-tag"><span class="ty-dot ty-dot--3"></span>Savings</span><span class="ty-num">407.00</span></div></div><div class="ty-pipe__left">0.00 left</div>
+  <div class="ty-node__foot"><button class="ty-btn ty-btn--quiet ty-btn--sm">Add step</button></div>
+</article><article class="ty-node" aria-label="Fund payout">
+  <div class="ty-node__head"><b>Fund payout</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-grow"></span><span class="ty-num">12.40</span></div>
+  <div class="ty-step ty-step--empty"><span class="ty-cap">No steps yet. All of it is left over.</span></div><div class="ty-pipe__left">12.40 left</div>
+  <div class="ty-node__foot"><button class="ty-btn ty-btn--quiet ty-btn--sm">Add step</button></div>
+</article>
+</div></div>
+<div class="ty-pipe__col"><div class="ty-label">Sections</div><div class="ty-pipe__stack ty-pipe__stack--sections">
+<article class="ty-node" aria-label="Zakat">
+  <div class="ty-node__head"><span class="ty-dot ty-dot--4"></span><b>Zakat</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-grow"></span><span class="ty-num">65.00</span></div>
+</article>
+<article class="ty-node" aria-label="Family">
+  <div class="ty-node__head"><span class="ty-dot ty-dot--5"></span><b>Family</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-grow"></span><span class="ty-num">500.00</span></div>
+</article>
+<article class="ty-node" aria-label="Needs">
+  <div class="ty-node__head"><span class="ty-dot ty-dot--1"></span><b>Needs</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-grow"></span><span class="ty-num">1,017.50</span></div>
+</article>
+<article class="ty-node" aria-label="Wants">
+  <div class="ty-node__head"><span class="ty-dot ty-dot--2"></span><b>Wants</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-grow"></span><span class="ty-num">610.50</span></div>
+</article>
+<article class="ty-node" aria-label="Savings">
+  <div class="ty-node__head"><span class="ty-dot ty-dot--3"></span><b>Savings</b><button class="ty-btn ty-btn--quiet ty-btn--sm">Edit</button><span class="ty-grow"></span><span class="ty-num">407.00</span></div>
+</article>
+<article class="ty-node" aria-label="Left over">
+  <div class="ty-node__head"><span class="ty-dot"></span><b>Left over</b><span class="ty-grow"></span><span class="ty-num">12.40</span></div>
+</article>
+</div></div>
+<svg class="ty-pipe__wires" width="900" height="620" aria-hidden="true"><path class="ty-wire ty-wire--4" d="M420 155 C500 155, 500 57, 580 57"/><circle class="ty-port ty-port--4" cx="420" cy="155" r="4"/><circle class="ty-port ty-port--4" cx="580" cy="57" r="4"/><path class="ty-wire ty-wire--5" d="M420 215 C500 215, 500 139, 580 139"/><circle class="ty-port ty-port--5" cx="420" cy="215" r="4"/><circle class="ty-port ty-port--5" cx="580" cy="139" r="4"/><path class="ty-wire ty-wire--1" d="M420 275 C500 275, 500 221, 580 221"/><circle class="ty-port ty-port--1" cx="420" cy="275" r="4"/><circle class="ty-port ty-port--1" cx="580" cy="221" r="4"/><path class="ty-wire ty-wire--2" d="M420 311 C500 311, 500 303, 580 303"/><circle class="ty-port ty-port--2" cx="420" cy="311" r="4"/><circle class="ty-port ty-port--2" cx="580" cy="303" r="4"/><path class="ty-wire ty-wire--3" d="M420 347 C500 347, 500 385, 580 385"/><circle class="ty-port ty-port--3" cx="420" cy="347" r="4"/><circle class="ty-port ty-port--3" cx="580" cy="385" r="4"/><path class="ty-wire" d="M420 547 C500 547, 500 467, 580 467"/><circle class="ty-port" cx="420" cy="547" r="4"/><circle class="ty-port" cx="580" cy="467" r="4"/></svg>
+</div>
+</main>
+</div>
+<nav class="ty-tabbar" aria-label="Main"><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5"/><path d="M6 10v9h12v-9"/></svg>Home</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="4" rx="1"/><rect x="4" y="11" width="11" height="4" rx="1"/><rect x="4" y="17" width="7" height="3" rx="1"/></svg>Budget</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h3"/></svg>Transactions</a><a href="#"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h11v2"/><rect x="4" y="8" width="16" height="11" rx="2"/><circle cx="16" cy="13.5" r="1"/></svg>Pockets</a><button type="button" aria-haspopup="dialog" aria-expanded="false"><svg class="ty-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg>More</button></nav>
+</div>
+</body>
+</html>

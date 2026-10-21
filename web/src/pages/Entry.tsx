@@ -6,7 +6,7 @@ import { CurrencyField, FormError, TextField } from '../ui';
 function Frame({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <main className="app-auth">
-      <div className="ty-word">Tally</div>
+      <div className="ty-logo">Tally</div>
       <div className="ty-card ty-stack">
         <h1 className="text-title" style={{ margin: 0 }}>{title}</h1>
         {children}

@@ -2,9 +2,10 @@ import { test, expect, OWNER, signInByApi, shot } from '../support/fixtures';
 
 const pages = [
   { path: '/budget', ready: /No sections yet/, who: 'person' },
+  { path: '/pipeline', ready: /No income sources yet/, who: 'person' },
   { path: '/transactions', ready: /No transactions in/, who: 'person' },
   { path: '/pockets', ready: /No pockets yet/, who: 'person' },
-  { path: '/settings', ready: /Add a person/, who: 'owner' },
+  { path: '/settings', ready: /Change password/, who: 'owner' },
 ] as const;
 
 // Everything under /api except the sign-in check, so the app knows who is signed in but cannot load page data.

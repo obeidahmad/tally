@@ -1,25 +1,71 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
-export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string };
-export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker';
-export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number };
-export type Subsection = { id: number; sectionId: number; name: string; budgetMinor: number; position: number };
-export type BudgetKind = 'subsections' | 'fixed' | 'percent';
-type OwnBudget = { budgetKind: BudgetKind; budgetMinor: number | null; budgetBasisPoints: number | null };
-export type Section = OwnBudget & { id: number; name: string; colorSlot: number; position: number; subsections: Subsection[] };
-export type Transaction = {
-  id: number; date: string; kind: 'expense' | 'income'; amountMinor: number;
-  pocketId: number; subsectionId: number | null; payee: string; note: string; source: 'manual';
+export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; homePocketId: number | null; viewing: { ownerId: number; displayName: string; baseCurrency: string } | null };
+export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker' | 'credit' | 'loan' | 'property';
+export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number; valueMinor: number; baseValueMinor: number | null; hasTransactions: boolean; syncedBalanceMinor: number | null; syncedAt: string | null; group: 'cash' | 'investments' | 'property' | 'debts'; reconciledAt: string | null; reconciledBalanceMinor: number | null };
+export type SubsectionRules = {
+  kind: 'spending' | 'goal'; budgetKind: 'amount' | 'percent'; budgetBasisPoints: number | null;
+  keep: 'all' | 'cap' | 'none'; capMinor: number | null;
 };
-export type BudgetSubsection = { id: number; name: string; budgetMinor: number; spentMinor: number; availableMinor: number };
-export type BudgetSection = OwnBudget & {
-  id: number; name: string; colorSlot: number; budgetedMinor: number; restMinor: number; spentMinor: number; availableMinor: number;
+export type Subsection = { id: number; sectionId: number; name: string; emoji: string | null; targetMonth: string | null; budgetMinor: number | null; position: number } & SubsectionRules;
+export type Source = { id: number; name: string; boxId: number; isLeftovers: boolean };
+export type RestRule = { shares: { sectionId: number | null; basisPoints: number }[]; overspent: 'income' | 'section' };
+export type Section = { id: number; name: string; colorSlot: number; position: number; subsections: Subsection[]; rest: RestRule };
+export type Months = { lastClosed: string | null; toClose: string | null };
+export type CloseSummary = {
+  month: string; nextMonth: string;
+  rows: { fromSectionId: number | null; basisPoints: number; toSectionId: number | null; amountMinor: number }[];
+  keptMinor: number; incomeMinor: number;
+};
+export type Transaction = {
+  id: number; date: string; kind: 'expense' | 'income' | 'transfer'; amountMinor: number; baseAmountMinor: number;
+  pocketId: number; subsectionId: number | null; sourceId: number | null;
+  toPocketId: number | null; toAmountMinor: number | null; payee: string; note: string; source: 'manual' | 'import' | 'bank' | 'broker' | 'adjustment'; createdBy: number; createdByName: string;
+  splits: { subsectionId: number; amountMinor: number }[] | null; tags: string[]; attachments: Attachment[];
+};
+export type Attachment = { id: number; name: string; type: string; size: number };
+export type Holding = {
+  id: number; name: string; pocketId: number; subsectionId: number; paidMinor: number;
+  worthMinor: number; worthCurrency: string; worthDate: string; soldDate: string | null;
+  source: 'manual' | 'trading212';
+};
+export type Where = {
+  currency: string; pockets: { id: number; name: string; currency: string }[];
+  rows: { subsectionId: number; totalMinor: number; cells: { pocketId: number; amountMinor: number }[] }[];
+};
+export type Rule = { id: number; match: string; subsectionId: number | null; sourceId: number | null };
+export type Rates = { date: string; base: string; currencies: { currency: string; rate: string }[] };
+export type NetWorth = {
+  currency: string; totalMinor: number; assetsMinor: number; debtsMinor: number; missingRates: string[];
+  byCurrency: { currency: string; amountMinor: number; baseMinor: number; rate: string | null }[];
+};
+export type GoalStatus = 'done' | 'on_track' | 'behind' | 'past';
+export type BudgetSubsection = { id: number; name: string; emoji: string | null; targetMonth: string | null; neededMinor: number | null; goalStatus: GoalStatus | null; budgetMinor: number; spentMinor: number; availableMinor: number; carriedMinor: number; movedMinor: number } & SubsectionRules;
+export type BudgetSection = {
+  id: number; name: string; colorSlot: number; budgetedMinor: number; restMinor: number; spentMinor: number; availableMinor: number; movedMinor: number;
   subsections: BudgetSubsection[];
 };
+export type End = { subsectionId: number } | { sectionId: number };
+export type Move = { id: number; month: string; from: End; to: End; amountMinor: number; reason: string };
 export type Budget = {
-  month: string; currency: string;
-  totals: { incomeMinor: number; budgetedMinor: number; spentMinor: number; availableMinor: number };
-  sections: BudgetSection[];
+  month: string; currency: string; closed: boolean;
+  totals: { incomeMinor: number; budgetedMinor: number; spentMinor: number; availableMinor: number; leftOverMinor: number };
+  sections: BudgetSection[]; unsortedCount: number; underfundedMinor: number;
+};
+
+export type StepBody =
+  | { kind: 'amount'; sectionId: number; amountMinor: number }
+  | { kind: 'percent'; shares: { sectionId: number; basisPoints: number }[] };
+export type PipelineStep =
+  | { id: number; position: number; kind: 'amount'; sectionId: number; amountMinor: number; takenMinor: number; leftMinor: number }
+  | { id: number; position: number; kind: 'percent'; leftMinor: number; shares: { sectionId: number; basisPoints: number; takenMinor: number }[] };
+export type PipelineBox = {
+  id: number; incomeMinor: number; leftOverMinor: number;
+  sources: { id: number; name: string; incomeMinor: number; isLeftovers: boolean }[]; steps: PipelineStep[];
+};
+export type Pipeline = {
+  month: string; currency: string; closed: boolean; boxes: PipelineBox[];
+  sections: { id: number; name: string; colorSlot: number; receivedMinor: number; carriedMinor: number; rest: RestRule }[]; leftOverMinor: number;
 };
 
 /** The 32 pocket emoji in picker order: [character, name]. Built with fromCodePoint so no variation selector sneaks in. */
@@ -37,9 +83,10 @@ export const EMOJIS: [string, string][] = ([
 export const DEFAULT_EMOJI: Record<PocketKind, string> = {
   bank: String.fromCodePoint(0x1F3E6), cash: String.fromCodePoint(0x1F4B5),
   fund: String.fromCodePoint(0x1F331), broker: String.fromCodePoint(0x1F4C8),
+  credit: String.fromCodePoint(0x1F4B3), loan: String.fromCodePoint(0x1F9FE), property: String.fromCodePoint(0x1F3E0),
 };
 
-export const KIND_WORDS: Record<PocketKind, string> = { bank: 'Bank account', cash: 'Cash', fund: 'Fund', broker: 'Broker' };
+export const KIND_WORDS: Record<PocketKind, string> = { bank: 'Bank account', cash: 'Cash', fund: 'Fund', broker: 'Broker', credit: 'Credit card', loan: 'Loan', property: 'Property' };
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public fields?: Record<string, string>) {
@@ -59,10 +106,11 @@ const subscribe = (fn: () => void) => { listeners.add(fn); return () => { listen
 export async function api<T = void>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
+    const file = body instanceof File; // a receipt goes up as the raw file
     res = await fetch(`/api${path}`, {
       method,
-      headers: method === 'GET' ? undefined : { 'Content-Type': 'application/json' }, // server rejects changing calls without it, even with no body
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: file ? { 'Content-Type': body.type, 'X-Filename': encodeURIComponent(body.name) } : method === 'GET' ? undefined : { 'Content-Type': 'application/json' }, // server rejects changing calls without it, even with no body
+      body: body === undefined ? undefined : file ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, 'network', "Couldn't reach Tally's server. Check that it is running.");

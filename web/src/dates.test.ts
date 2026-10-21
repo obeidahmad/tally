@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { currentMonth, dayHeading, isMonth, monthTitle, shiftMonth, today } from './dates';
+import { currentMonth, dayHeading, dayLabel, isMonth, monthTitle, shiftMonth, today } from './dates';
 
 it('shifts across year ends', () => {
   expect(shiftMonth('2026-01', -1)).toBe('2025-12');
@@ -10,6 +10,7 @@ it('titles', () => {
   expect(monthTitle('2026-10')).toBe('October 2026');
   expect(dayHeading('2026-10-11')).toBe('11 October');
   expect(dayHeading('2026-03-05')).toBe('5 March');
+  expect(dayLabel('2026-10-16')).toBe('Fri 16 Oct');
 });
 it('local today', () => {
   const d = new Date(2026, 0, 5, 23, 59);

@@ -4,15 +4,22 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
-import { burnTime, currentSession, endSession, hashPassword, requireAuth, startSession, toUser, USER_COLS, verifyPassword } from './auth';
+import { actingBudget, burnTime, currentSession, ownerOnlyBudget, endSession, hashPassword, requireAuth, startSession, toUser, USER_COLS, verifyPassword } from './auth';
+import { attachmentsRouter } from './attachments';
+import { bankCallback } from './banks';
+import { createRates, ECB_URL } from './rates';
 import { dataRouter } from './data';
+import { recurringRouter } from './recurring';
+import { sharingRouter } from './sharing';
 import type { Db } from './db';
 import { errorHandler, fieldError, HttpError, notFound, parse, requireJson } from './http';
 import * as s from './schemas';
 
-export type AppOptions = { db: Db; cookieSecure?: boolean; webDist?: string };
+export type AppOptions = { db: Db; cookieSecure?: boolean; webDist?: string; ratesUrl?: string; bankUrl?: string; publicUrl?: string; t212Url?: string; sleep?: (ms: number) => Promise<void>; now?: () => number };
 
-export function createApp({ db, cookieSecure = false, webDist = path.join(__dirname, '..', '..', 'web', 'dist') }: AppOptions) {
+export function createApp({ db, cookieSecure = false, webDist = path.join(__dirname, '..', '..', 'web', 'dist'), ratesUrl = process.env.TALLY_RATES_URL ?? ECB_URL, bankUrl = process.env.TALLY_ENABLEBANKING_URL ?? 'https://api.enablebanking.com', publicUrl = process.env.TALLY_PUBLIC_URL, t212Url = process.env.TALLY_T212_URL, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now }: AppOptions) {
+  const rates = createRates(db, ratesUrl, now);
+  const bank = { url: bankUrl.replace(/\/+$/, ''), publicUrl, now };
   const app = express();
   // Tally is normally reached over plain HTTP: no upgrade-insecure-requests, and HSTS only when HTTPS is declared.
   app.use(
@@ -23,7 +30,11 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   );
 
   const api = express.Router();
-  api.use(requireJson, express.json(), cookieParser());
+  const json = express.json();
+  // A statement can be 5,000,000 characters: its routes get a bigger limit, and only after sign-in.
+  // A receipt is sent as the raw file, not as JSON.
+  const isReceipt = (req: express.Request) => req.method === 'POST' && /^\/transactions\/\d+\/attachments$/.test(req.path);
+  api.use((req, res, next) => (isReceipt(req) ? next() : requireJson(req, res, next)), (req, res, next) => (req.path.startsWith('/imports') ? next() : json(req, res, next)), cookieParser());
 
   const userById = (id: number) => toUser(db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id));
   const needsSetup = () => !db.prepare('SELECT 1 FROM users').get();
@@ -45,7 +56,8 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   api.get('/health', (_req, res) => { res.json({ ok: true }); });
 
   api.get('/auth/state', (req, res) => {
-    res.json({ needsSetup: needsSetup(), user: currentSession(db, req.cookies?.tally_session)?.user ?? null });
+    const me = currentSession(db, req.cookies?.tally_session)?.user ?? null;
+    res.json({ needsSetup: needsSetup(), ...(me ? (() => { const viewing = actingBudget(db, me).viewing; return { user: { ...me, viewing }, viewing }; })() : { user: null }) });
   });
 
   api.post('/auth/setup', async (req, res) => {
@@ -74,6 +86,9 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.json({ user: userById(row.id) });
   });
 
+  // The bank sends the browser back here; the state, not a cookie, says whose it is.
+  api.get('/banks/callback', bankCallback(db, bank));
+
   // Everything below needs a session.
   api.use(requireAuth(db));
 
@@ -82,20 +97,27 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.status(204).end();
   });
 
+  api.get('/me', (req, res) => { res.json({ user: { ...req.me, viewing: req.viewing }, viewing: req.viewing }); });
+  api.patch('/me', (req, res) => {
+    const b = parse(s.homePocket, req.body);
+    if (!db.prepare('SELECT 1 FROM pockets WHERE id = ? AND user_id = ?').get(b.homePocketId, req.me.id)) throw fieldError('homePocketId', 'Choose a pocket.');
+    db.prepare('UPDATE users SET home_pocket_id = ? WHERE id = ?').run(b.homePocketId, req.me.id);
+    res.json({ user: { ...userById(req.me.id), viewing: req.viewing }, viewing: req.viewing });
+  });
   api.post('/me/password', async (req, res) => {
     const b = parse(s.changePassword, req.body);
-    const { hash } = db.prepare('SELECT password_hash AS hash FROM users WHERE id = ?').get(req.user.id) as { hash: string };
+    const { hash } = db.prepare('SELECT password_hash AS hash FROM users WHERE id = ?').get(req.me.id) as { hash: string };
     if (!(await verifyPassword(b.currentPassword, hash))) throw fieldError('currentPassword', 'That is not your current password.');
     const next = await hashPassword(b.newPassword);
     db.transaction(() => {
-      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(next, req.user.id);
-      db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').run(req.user.id, req.sessionHash);
+      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(next, req.me.id);
+      db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').run(req.me.id, req.sessionHash);
     })();
     res.status(204).end();
   });
 
   const ownerOnly: express.RequestHandler = (req, _res, next) =>
-    next(req.user.isOwner ? undefined : new HttpError(403, 'forbidden', 'Only the owner can do that.'));
+    next(req.me.isOwner ? undefined : new HttpError(403, 'forbidden', 'Only the owner can do that.'));
   api.get('/users', ownerOnly, (_req, res) => {
     res.json({ users: db.prepare(`SELECT ${USER_COLS} FROM users ORDER BY id`).all().map(toUser) });
   });
@@ -103,7 +125,12 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
     res.status(201).json({ user: await addUser(parse(s.newAccount, req.body), false) });
   });
 
-  api.use(dataRouter(db));
+  api.use(sharingRouter(db));
+  api.use(['/banks', '/brokers'], ownerOnlyBudget);
+  api.use('/imports', express.json({ limit: '25mb' }));
+  api.use(attachmentsRouter(db));
+  api.use(dataRouter(db, rates, now, bank, { url: t212Url, now, sleep }));
+  api.use(recurringRouter(db, now));
   api.use(() => { throw notFound(); });
   app.use('/api', api);
 
@@ -116,5 +143,6 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
   }
 
   app.use(errorHandler);
+  app.locals.rates = rates;
   return app;
 }

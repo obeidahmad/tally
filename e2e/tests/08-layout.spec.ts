@@ -1,16 +1,17 @@
-import { test, expect, dialog, shot, seedBudget } from '../support/fixtures';
+import { test, expect, dialog, shot, seedBudget, row, srow, createPerson, signInByApi, seed, chooseAppearance, pageBg, THEME, stickyBar } from '../support/fixtures';
 
-const names = ['Budget', 'Transactions', 'Pockets', 'Settings'];
+const names = ['Home', 'Budget', 'Transactions', 'Pockets', 'More']; // the phone tab bar (spec 27 polish: Settings moved into More)
+const sidebar = ['Home', 'Budget', 'Pipeline', 'Transactions', 'Recurring', 'Pockets', 'Investments', 'Reports', 'Settings'];
 
 test.describe('desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test('all four pages are reachable from the sidebar, and only those four', async ({ page, me }) => {
+  test('all nine pages are reachable from the sidebar in order, and only those nine', async ({ page, me }) => {
     await page.goto('/budget');
     const side = page.locator('.ty-side');
-    await expect(side.getByRole('link')).toHaveText(names);
+    await expect(side.getByRole('link')).toHaveText(sidebar);
     await expect(side.getByRole('link', { name: 'Budget' })).toHaveAttribute('aria-current', 'page');
-    for (const n of ['Transactions', 'Pockets', 'Settings', 'Budget']) {
+    for (const n of ['Pipeline', 'Transactions', 'Pockets', 'Settings', 'Budget']) {
       await side.getByRole('link', { name: n }).click();
       await expect(page).toHaveURL(new RegExp(`/${n.toLowerCase()}$`));
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
@@ -22,18 +23,24 @@ test.describe('desktop', () => {
     await page.goto('/pockets');
     await expect(page.getByText('No pockets yet', { exact: false })).toBeVisible();
     const side = page.locator('.ty-side');
-    await expect(side).toContainText(`Signed in as ${me.displayName}`);
-    await expect(side).toContainText('Base currency EUR');
+    // spec 27: the footer holds the person's name, "Sign out" and the light/dark icon button
+    await expect(side).toContainText(me.displayName);
     await expect(side.getByRole('button', { name: 'Sign out' })).toBeVisible();
+    await expect(side.getByRole('button', { name: /^Switch to (dark|light) mode$/ })).toBeVisible();
     const box = (await side.boundingBox())!;
     expect(Math.round(box.y + box.height)).toBeGreaterThanOrEqual(900 - 1);
-    await expect(page.locator('.ty-tabs')).toBeHidden();
-    await expect(page.locator('.ty-topbar')).toBeHidden();
+    await expect(page.locator('.ty-tabbar')).toBeHidden();
+    // spec 27: a 220px sidebar and a sticky 56px top bar with the title on every page
+    expect(Math.round(box.width)).toBe(220);
+    const bar = await stickyBar(page);
+    expect(bar, 'a sticky top bar holds the title').not.toBeNull();
+    expect(Math.round(bar!.height)).toBe(56);
+    expect(Math.round(bar!.y)).toBe(0);
   });
 
   test('no sideways scroll on any page', async ({ page, me }) => {
     await seedBudget(me.seed);
-    for (const p of ['/budget', '/transactions', '/pockets', '/settings']) {
+    for (const p of ['/budget', '/pipeline', '/transactions', '/pockets', '/settings']) {
       await page.goto(p);
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), p).toBe(true);
@@ -44,12 +51,12 @@ test.describe('desktop', () => {
 test.describe('phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('the tab bar shows the same four pages (Settings, not More) and the sidebar is gone', async ({ page, me }) => {
+  test('the phone tab bar shows Home, Budget, Transactions, Pockets and More, and the sidebar is gone', async ({ page, me }) => {
     await page.goto('/budget');
     await expect(page.locator('.ty-side')).toBeHidden();
-    const tabs = page.locator('.ty-tabs');
-    await expect(tabs.getByRole('link')).toHaveText(names);
-    for (const n of ['Transactions', 'Pockets', 'Settings', 'Budget']) {
+    const tabs = page.locator('.ty-tabbar');
+    await expect(tabs.locator('a, button')).toHaveText(names);
+    for (const n of ['Transactions', 'Pockets', 'Budget']) {
       await tabs.getByRole('link', { name: n }).click();
       await expect(page).toHaveURL(new RegExp(`/${n.toLowerCase()}$`));
       await expect(tabs.getByRole('link', { name: n })).toHaveAttribute('aria-current', 'page');
@@ -65,14 +72,14 @@ test.describe('phone', () => {
   for (const [path, title, action] of topbars) {
     test(`${path}: top bar holds the title${action ? ' and the shortened action "Add"' : ''}; the desktop title row is not shown`, async ({ page, me }) => {
       await page.goto(path);
-      const bar = page.locator('.ty-topbar');
+      const bar = page.locator('.ty-top');
       await expect(bar).toBeVisible();
       if (path === '/budget') await expect(bar).toContainText(new Date().toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' }));
       else await expect(bar).toContainText(title);
       if (action) {
         const btn = bar.getByRole('button', { name: action, exact: true });
         await expect(btn).toBeVisible();
-        await expect(btn).toHaveText('Add');
+        await expect(btn).toHaveText('Add', { useInnerText: true });
       } else {
         await expect(bar.getByRole('button')).toHaveCount(0);
       }
@@ -82,7 +89,7 @@ test.describe('phone', () => {
       }
       const box = (await bar.boundingBox())!;
       expect(box.y).toBeLessThanOrEqual(1);
-      expect(box.height).toBeLessThan(80);
+      expect(box.height).toBeLessThan(100); // the tabs sit in a row under the title on a phone
       // Only one visible level-1 heading: the bar's, not a second desktop title row.
       expect(await page.getByRole('heading', { level: 1 }).count()).toBe(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -99,7 +106,7 @@ test.describe('phone', () => {
   test('a dialog sits at the bottom edge at full width', async ({ page, me }) => {
     await seedBudget(me.seed);
     await page.goto('/budget');
-    await page.locator('.ty-topbar').getByRole('button', { name: 'Add transaction' }).click();
+    await page.locator('.ty-top').getByRole('button', { name: 'Add transaction' }).click();
     const d = dialog(page);
     await expect(d).toBeVisible();
     await page.waitForTimeout(300); // the 150ms fade
@@ -110,34 +117,35 @@ test.describe('phone', () => {
     await shot(page, 'dialog-add-transaction-phone-light');
   });
 
-  test('the Budget rows drop the Budgeted and Spent columns for one line under the meter', async ({ page, me }) => {
+  test('the Budget table keeps Subsection, Spent and Available on a phone, with a Spent figure in the row', async ({ page, me }) => {
     await seedBudget(me.seed);
     await page.goto('/budget');
-    await expect(page.getByRole('button', { name: /Food/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Food/ })).toContainText('212.40');
+    await expect(row(page, /Food/)).toBeVisible();
+    await expect(srow(page, /Food/)).toContainText('212.40');
   });
 
-  test('every section header ends with one "{spent} of {budgeted} spent" line (Spec 04)', async ({ page, me }) => {
+  test('no section header carries an "x of y spent" line (Spec 21: the columns say it)', async ({ page, me }) => {
     await seedBudget(me.seed);
     await page.goto('/budget');
-    await expect(page.getByRole('button', { name: /Food/ })).toBeVisible();
-    const subs = page.locator('.ty-shead__sub');
-    await expect(subs).toHaveCount(2);
-    await expect(subs.nth(0)).toHaveText('944.15 of 1,020.00 spent');
-    await expect(subs.nth(1)).toHaveText('38.97 of 40.00 spent');
-    await expect(subs.nth(0)).toBeVisible();
+    await expect(row(page, /Food/)).toBeVisible();
+    await expect(page.getByText(/\d of [\d,]+\.\d\d spent/)).toHaveCount(0);
   });
 });
 
 test.describe('dark', () => {
-  test.use({ colorScheme: 'dark' });
-
-  test('dark mode follows the system setting', async ({ page, me }) => {
-    await seedBudget(me.seed);
+  // Spec 27: the app is light by default; "Match system" makes it follow a system that prefers dark.
+  test('"Match system" follows the system setting', async ({ browser, baseURL }) => {
+    const person = await createPerson(baseURL!);
+    const ctx = await browser.newContext({ baseURL, colorScheme: 'dark', viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    await signInByApi(page, person);
+    await seedBudget(seed(page));
+    await chooseAppearance(page, 'Match system');
     await page.goto('/budget');
     await expect(page.getByRole('button', { name: /Food/ })).toBeVisible();
-    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(17, 20, 19)');
+    expect(await pageBg(page)).toBe(THEME.dark.bg);
     await shot(page, 'budget-desktop-dark');
+    await ctx.close();
   });
 });
 
@@ -155,7 +163,7 @@ test('nothing is requested from another host, and no request fails or logs a con
   });
   page.on('pageerror', (e) => problems.push(String(e)));
   await seedBudget(me.seed);
-  for (const p of ['/budget', '/transactions', '/pockets', '/settings']) {
+  for (const p of ['/budget', '/pipeline', '/transactions', '/pockets', '/settings']) {
     await page.goto(p);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     await page.waitForLoadState('networkidle');

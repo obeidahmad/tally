@@ -5,19 +5,22 @@
 
 .app-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .app-phone-only { display: none; }
-.app-link { color: var(--ink); text-underline-offset: 0.15em; }
-.app-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.app-phone-card { display: none; }
+.app-phone-block { display: none; }
+.app-switch { padding: 0 var(--space-3); }
+.app-switch:empty { display: none; }
 .app-pick { cursor: pointer; }
+.app-full { width: 100%; }
 
 /* Pages outside the shell: set-up and sign-in */
 .app-auth { display: grid; align-content: start; gap: var(--space-5); width: min(26rem, 100%); margin: 0 auto; padding: var(--space-7) var(--space-4); }
-.app-auth .ty-word { padding: 0; }
+.app-auth .ty-logo { padding: 0; }
 
-/* Sidebar foot */
-.app-signout { margin-top: var(--space-3); margin-left: calc(-1 * var(--space-4)); }
-
-/* Transactions filters */
-.app-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 14rem)); gap: var(--space-4); }
+/* Sidebar foot: Sign out is a button that reads as a link; the top-bar slot adds no box of its own */
+.app-linkbtn { justify-self: start; padding: 0; border: 0; background: none; font: inherit; font-size: 0.75rem; text-decoration: underline; cursor: pointer; }
+.app-slot { display: contents; }
+/* An income dialog's submit stays green: the design system has only the orange primary */
+.ty-btn--primary.app-income { border-color: var(--positive); background: var(--positive); }
 
 /* Settings */
 .app-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2) var(--space-5); margin: 0; }
@@ -31,12 +34,47 @@
 .ty-dialog[open] { animation: app-fade 150ms ease-out; }
 .ty-dialog[open]::backdrop { animation: app-fade 150ms ease-out; }
 @keyframes app-fade { from { opacity: 0; } }
-.app-foot-start { margin-right: auto; }
+.app-foot-start { display: flex; gap: var(--space-2); margin-right: auto; }
 
 @media (max-width: 640px) {
+  .ty-top__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .app-phone-only { display: inline-flex; }
-  .app-filters { grid-template-columns: minmax(0, 1fr); }
+  .app-phone-card { display: block; }
+  .app-phone-block { display: block; }
   .app-auth { padding-top: var(--space-5); }
   /* the bottom sheet: pinned to the bottom edge, full width */
   .ty-dialog { margin: auto 0 0; max-width: 100%; }
+}
+
+/* Moved this month */
+.app-move { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+
+/* Investments */
+.app-hold { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-5); padding: var(--space-3) 0; border-top: 1px solid var(--line); }
+.app-hold__who { display: grid; gap: 0.125rem; flex: 1 1 10rem; min-width: 0; }
+.app-hold__fig { display: grid; justify-items: start; gap: 0.125rem; font-variant-numeric: tabular-nums; }
+.app-hold__act { display: flex; gap: var(--space-1); }
+@media (max-width: 640px) {
+  .app-hold { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .app-hold__who, .app-hold__act { grid-column: 1 / -1; }
+  .app-hold__act { margin-left: calc(-1 * var(--space-3)); }
+}
+
+/* Import preview table and rules */
+.app-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-md); }
+.app-scroll .ty-table td, .app-scroll .ty-table th { white-space: nowrap; text-align: left; }
+.app-textarea { height: auto; padding: var(--space-3); resize: vertical; font-family: ui-monospace, monospace; }
+.app-bank + .app-bank { border-top: 1px solid var(--line); padding-top: var(--space-4); }
+.app-actions { display: flex; gap: var(--space-2); }
+
+/* Transactions filter row: one line at 1280 with Dates off */
+@media (min-width: 641px) {
+  .ty-filters > select.ty-input { max-width: none; field-sizing: content; }
+  .ty-filters > .ty-filters__search { flex: 1 1 8rem; min-width: 8rem; }
+}
+
+/* The phone "More" tab is current on the pages it holds */
+@media (max-width: 640px) {
+  .ty-tabbar button[aria-current] { font-weight: 600; }
+  .ty-tabbar button[aria-current] svg { stroke: var(--primary); }
 }

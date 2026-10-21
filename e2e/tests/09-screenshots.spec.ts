@@ -1,4 +1,4 @@
-import { test, expect, OWNER, signInByApi, shot, seedBudget, dialog, row, chip, em } from '../support/fixtures';
+import { test, expect, OWNER, signInByApi, shot, seedBudget, dialog, row, chip, em, pocketRows, bsection, openTab } from '../support/fixtures';
 
 // A screenshot of every page and dialog at desktop and phone width, in light and dark.
 // Filenames: <what>-<desktop|phone>-<light|dark>.png in e2e/screenshots/.
@@ -43,7 +43,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
 
       test('settings as owner', async ({ page }) => {
         await signInByApi(page, OWNER);
-        await page.goto('/settings');
+        await openTab(page, '/settings', 'People and sharing');
         await expect(page.getByRole('heading', { name: 'People' })).toBeVisible();
         await shot(page, `settings-owner-${tag}`);
       });
@@ -87,7 +87,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
         await shot(page, `dialog-new-pocket-panel-${tag}`);
         await page.keyboard.press('Escape');
 
-        await page.locator('.ty-section', { hasText: 'Needs' }).getByRole('button', { name: 'Edit', exact: true }).click();
+        await bsection(page, 'Needs').getByRole('button', { name: /^Edit / }).click();
         await dialog(page).getByRole('button', { name: 'Delete' }).click();
         await expect(dialog(page).getByText('This section has transactions. Delete them first.')).toBeVisible();
         await shot(page, `dialog-section-conflict-${tag}`);
@@ -122,7 +122,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
         await me.seed.pocket('Piggy', 2500, 'cash', em('Piggy bank'));
         await me.seed.pocket('Fund', 0, 'fund');
         await page.goto('/pockets');
-        await expect(page.locator('.ty-pocket')).toHaveCount(3);
+        await expect(pocketRows(page)).toHaveCount(3);
         await shot(page, `pockets-emoji-${tag}`);
         await page.goto('/transactions');
         await expect(row(page, /Alphamega/)).toBeVisible();

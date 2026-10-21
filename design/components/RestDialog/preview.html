@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>RestDialog</title><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap"><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../../components.css"></head>
+<body>
+<div class="ty-scrim">
+<div class="ty-dialog" role="dialog" aria-labelledby="rt">
+  <div><h2 class="text-title" id="rt">Rest of Needs</h2><p class="ty-cap" style="margin:4px 0 0">Where the rest of Needs goes when a month closes: what no subsection claimed, less what subsections overspent.</p></div>
+  <div class="ty-field">
+    <div class="ty-shares"><span class="ty-label">Goes to</span><span class="ty-label">Percentage</span><span></span>
+      <select class="ty-input" aria-label="Goes to 1"><option>Savings</option></select><div class="ty-affix"><input class="ty-input ty-input--amount" aria-label="Percentage 1" value="60" inputmode="decimal"><span class="ty-muted">%</span></div><button class="ty-btn ty-btn--quiet ty-btn--sm" aria-label="Remove destination 1">Remove</button><select class="ty-input" aria-label="Goes to 2"><option>Next month's income</option></select><div class="ty-affix"><input class="ty-input ty-input--amount" aria-label="Percentage 2" value="40" inputmode="decimal"><span class="ty-muted">%</span></div><button class="ty-btn ty-btn--quiet ty-btn--sm" aria-label="Remove destination 2">Remove</button>
+    </div>
+    <div><button class="ty-btn ty-btn--sm">+ Add destination</button></div>
+    <span class="ty-cap">Together the percentages make 100%.</span>
+  </div>
+  <fieldset class="ty-fieldset"><legend class="ty-label">When overspent, take it from</legend><div class="ty-segmented"><label><input type="radio" name="over" checked>Next month's income</label><label><input type="radio" name="over">Needs next month</label></div></fieldset>
+  <div class="ty-dialog__foot"><button class="ty-btn ty-btn--quiet">Cancel</button><button class="ty-btn ty-btn--primary">Save</button></div>
+</div></div>
+</body>
+</html>

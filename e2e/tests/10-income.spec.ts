@@ -1,9 +1,8 @@
 import {
-  test, expect, dialog, toast, shot, row, seedBudget, chip, group, em, pocketsApi, fillExpense, DEFAULT_EMOJI, checkedEmoji,
-} from '../support/fixtures';
+  test, expect, dialog, toast, shot, row, seedBudget, chip, group, em, pocketsApi, fillExpense, DEFAULT_EMOJI, checkedEmoji, pocketRow, stat } from '../support/fixtures';
 
 const sizes = { desktop: { width: 1280, height: 900 }, phone: { width: 390, height: 844 } } as const;
-const stat = (page: import('@playwright/test').Page) => page.locator('.ty-stat').first();
+const income$ = (page: import('@playwright/test').Page) => stat(page, 'Income');
 const kept = (page: import('@playwright/test').Page) => page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept === true);
 const mark = (page: import('@playwright/test').Page) => page.evaluate(() => ((window as unknown as { __kept: boolean }).__kept = true));
 
@@ -16,13 +15,12 @@ for (const [size, viewport] of Object.entries(sizes)) {
       await page.goto('/budget');
       await mark(page);
       // Spec 03: the button is in the title row (desktop) or under the figures (phone), not beside the Income figure.
-      const income = stat(page);
+      const income = income$(page);
       await expect(income).toContainText('Income');
-      await expect(income.locator('.num-lg')).toHaveText('0.00');
+      await expect(income).toContainText('0.00');
       await expect(income.getByRole('button')).toHaveCount(0);
       const add = page.getByRole('button', { name: 'Add income', exact: true });
       await expect(add).toBeVisible();
-      await expect(add).toHaveClass(/ty-btn--income/);
       await shot(page, `budget-add-income-button-${size}-light`);
       await add.click();
 
@@ -36,13 +34,17 @@ for (const [size, viewport] of Object.entries(sizes)) {
       expect(await checkedEmoji(d)).toEqual([DEFAULT_EMOJI.bank]);
       await d.getByLabel('Pocket name').fill('Revolut');
       await d.getByLabel('Amount').fill('2000');
-      await d.getByLabel('Payee').fill('Paycheck');
+      // Spec 06: no source yet, so "+ Add source" is chosen and its panel is open; there is no Payee for an income.
+      await expect(group(d, 'Source')).toBeVisible();
+      await expect(chip(d, 'Source', '+ Add source')).toBeChecked();
+      await expect(d.getByLabel('Payee')).toHaveCount(0);
+      await d.getByLabel('Source name').fill('Paycheck');
       await shot(page, `dialog-first-income-${size}-light`);
       await d.getByRole('button', { name: 'Add income', exact: true }).click();
 
       await expect(d).toBeHidden();
       await expect(page).toHaveURL(/\/budget/);
-      await expect(income.locator('.num-lg')).toHaveText('2,000.00');
+      await expect(income).toContainText('2,000.00');
       await expect(add).toBeVisible();
 
       // The pocket exists with an opening balance of 0 and the income in it.
@@ -51,7 +53,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
       expect(pockets[0]).toMatchObject({ name: 'Revolut', kind: 'bank', emoji: em('Bank'), openingBalanceMinor: 0, balanceMinor: 200000 });
 
       await page.getByRole('link', { name: 'Pockets' }).first().click();
-      const card = page.locator('.ty-pocket', { hasText: 'Revolut' });
+      const card = pocketRow(page, 'Revolut');
       await expect(card).toContainText('2,000.00');
       await expect(card.locator('.ty-emoji').first()).toHaveText(em('Bank'));
       await shot(page, `pockets-after-first-income-${size}-light`);
@@ -71,13 +73,13 @@ test('Escape on the Add income dialog returns focus to the Add income button', a
 });
 
 test('a pocket that cannot be created shows its errors in the panel, under "Pocket name", and nothing is saved', async ({ page, me }) => {
+  await me.seed.source('Paycheck'); // an income starts on the first source, so only the pocket is wrong
   await page.goto('/budget');
   for (const name of ['', 'x'.repeat(61)]) {
     await page.getByRole('button', { name: 'Add income', exact: true }).click();
     const d = dialog(page);
     await d.getByLabel('Pocket name').fill(name);
     await d.getByLabel('Amount').fill('5');
-    await d.getByLabel('Payee').fill('Refused');
     await d.getByRole('button', { name: 'Add income', exact: true }).click();
     await expect(d).toBeVisible();
     await expect(d.getByLabel('Pocket name')).toHaveClass(/ty-input--error/);
@@ -87,31 +89,35 @@ test('a pocket that cannot be created shows its errors in the panel, under "Pock
     await page.keyboard.press('Escape');
     await expect(d).toBeHidden();
   }
-  await expect(stat(page).locator('.num-lg')).toHaveText('0.00');
+  await expect(income$(page)).toContainText('0.00');
 });
 
-test('if the pocket is created and the transaction then fails, the new pocket stays chosen, the panel closes and the errors show as usual', async ({ page, me }) => {
+test('if the pocket is created and the income then fails, the new pocket stays chosen, the panel closes and the error shows; saving again does not create it twice', async ({ page, me }) => {
+  const paycheck = await me.seed.source('Paycheck');
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
+  await expect(chip(d, 'Source', 'Paycheck')).toBeChecked();
   await d.getByLabel('Pocket name').fill('Wallet');
   await d.getByLabel('Amount').fill('50');
-  await d.getByLabel('Payee').fill('p'.repeat(121)); // longer than the 120 the server accepts
+  // The chosen source is deleted behind the dialog's back, so the server refuses the income on `sourceId` after the pocket exists.
+  expect((await page.request.delete(`/api/sources/${paycheck.id}`, { data: {} })).status()).toBe(204);
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeVisible();
-  await expect(d.getByLabel('Payee')).toHaveClass(/ty-input--error/);
+  await expect(d.getByText('Choose a source.')).toBeVisible();
   await expect(chip(d, 'Pocket', /Wallet/)).toBeChecked();
   await expect(d.getByLabel('Pocket name')).toBeHidden();
   expect((await pocketsApi(page)).map((p) => p.name)).toEqual(['Wallet']);
   await shot(page, 'dialog-pocket-created-transaction-failed-desktop-light');
-  // Correct the payee and save again: the pocket is used, not created a second time.
-  await d.getByLabel('Payee').fill('Paycheck');
+  // Choose a new source and save again: the pocket is used, not created a second time.
+  await chip(d, 'Source', '+ Add source').check();
+  await d.getByLabel('Source name').fill('Bonus');
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   const pockets = await pocketsApi(page);
   expect(pockets).toHaveLength(1);
   expect(pockets[0].balanceMinor).toBe(5000);
-  await expect(stat(page).locator('.num-lg')).toHaveText('50.00');
+  await expect(income$(page)).toContainText('50.00');
 });
 
 // ---- criterion 5: with pockets present ----
@@ -226,7 +232,8 @@ test('editing: "Edit expense" and "Edit income" with a Save button', async ({ pa
 
 test('"Money in" and "Money out" appear nowhere: not in any page, dialog, label or bundle', async ({ page, me, baseURL }) => {
   await seedBudget(me.seed);
-  const bad = /money\s+(in|out)\b/i;
+  // Spec 13 gives the move dialog the title "Move money in <month>", which is not the old tab label.
+  const bad = /(?<!move )money\s+(in|out)\b/i;
   const seen = async (where: string) => {
     const text = await page.evaluate(() =>
       document.body.innerText + '\n' + [...document.querySelectorAll('[aria-label],[title],[placeholder]')]
@@ -234,7 +241,7 @@ test('"Money in" and "Money out" appear nowhere: not in any page, dialog, label 
       '\n' + [...document.querySelectorAll('option')].map((o) => o.textContent).join('\n'));
     expect(text, where).not.toMatch(bad);
   };
-  for (const p of ['/budget', '/transactions', '/pockets', '/settings']) {
+  for (const p of ['/budget', '/pipeline', '/transactions', '/pockets', '/settings']) {
     await page.goto(p);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     await seen(p);
@@ -282,10 +289,10 @@ test('amount fields that open with a value show two decimals and no thousands se
 });
 
 // ---- signed in: /setup and /sign-in go to /budget ----
-test('opening /setup or /sign-in while signed in goes to /budget', async ({ page, me }) => {
+test('opening /setup or /sign-in while signed in goes to /home', async ({ page, me }) => {
   for (const p of ['/setup', '/sign-in']) {
     await page.goto(p);
-    await expect(page, p).toHaveURL(/\/budget/);
+    await expect(page, p).toHaveURL(/\/home$/);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
   }
 });
