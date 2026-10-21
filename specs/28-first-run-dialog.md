@@ -59,3 +59,19 @@ Screenshots: the first income dialog and the "+ Add pocket" case, light and dark
 1. From the root, `npm run build`, `npm test` and `npm run test:e2e` succeed.
 2. A new account's first income dialog shows Type, Date, Amount, Source, Pocket, Kind, Note, Tags, and nothing else, and fits a 900px-tall window without scrolling.
 3. The transaction dialog never shows the emoji grid.
+
+## Decisions after the user's first try
+
+The user read "Source" then "Pocket" as one thing ("a source has a pocket?"). They are two separate facts about one income: where the money came from (the source, the budget side, which feeds the Pipeline) and where it landed (the pocket, the balance side). The labels now say so.
+
+- **Labels** (the chips' legend and, with an empty list, the single text field's label):
+
+  | Type | Source | Pocket |
+  |---|---|---|
+  | Income | "Received from" | "Paid into" |
+  | Expense | — | "Paid from" |
+  | Transfer | — | "From" and "To" (unchanged) |
+
+  This applies the same way to a new, edited or imported transaction. The placeholders stay "e.g. Salary" and "e.g. Current account". "Source name" and "Pocket name" (after "+ Add source" or "+ Add pocket") are unchanged.
+- **Kind sits beside the pocket's name.** The new pocket's name field and "Kind" share one row (the design system's new `ty-pair`: the name takes the free width, Kind is 11rem, and they stack under 30rem). This holds on a first run and after "+ Add pocket".
+- **Errors.** The server's errors keep showing under the field they belong to, now under its new label.

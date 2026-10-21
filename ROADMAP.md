@@ -150,7 +150,7 @@ The pipeline stays Tally's main distinction, but Tally also offers what Monarch,
 - `specs/24-emojis-and-goal-dates.md`: an emoji per subsection; goals with a date, the amount needed a month, and on track or behind.
 - `specs/25-recurring-calendar.md`: a bills calendar, paid, due or missed, and price rises.
 - `specs/27-monarch-look.md`: the look rebuilt to Monarch's feel from the user's screen recording: light by default with an Appearance choice, warm light page, colour, small radii, page tabs, stat cards, a readable Sankey, a donut and an area chart.
-- `specs/28-first-run-dialog.md`: the transaction dialog on a first run: no lone "+ Add source" or "+ Add pocket" chips, plain fields instead, no emoji grid in the dialog, and a transfer that needs two pockets.
+- `specs/28-first-run-dialog.md`: the transaction dialog on a first run: no lone "+ Add source" or "+ Add pocket" chips, plain fields instead, no emoji grid in the dialog, a transfer that needs two pockets, and the labels "Received from", "Paid into" and "Paid from" so a source and a pocket read as two separate things.
 - `specs/26-home-flow-age-of-money.md`: a Home page, a Sankey of where the month's money went through the pipeline, top payees, and age of money.
 
 ## Not planned

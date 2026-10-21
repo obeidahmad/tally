@@ -38,6 +38,8 @@ a.ty-btn { text-decoration: none; }
 .ty-input--amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
 .ty-input--error { border-color: var(--negative); }
 .ty-affix { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); }
+.ty-pair { display: grid; grid-template-columns: minmax(0, 1fr) 11rem; gap: var(--space-3); align-items: start; }
+@media (max-width: 30rem) { .ty-pair { grid-template-columns: minmax(0, 1fr); } }
 .ty-error { font-size: 0.75rem; line-height: 1rem; color: var(--negative); }
 
 /* Pill, dot, tag */
