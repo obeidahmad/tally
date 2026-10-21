@@ -113,7 +113,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
         await me.seed.subsection(s.id, 'Food', 10000);
         await page.goto('/budget');
         await page.getByRole('button', { name: 'Add income', exact: true }).click();
-        await expect(dialog(page).getByLabel('Pocket name')).toBeVisible();
+        await expect(dialog(page).getByLabel('Pocket', { exact: true })).toBeVisible();
         await shot(page, `dialog-no-pocket-${tag}`);
       });
 

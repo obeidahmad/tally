@@ -893,25 +893,26 @@ test('Tab reaches every "Edit" button, every step and every "Add step", each wit
 });
 
 // ============ criterion 19: the income dialog ============
-test('in the income dialog "Source" replaces "Payee"; with no source the panel is open, and saving creates the source and the income', async ({ page, me }) => {
+test('in the income dialog "Source" replaces "Payee"; with no source it is a text field, and saving creates the source and the income', async ({ page, me }) => {
   await me.seed.pocket('Revolut', 0);
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
   await expect(d.getByLabel('Payee')).toHaveCount(0);
   await expect(d.getByText('Payee', { exact: true })).toHaveCount(0);
-  await expect(group(d, 'Source')).toBeVisible();
-  await expect(group(d, 'Source').locator('label.ty-chip')).toHaveCount(1);
-  await expect(chip(d, 'Source', '+ Add source')).toBeChecked();
-  await expect(d.getByLabel('Source name')).toBeVisible();
-  await expect(d.locator('.ty-inset').first()).toBeVisible();
+  await expect(group(d, 'Source')).toHaveCount(0);
+  await expect(d.locator('label.ty-chip', { hasText: '+ Add source' })).toHaveCount(0);
+  const source = d.getByLabel('Source', { exact: true });
+  await expect(source).toBeVisible();
+  await expect(source).toHaveAttribute('placeholder', 'e.g. Salary');
+  await expect(d.locator('.ty-inset')).toHaveCount(0);
   const labels = (await d.locator('label.ty-label, legend').allInnerTexts()).map((t) => t.trim().toLowerCase());
   const at = (s: string) => labels.findIndex((l) => l.startsWith(s));
   const order = ['type', 'date', 'amount', 'source', 'pocket', 'note (optional)'].map(at);
   expect(order.every((i) => i >= 0), JSON.stringify(labels)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
   await d.getByLabel('Amount').fill('1500');
-  await d.getByLabel('Source name').fill('Salary');
+  await source.fill('Salary');
   await chip(d, 'Pocket', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
@@ -1002,7 +1003,8 @@ test('a source name that is empty or already used shows its error in the source 
     await d.getByRole('button', { name: 'Add income', exact: true }).click();
     await expect(d).toBeVisible();
     await expect(d.getByLabel('Source name'), name).toHaveClass(/ty-input--error/);
-    await expect(d.locator('.ty-inset .ty-error', { hasText: message }), name).toBeVisible();
+    await expect(d.locator('.ty-error', { hasText: message }), name).toBeVisible();
+    await expect(d.locator('.ty-inset'), name).toHaveCount(0);
     expect(await me.seed.sourcesApi(), name).toHaveLength(1);
   }
   await shot(page, 'spec06-income-dialog-source-error-desktop-light');
@@ -1015,7 +1017,7 @@ test('if the source is created and the income then fails, the new source stays c
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
-  await d.getByLabel('Source name').fill('Salary');
+  await d.getByLabel('Source', { exact: true }).fill('Salary');
   await d.getByLabel('Amount').fill('50');
   await chip(d, 'Pocket', /Revolut/).check();
   // The pocket is removed behind the dialog's back, so the income fails on `pocketId` after the source exists.
@@ -1026,6 +1028,7 @@ test('if the source is created and the income then fails, the new source stays c
   expect((await me.seed.sourcesApi()).map((s) => s.name)).toEqual(['Salary']);
   await expect(chip(d, 'Source', 'Salary')).toBeChecked();
   await expect(d.getByLabel('Source name')).toBeHidden();
+  await expect(d.getByLabel('Source', { exact: true })).toHaveCount(0);
 });
 
 // ============ criterion 20: the Budget page ============

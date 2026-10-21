@@ -10,7 +10,14 @@ const SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'O
 const LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const at = (offset: number) => new Date(Date.now() + offset * 864e5);
 const iso = (offset: number) => at(offset).toISOString().slice(0, 10);
-const dayMonth = (offset: number) => new RegExp(`\\b${at(offset).getUTCDate()} (${SHORT[at(offset).getUTCMonth()]}|${LONG[at(offset).getUTCMonth()]})\\b`);
+const dayMonthOf = (d: Date) => new RegExp(`\\b${d.getUTCDate()} (${SHORT[d.getUTCMonth()]}|${LONG[d.getUTCMonth()]})\\b`);
+const dayMonth = (offset: number) => dayMonthOf(at(offset));
+/** One calendar month after the day `offset` days from today, clamped to the end of that month (how monthly bills step). */
+const nextMonth = (offset: number) => {
+  const d = at(offset);
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 2, 0)).getUTCDate();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, Math.min(d.getUTCDate(), last)));
+};
 const fmt = (minor: number) => (Math.abs(minor) / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 type Home = {
@@ -182,16 +189,16 @@ test('the sparkline has a mark for each point with a tooltip on hover and focus'
 
 test('Coming up lists the bills of the next 14 days with their dates, and leaves a later one out', async ({ page, me }) => {
   const { food, pocket } = await basics(me.seed);
-  await pays(me.seed, food.id, pocket.id, 'Netflix', 1299, [-80, -50, -20]); // next in 10 days
+  await pays(me.seed, food.id, pocket.id, 'Netflix', 1299, [-80, -50, -20]); // next one calendar month after the last, about 10 days out
   await pays(me.seed, food.id, pocket.id, 'Domain', 5000, [-565, -200]); // yearly, next in 165 days
   const h = await homeApi(page);
   expect(h.upcoming.map((u) => u.payee)).toEqual(['Netflix']);
-  expect(h.upcoming[0]).toMatchObject({ amountMinor: 1299, date: iso(10) });
+  expect(h.upcoming[0]).toMatchObject({ amountMinor: 1299, date: nextMonth(-20).toISOString().slice(0, 10) });
   await goHome(page);
   const c = card(page, 'Coming up');
   await expect(c).toContainText('Netflix');
   await expect(c).toContainText('12.99');
-  expect(norm(await c.innerText())).toMatch(dayMonth(10));
+  expect(norm(await c.innerText())).toMatch(dayMonthOf(nextMonth(-20)));
   await expect(c).not.toContainText('Domain');
   await expect(c).not.toContainText('No bills in the next 14 days.');
 });

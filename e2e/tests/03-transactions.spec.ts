@@ -223,16 +223,16 @@ test('income has no subsection and shows with a plus sign', async ({ page, me })
   await chip(d, 'Type', 'Income').check();
   await expect(d.getByRole('heading', { name: 'Add income' })).toBeVisible();
   await d.getByLabel('Amount').fill('75');
-  // No source yet, so the "+ Add source" panel is open (spec 06).
+  // No source yet, so Source is a plain text field (spec 28).
   await expect(d.getByLabel('Payee')).toHaveCount(0);
-  await d.getByLabel('Source name').fill('Gift from Mum');
+  await d.getByLabel('Source', { exact: true }).fill('Gift from Mum');
   await chip(d, 'Pocket', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(row(page, /Gift from Mum/)).toContainText('+75.00');
 });
 
-test('with no pocket the "+ Add pocket" chip is chosen and its panel is open; "Add a pocket first" is gone', async ({ page, me }) => {
+test('with no pocket the dialog shows plain "Pocket" and "Kind" fields, no chips, no panel, no emoji grid; "Add a pocket first" is gone', async ({ page, me }) => {
   const s = await me.seed.section('Needs');
   await me.seed.subsection(s.id, 'Food', 10000);
   await page.goto('/budget');
@@ -240,12 +240,14 @@ test('with no pocket the "+ Add pocket" chip is chosen and its panel is open; "A
   const d = dialog(page);
   await expect(d.getByText('Add a pocket first')).toHaveCount(0);
   await expect(d.getByLabel('Amount')).toBeVisible();
-  await expect(group(d, 'Pocket').locator('label.ty-chip')).toHaveCount(1);
-  await expect(chip(d, 'Pocket', '+ Add pocket')).toBeChecked();
-  await expect(d.getByLabel('Pocket name')).toBeVisible();
-  await expect(group(d, 'Emoji').getByRole('radio')).toHaveCount(32);
+  await expect(group(d, 'Pocket')).toHaveCount(0);
+  await expect(d.locator('label.ty-chip', { hasText: '+ Add pocket' })).toHaveCount(0);
+  const pocket = d.getByLabel('Pocket', { exact: true });
+  await expect(pocket).toBeVisible();
+  await expect(pocket).toHaveAttribute('placeholder', 'e.g. Current account');
+  await expect(group(d, 'Emoji')).toHaveCount(0);
   await expect(d.getByLabel('Kind').locator('option:checked')).toHaveText('Bank account');
-  await expect(d.locator('.ty-inset')).toBeVisible();
+  await expect(d.locator('.ty-inset')).toHaveCount(0);
   await shot(page, 'dialog-no-pocket-desktop-light');
 });
 

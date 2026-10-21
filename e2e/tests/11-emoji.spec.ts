@@ -74,27 +74,22 @@ test('the picker works from the keyboard: Tab enters it on the chosen emoji, arr
   expect((await pocketsApi(page))[0]).toMatchObject({ name: 'Keyboard pocket', kind: 'bank', emoji: em('Banknote') });
 });
 
-test('in the transaction dialog the new-pocket picker follows the kind and keeps a picked emoji; the saved pocket has it', async ({ page, me }) => {
+test('the transaction dialog has no emoji picker; a pocket made there gets the default emoji of its kind', async ({ page, me }) => {
   const s = await me.seed.section('Needs');
   await me.seed.subsection(s.id, 'Food', 10000);
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add transaction' }).first().click();
   const d = dialog(page);
-  expect(await checkedEmoji(d)).toEqual(['Bank']);
-  await d.getByLabel('Kind').selectOption({ label: 'Broker' });
-  expect(await checkedEmoji(d)).toEqual(['Chart']);
-  await d.getByLabel('Kind').selectOption({ label: 'Cash' });
-  expect(await checkedEmoji(d)).toEqual(['Banknote']);
-  await group(d, 'Emoji').getByRole('radio', { name: 'Umbrella', exact: true }).check();
+  await expect(group(d, 'Emoji')).toHaveCount(0);
   await d.getByLabel('Kind').selectOption({ label: 'Fund' });
-  expect(await checkedEmoji(d)).toEqual(['Umbrella']);
-  await d.getByLabel('Pocket name').fill('Rainy day');
+  await expect(group(d, 'Emoji')).toHaveCount(0);
+  await d.getByLabel('Pocket', { exact: true }).fill('Rainy day');
   await d.getByLabel('Amount').fill('9');
   await d.getByLabel('Payee').fill('Umbrella shop');
   await d.getByLabel('Subsection').selectOption({ label: 'Food' });
   await d.getByRole('button', { name: 'Add expense', exact: true }).click();
   await expect(d).toBeHidden();
-  expect((await pocketsApi(page))[0]).toMatchObject({ name: 'Rainy day', kind: 'fund', emoji: em('Umbrella') });
+  expect((await pocketsApi(page))[0]).toMatchObject({ name: 'Rainy day', kind: 'fund', emoji: em('Seedling') });
 });
 
 test('a pocket added with no pick takes the default emoji of its kind', async ({ page, me }) => {

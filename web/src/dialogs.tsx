@@ -46,9 +46,11 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
   tx?: Transaction; kind?: Transaction['kind']; pockets: Pocket[]; sections: Section[]; sources: Source[]; tags?: string[]; currency: string; onClose: () => void;
 }) {
   const toast = useToast();
-  const pockets = allPockets.filter((p) => p.kind !== 'property'); // a property holds a value, not transactions
+  const [madePocket, setMadePocket] = useState<Pocket[]>([]); // created here before a later request failed: they stay in the list
+  const [madeSource, setMadeSource] = useState<Source[]>([]);
+  const pockets = [...allPockets, ...madePocket.filter((m) => !allPockets.some((p) => p.id === m.id))].filter((p) => p.kind !== 'property'); // a property holds a value, not transactions
   const adjustment = tx?.source === 'adjustment';
-  const sources = allSources.filter((x) => !x.isLeftovers); // money carried from last month is not entered by hand
+  const sources = [...allSources, ...madeSource.filter((m) => !allSources.some((x) => x.id === m.id))].filter((x) => !x.isLeftovers); // money carried from last month is not entered by hand
   const f = useForm();
   const [kind, setKind] = useState<Transaction['kind']>(tx?.kind ?? startKind ?? 'expense');
   const [toId, setToId] = useState(tx?.toPocketId?.toString() ?? '');
@@ -66,7 +68,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
   const [pocketId, setPocketId] = useState(tx?.pocketId?.toString() ?? pockets[0]?.id.toString() ?? 'new');
   const [newName, setNewName] = useState('');
   const [newKind, setNewKind] = useState<PocketKind>('bank');
-  const [newEmoji, setNewEmoji] = useEmoji(undefined, newKind);
+  const [newEmoji] = useEmoji(undefined, newKind); // the kind's default; the Pockets page changes it
   const [note, setNote] = useState(tx?.note ?? '');
   const [parts, setParts] = useState<{ subsectionId: string; amount: string }[] | null>(tx?.splits?.map((s) => ({ subsectionId: String(s.subsectionId), amount: minorToInput(s.amountMinor) })) ?? null);
   const [tagList, setTagList] = useState<string[]>(tx?.tags ?? []);
@@ -185,21 +187,27 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
       toast('Saved');
       return;
     }
-    let source = sourceId && sourceId !== 'new' ? Number(sourceId) : null;
-    if (kind === 'income' && sourceId === 'new') {
+    const makeSource = kind === 'income' && (sourceId === 'new' || firstSource); // an empty list has only the plain field
+    const makePocket = pocketId === 'new' || firstPocket;
+    let source = sourceId && !makeSource ? Number(sourceId) : null;
+    let madeS: Source | undefined;
+    if (makeSource) {
       try {
-        source = (await api<{ source: Source }>('POST', '/sources', { name: newSource })).source.id;
+        madeS = (await api<{ source: Source }>('POST', '/sources', { name: newSource })).source;
+        source = madeS.id;
       } catch (e) {
         if (e instanceof ApiError && e.fields?.name) throw new ApiError(e.status, e.code, e.message, { sourceName: e.fields.name });
         throw e;
       }
-      setSourceId(String(source)); // like the pocket below: it stays chosen if a later request fails
+      setMadeSource((x) => [...x, madeS!]);
+      setSourceId(String(source)); // it stays chosen if a later request fails
     }
-    let pocket = pocketId ? Number(pocketId) : null;
-    if (pocketId === 'new') {
+    let pocket = pocketId && !makePocket ? Number(pocketId) : null;
+    if (makePocket) {
       const made = await api<{ pocket: Pocket }>('POST', '/pockets', { name: newName, kind: newKind, emoji: newEmoji, openingBalanceMinor: 0 });
       pocket = made.pocket.id;
-      setPocketId(String(pocket)); // if the transaction fails below, the new pocket stays chosen and the panel closes
+      setMadePocket((x) => [...x, made.pocket]);
+      setPocketId(String(pocket)); // if the transaction fails below, the new pocket stays chosen
     }
     const b = {
       date, kind, amountMinor, note,
@@ -224,7 +232,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
     toast('Transaction deleted', () => void api('POST', '/transactions', again).catch(() => {}));
   });
 
-  const blocked = !adjustment && kind === 'expense' && noSubsections;
+  const blocked = !adjustment && ((kind === 'expense' && noSubsections) || (kind === 'transfer' && pockets.length < 2));
+  const firstSource = !imported && sources.length === 0;
+  const firstPocket = !imported && pockets.length === 0;
 
   const tagField = (
     <div className="ty-field">
@@ -316,7 +326,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
             {tagField}
           </>
         ) : blocked ? (
-          <Blocked text="Add a subsection first" to="/budget" link="Go to Budget" onClose={onClose} />
+          kind === 'expense'
+            ? <Blocked text="Add a subsection first" to="/budget" link="Go to Budget" onClose={onClose} />
+            : <Blocked text="A transfer needs two pockets" to="/pockets" link="Go to Pockets" onClose={onClose} />
         ) : kind === 'transfer' ? (
           <>
             <TextField label="Date" type="date" value={date} onChange={setDate} error={f.errors.date} />
@@ -363,7 +375,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
             <TextField label="Date" type="date" value={date} onChange={setDate} error={f.errors.date} disabled={imported} />
             <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={fromCode} disabled={imported} />
             {(kind === 'expense' || imported) && <TextField label="Payee" value={payee} onChange={setPayee} error={f.errors.payee} />}
-            {kind === 'income' && (
+            {kind === 'income' && (firstSource ? (
+              <TextField label="Source" value={newSource} onChange={setNewSource} error={f.errors.sourceName} placeholder="e.g. Salary" />
+            ) : (
               <fieldset className="ty-fieldset">
                 <legend className="ty-label">Source</legend>
                 <div className="ty-chips">
@@ -379,13 +393,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
                   )}
                 </div>
                 {f.errors.sourceId && <span className="ty-error">{f.errors.sourceId}</span>}
-                {sourceId === 'new' && (
-                  <div className="ty-inset">
-                    <TextField label="Source name" value={newSource} onChange={setNewSource} error={f.errors.sourceName} />
-                  </div>
-                )}
               </fieldset>
-            )}
+            ))}
+            {kind === 'income' && !firstSource && sourceId === 'new' && <TextField label="Source name" value={newSource} onChange={setNewSource} error={f.errors.sourceName} />}
             {kind === 'expense' && (parts ? splitUi : (
               <>
                 <Field label="Subsection" error={f.errors.subsectionId}>
@@ -399,30 +409,33 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
                 <div><button type="button" className="ty-btn ty-btn--quiet" onClick={() => setParts([{ subsectionId, amount }, { subsectionId: '', amount: '' }])}>Split</button></div>
               </>
             ))}
-            <fieldset className="ty-fieldset">
-              <legend className="ty-label">Pocket</legend>
-              <div className="ty-chips">
-                {pockets.map((x) => (
-                  <label key={x.id} className="ty-chip">
-                    <input type="radio" name="pocket" disabled={imported} checked={pocketId === String(x.id)} onChange={() => setPocketId(String(x.id))} />
-                    <span className="ty-emoji">{x.emoji}</span> {x.name}
-                  </label>
-                ))}
-                {!imported && (
-                  <label className="ty-chip ty-chip--add">
-                    <input type="radio" name="pocket" checked={pocketId === 'new'} onChange={() => setPocketId('new')} />+ Add pocket
-                  </label>
-                )}
-              </div>
-              {f.errors.pocketId && <span className="ty-error">{f.errors.pocketId}</span>}
-              {pocketId === 'new' && (
-                <div className="ty-inset">
-                  <TextField label="Pocket name" value={newName} onChange={setNewName} error={f.errors.name} />
-                  <EmojiPicker value={newEmoji} onChange={setNewEmoji} error={f.errors.emoji} />
-                  <KindField value={newKind} onChange={setNewKind} error={f.errors.kind} omit="property" />
+            {firstPocket ? (
+              <TextField label="Pocket" value={newName} onChange={setNewName} error={f.errors.name} placeholder="e.g. Current account" />
+            ) : (
+              <fieldset className="ty-fieldset">
+                <legend className="ty-label">Pocket</legend>
+                <div className="ty-chips">
+                  {pockets.map((x) => (
+                    <label key={x.id} className="ty-chip">
+                      <input type="radio" name="pocket" disabled={imported} checked={pocketId === String(x.id)} onChange={() => setPocketId(String(x.id))} />
+                      <span className="ty-emoji">{x.emoji}</span> {x.name}
+                    </label>
+                  ))}
+                  {!imported && (
+                    <label className="ty-chip ty-chip--add">
+                      <input type="radio" name="pocket" checked={pocketId === 'new'} onChange={() => setPocketId('new')} />+ Add pocket
+                    </label>
+                  )}
                 </div>
-              )}
-            </fieldset>
+                {f.errors.pocketId && <span className="ty-error">{f.errors.pocketId}</span>}
+              </fieldset>
+            )}
+            {(firstPocket || pocketId === 'new') && (
+              <>
+                {!firstPocket && <TextField label="Pocket name" value={newName} onChange={setNewName} error={f.errors.name} />}
+                <KindField value={newKind} onChange={setNewKind} error={f.errors.kind} omit="property" />
+              </>
+            )}
             {imported && <span className="ty-cap">Imported from a statement: only its subsection or source, payee and note can change.</span>}
             <TextField label="Note (optional)" value={note} onChange={setNote} error={f.errors.note} />
             {tagField}

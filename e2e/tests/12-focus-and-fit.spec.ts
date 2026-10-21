@@ -166,13 +166,13 @@ for (const [name, viewport] of windows) {
   test.describe(`dialog buttons in view, ${name}`, () => {
     test.use({ viewport });
 
-    test('with the new-pocket panel open, the primary button and Cancel are inside the window when the dialog opens and after its content is scrolled', async ({ page, me }) => {
+    test('with the new-pocket fields shown, the primary button and Cancel are inside the window when the dialog opens and after its content is scrolled', async ({ page, me }) => {
       const s = await me.seed.section('Needs');
       await me.seed.subsection(s.id, 'Food', 10000);
       await page.goto('/budget');
       await page.getByRole('button', { name: 'Add income', exact: true }).click();
       const d = dialog(page);
-      await expect(d.getByLabel('Pocket name')).toBeVisible();
+      await expect(d.getByLabel('Pocket', { exact: true })).toBeVisible();
       await page.waitForTimeout(300); // the 150ms fade
       const primary = d.getByRole('button', { name: 'Add income', exact: true });
       const cancel = d.getByRole('button', { name: 'Cancel' });
