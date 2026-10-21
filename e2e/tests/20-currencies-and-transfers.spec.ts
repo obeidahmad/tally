@@ -273,7 +273,7 @@ test('a 10.00 expense from the USD pocket counts in the budget at 9.21 EUR and s
   await page.goto('/transactions');
   await addBtn(page).click();
   const d = dialog(page);
-  await chip(d, 'Pocket', /Revolut USD/).check();
+  await chip(d, 'Paid from', /Revolut USD/).check();
   await expect(d.getByText('USD', { exact: true }).first()).toBeVisible();
   await amount(d).fill('10');
   await d.getByLabel('Payee').fill('Kiosk');

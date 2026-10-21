@@ -57,7 +57,7 @@ Screenshots: the first income dialog and the "+ Add pocket" case, light and dark
 ## Acceptance criteria
 
 1. From the root, `npm run build`, `npm test` and `npm run test:e2e` succeed.
-2. A new account's first income dialog shows Type, Date, Amount, Source, Pocket, Kind, Note, Tags, and nothing else, and fits a 900px-tall window without scrolling.
+2. A new account's first income dialog shows Type, Date, Amount, Received from, Paid into, Kind, Note, Tags, and nothing else, and fits a 900px-tall window without scrolling.
 3. The transaction dialog never shows the emoji grid.
 
 ## Decisions after the user's first try

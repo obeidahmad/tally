@@ -235,6 +235,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
   const blocked = !adjustment && ((kind === 'expense' && noSubsections) || (kind === 'transfer' && pockets.length < 2));
   const firstSource = !imported && sources.length === 0;
   const firstPocket = !imported && pockets.length === 0;
+  const pocketLabel = kind === 'income' ? 'Paid into' : 'Paid from';
 
   const tagField = (
     <div className="ty-field">
@@ -376,10 +377,10 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
             <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={fromCode} disabled={imported} />
             {(kind === 'expense' || imported) && <TextField label="Payee" value={payee} onChange={setPayee} error={f.errors.payee} />}
             {kind === 'income' && (firstSource ? (
-              <TextField label="Source" value={newSource} onChange={setNewSource} error={f.errors.sourceName} placeholder="e.g. Salary" />
+              <TextField label="Received from" value={newSource} onChange={setNewSource} error={f.errors.sourceName} placeholder="e.g. Salary" />
             ) : (
               <fieldset className="ty-fieldset">
-                <legend className="ty-label">Source</legend>
+                <legend className="ty-label">Received from</legend>
                 <div className="ty-chips">
                   {sources.map((x) => (
                     <label key={x.id} className="ty-chip">
@@ -409,11 +410,9 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
                 <div><button type="button" className="ty-btn ty-btn--quiet" onClick={() => setParts([{ subsectionId, amount }, { subsectionId: '', amount: '' }])}>Split</button></div>
               </>
             ))}
-            {firstPocket ? (
-              <TextField label="Pocket" value={newName} onChange={setNewName} error={f.errors.name} placeholder="e.g. Current account" />
-            ) : (
+            {!firstPocket && (
               <fieldset className="ty-fieldset">
-                <legend className="ty-label">Pocket</legend>
+                <legend className="ty-label">{pocketLabel}</legend>
                 <div className="ty-chips">
                   {pockets.map((x) => (
                     <label key={x.id} className="ty-chip">
@@ -431,10 +430,10 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
               </fieldset>
             )}
             {(firstPocket || pocketId === 'new') && (
-              <>
-                {!firstPocket && <TextField label="Pocket name" value={newName} onChange={setNewName} error={f.errors.name} />}
+              <div className="ty-pair">
+                <TextField label={firstPocket ? pocketLabel : "Pocket name"} value={newName} onChange={setNewName} error={f.errors.name} placeholder={firstPocket ? "e.g. Current account" : undefined} />
                 <KindField value={newKind} onChange={setNewKind} error={f.errors.kind} omit="property" />
-              </>
+              </div>
             )}
             {imported && <span className="ty-cap">Imported from a statement: only its subsection or source, payee and note can change.</span>}
             <TextField label="Note (optional)" value={note} onChange={setNote} error={f.errors.note} />

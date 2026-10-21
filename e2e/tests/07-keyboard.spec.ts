@@ -116,9 +116,9 @@ test('a transaction can be added from the keyboard: Enter on the field submits',
   await d.getByLabel('Subsection').focus();
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  await chip(d, 'Pocket', /Revolut/).focus();
+  await chip(d, 'Paid from', /Revolut/).focus();
   await page.keyboard.press('Space');
-  await expect(chip(d, 'Pocket', /Revolut/)).toBeChecked();
+  await expect(chip(d, 'Paid from', /Revolut/)).toBeChecked();
   await d.getByLabel('Payee').focus();
   await page.keyboard.type('Keyboard cafe');
   await page.keyboard.press('Enter');

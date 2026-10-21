@@ -88,13 +88,13 @@ test('the transaction dialog has its fields in order and defaults to Expense and
   await expect(d.locator('optgroup[label="Needs"]')).toHaveCount(1);
   await expect(d.locator('optgroup[label="Wants"]')).toHaveCount(1);
   // Pocket is chips, not a select: one per pocket plus "+ Add pocket".
-  await expect(group(d, 'Pocket').locator('select')).toHaveCount(0);
-  await expect(group(d, 'Pocket').locator('label.ty-chip')).toHaveCount(2);
-  await expect(chip(d, 'Pocket', /Revolut/)).toBeVisible();
-  await expect(chip(d, 'Pocket', '+ Add pocket')).toBeVisible();
+  await expect(group(d, 'Paid from').locator('select')).toHaveCount(0);
+  await expect(group(d, 'Paid from').locator('label.ty-chip')).toHaveCount(2);
+  await expect(chip(d, 'Paid from', /Revolut/)).toBeVisible();
+  await expect(chip(d, 'Paid from', '+ Add pocket')).toBeVisible();
   const labels = (await d.locator('label.ty-label, legend').allInnerTexts()).map((t) => t.trim().toLowerCase());
   const at = (s: string) => labels.findIndex((l) => l.startsWith(s));
-  const order = ['type', 'date', 'amount', 'payee', 'subsection', 'pocket', 'note'].map(at);
+  const order = ['type', 'date', 'amount', 'payee', 'subsection', 'paid from', 'note'].map(at);
   expect(order.every((i) => i >= 0), JSON.stringify(labels)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
   await shot(page, 'dialog-add-transaction-desktop-light');
@@ -119,7 +119,7 @@ test('amount entry accepts 12, 12.5, 12.50 and 1,234.56', async ({ page, me }) =
     await d.getByLabel('Amount').fill(typed);
     await d.getByLabel('Payee').fill(`Case ${i}`);
     await d.getByLabel('Subsection').selectOption({ label: 'Food' });
-    await chip(d, 'Pocket', /Revolut/).check();
+    await chip(d, 'Paid from', /Revolut/).check();
     await d.getByRole('button', { name: 'Add expense' }).click();
     await expect(d).toBeHidden();
     await expect(row(page, `Case ${i}`)).toContainText(`−${shown}`);
@@ -133,7 +133,7 @@ test('amount entry refuses 0, -5, 1.234 and text with the spec message', async (
   const d = dialog(page);
   await d.getByLabel('Payee').fill('Refused');
   await d.getByLabel('Subsection').selectOption({ label: 'Food' });
-  await chip(d, 'Pocket', /Revolut/).check();
+  await chip(d, 'Paid from', /Revolut/).check();
   for (const bad of ['0', '-5', '1.234', 'abc', '1,23', '']) {
     await d.getByLabel('Amount').fill(bad);
     await d.getByRole('button', { name: 'Add expense' }).click();
@@ -160,7 +160,7 @@ test('add, edit and delete a transaction update Budget and the pocket balance wi
   await d.getByLabel('Amount').fill('10');
   await d.getByLabel('Payee').fill('Kiosk');
   await d.getByLabel('Subsection').selectOption({ label: 'Food' });
-  await chip(d, 'Pocket', /Revolut/).check();
+  await chip(d, 'Paid from', /Revolut/).check();
   await d.getByRole('button', { name: 'Add expense' }).click();
   await expect(d).toBeHidden();
   await expect(food()).toContainText('77.60');
@@ -225,8 +225,8 @@ test('income has no subsection and shows with a plus sign', async ({ page, me })
   await d.getByLabel('Amount').fill('75');
   // No source yet, so Source is a plain text field (spec 28).
   await expect(d.getByLabel('Payee')).toHaveCount(0);
-  await d.getByLabel('Source', { exact: true }).fill('Gift from Mum');
-  await chip(d, 'Pocket', /Revolut/).check();
+  await d.getByLabel('Received from', { exact: true }).fill('Gift from Mum');
+  await chip(d, 'Paid into', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(row(page, /Gift from Mum/)).toContainText('+75.00');
@@ -240,9 +240,9 @@ test('with no pocket the dialog shows plain "Pocket" and "Kind" fields, no chips
   const d = dialog(page);
   await expect(d.getByText('Add a pocket first')).toHaveCount(0);
   await expect(d.getByLabel('Amount')).toBeVisible();
-  await expect(group(d, 'Pocket')).toHaveCount(0);
+  await expect(group(d, 'Paid from')).toHaveCount(0);
   await expect(d.locator('label.ty-chip', { hasText: '+ Add pocket' })).toHaveCount(0);
-  const pocket = d.getByLabel('Pocket', { exact: true });
+  const pocket = d.getByLabel('Paid from', { exact: true });
   await expect(pocket).toBeVisible();
   await expect(pocket).toHaveAttribute('placeholder', 'e.g. Current account');
   await expect(group(d, 'Emoji')).toHaveCount(0);

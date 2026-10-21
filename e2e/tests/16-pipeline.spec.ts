@@ -229,9 +229,9 @@ test('an income added from the Budget page to a source shows on the Pipeline pag
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
-  await expect(chip(d, 'Source', 'Paycheck')).toBeChecked();
+  await expect(chip(d, 'Received from', 'Paycheck')).toBeChecked();
   await d.getByLabel('Amount').fill('100');
-  await chip(d, 'Pocket', /Revolut/).check();
+  await chip(d, 'Paid into', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   await page.locator('.ty-side').getByRole('link', { name: 'Pipeline' }).click();
@@ -900,20 +900,20 @@ test('in the income dialog "Source" replaces "Payee"; with no source it is a tex
   const d = dialog(page);
   await expect(d.getByLabel('Payee')).toHaveCount(0);
   await expect(d.getByText('Payee', { exact: true })).toHaveCount(0);
-  await expect(group(d, 'Source')).toHaveCount(0);
+  await expect(group(d, 'Received from')).toHaveCount(0);
   await expect(d.locator('label.ty-chip', { hasText: '+ Add source' })).toHaveCount(0);
-  const source = d.getByLabel('Source', { exact: true });
+  const source = d.getByLabel('Received from', { exact: true });
   await expect(source).toBeVisible();
   await expect(source).toHaveAttribute('placeholder', 'e.g. Salary');
   await expect(d.locator('.ty-inset')).toHaveCount(0);
   const labels = (await d.locator('label.ty-label, legend').allInnerTexts()).map((t) => t.trim().toLowerCase());
   const at = (s: string) => labels.findIndex((l) => l.startsWith(s));
-  const order = ['type', 'date', 'amount', 'source', 'pocket', 'note (optional)'].map(at);
+  const order = ['type', 'date', 'amount', 'received from', 'paid into', 'note (optional)'].map(at);
   expect(order.every((i) => i >= 0), JSON.stringify(labels)).toBe(true);
   expect([...order].sort((a, b) => a - b)).toEqual(order);
   await d.getByLabel('Amount').fill('1500');
   await source.fill('Salary');
-  await chip(d, 'Pocket', /Revolut/).check();
+  await chip(d, 'Paid into', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   expect((await me.seed.sourcesApi()).map((s) => s.name)).toEqual(['Salary']);
@@ -930,17 +930,17 @@ test('with sources present the dialog has one chip per source and a last "+ Add 
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
-  const chips = group(d, 'Source').locator('label.ty-chip');
+  const chips = group(d, 'Received from').locator('label.ty-chip');
   await expect(chips).toHaveText(['Paycheck', 'Second job', '+ Add source']);
   await expect(chips.nth(2)).toHaveClass(/ty-chip--add/);
-  await expect(chip(d, 'Source', 'Paycheck')).toBeChecked();
+  await expect(chip(d, 'Received from', 'Paycheck')).toBeChecked();
   await expect(d.getByLabel('Source name')).toBeHidden();
   await shot(page, 'spec06-income-dialog-sources-desktop-light');
-  await chip(d, 'Source', '+ Add source').check();
+  await chip(d, 'Received from', '+ Add source').check();
   await expect(d.getByLabel('Source name')).toBeVisible();
   await d.getByLabel('Source name').fill('Side gig');
   await d.getByLabel('Amount').fill('80');
-  await chip(d, 'Pocket', /Revolut/).check();
+  await chip(d, 'Paid into', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   const sources = await me.seed.sourcesApi();
@@ -958,16 +958,16 @@ test('choosing an existing source chip saves the income to it, and editing an in
   await page.getByRole('button', { name: 'Add transaction' }).first().click();
   const d = dialog(page);
   await chip(d, 'Type', 'Income').check();
-  await chip(d, 'Source', 'Second job').check();
+  await chip(d, 'Received from', 'Second job').check();
   await d.getByLabel('Amount').fill('60');
-  await chip(d, 'Pocket', /Revolut/).check();
+  await chip(d, 'Paid into', /Revolut/).check();
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   await row(page, /Second job/).click();
   await expect(d.getByRole('heading', { name: 'Edit income' })).toBeVisible();
-  await expect(chip(d, 'Source', 'Second job')).toBeChecked();
-  await expect(chip(d, 'Source', 'Paycheck')).not.toBeChecked();
-  await chip(d, 'Source', 'Paycheck').check();
+  await expect(chip(d, 'Received from', 'Second job')).toBeChecked();
+  await expect(chip(d, 'Received from', 'Paycheck')).not.toBeChecked();
+  await chip(d, 'Received from', 'Paycheck').check();
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(row(page, /Paycheck/)).toContainText('+60.00');
@@ -980,13 +980,13 @@ test('an expense still has a Payee and no Source', async ({ page, me }) => {
   await page.getByRole('button', { name: 'Add transaction' }).first().click();
   const d = dialog(page);
   await expect(d.getByLabel('Payee')).toBeVisible();
-  await expect(group(d, 'Source')).toHaveCount(0);
+  await expect(group(d, 'Received from')).toHaveCount(0);
   await chip(d, 'Type', 'Income').check();
-  await expect(group(d, 'Source')).toBeVisible();
+  await expect(group(d, 'Received from')).toBeVisible();
   await expect(d.getByLabel('Payee')).toHaveCount(0);
   await chip(d, 'Type', 'Expense').check();
   await expect(d.getByLabel('Payee')).toBeVisible();
-  await expect(group(d, 'Source')).toHaveCount(0);
+  await expect(group(d, 'Received from')).toHaveCount(0);
 });
 
 test('a source name that is empty or already used shows its error in the source panel, and nothing is saved', async ({ page, me }) => {
@@ -995,9 +995,9 @@ test('a source name that is empty or already used shows its error in the source 
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
-  await chip(d, 'Source', '+ Add source').check();
+  await chip(d, 'Received from', '+ Add source').check();
   await d.getByLabel('Amount').fill('10');
-  await chip(d, 'Pocket', /Revolut/).check();
+  await chip(d, 'Paid into', /Revolut/).check();
   for (const [name, message] of [['', 'Enter a name.'], ['paycheck', 'You already have a source with this name.']]) {
     await d.getByLabel('Source name').fill(name);
     await d.getByRole('button', { name: 'Add income', exact: true }).click();
@@ -1017,18 +1017,18 @@ test('if the source is created and the income then fails, the new source stays c
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
-  await d.getByLabel('Source', { exact: true }).fill('Salary');
+  await d.getByLabel('Received from', { exact: true }).fill('Salary');
   await d.getByLabel('Amount').fill('50');
-  await chip(d, 'Pocket', /Revolut/).check();
+  await chip(d, 'Paid into', /Revolut/).check();
   // The pocket is removed behind the dialog's back, so the income fails on `pocketId` after the source exists.
   const pocket = (await (await page.request.get('/api/pockets')).json()).pockets[0];
   expect((await page.request.delete(`/api/pockets/${pocket.id}`, { data: {} })).status()).toBe(204);
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeVisible();
   expect((await me.seed.sourcesApi()).map((s) => s.name)).toEqual(['Salary']);
-  await expect(chip(d, 'Source', 'Salary')).toBeChecked();
+  await expect(chip(d, 'Received from', 'Salary')).toBeChecked();
   await expect(d.getByLabel('Source name')).toBeHidden();
-  await expect(d.getByLabel('Source', { exact: true })).toHaveCount(0);
+  await expect(d.getByLabel('Received from', { exact: true })).toHaveCount(0);
 });
 
 // ============ criterion 20: the Budget page ============
@@ -1250,7 +1250,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Add income', exact: true }).click();
       const d = dialog(page);
       await shot(page, `spec06-income-dialog-desktop-${scheme}`);
-      await chip(d, 'Source', '+ Add source').check();
+      await chip(d, 'Received from', '+ Add source').check();
       await d.getByLabel('Source name').fill('Side gig');
       await shot(page, `spec06-income-dialog-source-panel-desktop-${scheme}`);
     });

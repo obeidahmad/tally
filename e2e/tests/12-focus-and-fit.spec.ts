@@ -172,7 +172,7 @@ for (const [name, viewport] of windows) {
       await page.goto('/budget');
       await page.getByRole('button', { name: 'Add income', exact: true }).click();
       const d = dialog(page);
-      await expect(d.getByLabel('Pocket', { exact: true })).toBeVisible();
+      await expect(d.getByLabel('Paid into', { exact: true })).toBeVisible();
       await page.waitForTimeout(300); // the 150ms fade
       const primary = d.getByRole('button', { name: 'Add income', exact: true });
       const cancel = d.getByRole('button', { name: 'Cancel' });
@@ -206,7 +206,7 @@ test('with pockets present, choosing "+ Add pocket" also keeps the primary butto
   await page.goto('/transactions');
   await page.getByRole('button', { name: 'Add transaction' }).first().click();
   const d = dialog(page);
-  await chip(d, 'Pocket', '+ Add pocket').check();
+  await chip(d, 'Paid from', '+ Add pocket').check();
   await expect(d.getByLabel('Pocket name')).toBeVisible();
   await page.waitForTimeout(300);
   const box = (await d.getByRole('button', { name: 'Add expense', exact: true }).boundingBox())!;

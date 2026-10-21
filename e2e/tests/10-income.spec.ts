@@ -29,16 +29,16 @@ for (const [size, viewport] of Object.entries(sizes)) {
       await expect(chip(d, 'Type', 'Income')).toBeChecked();
       await expect(d.getByLabel('Subsection')).toBeHidden();
       // Spec 28: no source and no pocket yet, so plain text fields: no chips, no panel, no emoji grid.
-      await expect(group(d, 'Pocket')).toHaveCount(0);
-      await expect(group(d, 'Source')).toHaveCount(0);
+      await expect(group(d, 'Paid into')).toHaveCount(0);
+      await expect(group(d, 'Received from')).toHaveCount(0);
       await expect(group(d, 'Emoji')).toHaveCount(0);
       await expect(d.getByRole('button', { name: '+ Add pocket' })).toHaveCount(0);
-      await expect(d.getByLabel('Pocket', { exact: true })).toBeVisible();
+      await expect(d.getByLabel('Paid into', { exact: true })).toBeVisible();
       await expect(d.getByLabel('Kind').locator('option:checked')).toHaveText('Bank account');
-      await d.getByLabel('Pocket', { exact: true }).fill('Revolut');
+      await d.getByLabel('Paid into', { exact: true }).fill('Revolut');
       await d.getByLabel('Amount').fill('2000');
       await expect(d.getByLabel('Payee')).toHaveCount(0);
-      await d.getByLabel('Source', { exact: true }).fill('Paycheck');
+      await d.getByLabel('Received from', { exact: true }).fill('Paycheck');
       await shot(page, `dialog-first-income-${size}-light`);
       await d.getByRole('button', { name: 'Add income', exact: true }).click();
 
@@ -78,7 +78,7 @@ test('a pocket that cannot be created shows its error under "Pocket", and nothin
   for (const name of ['', 'x'.repeat(61)]) {
     await page.getByRole('button', { name: 'Add income', exact: true }).click();
     const d = dialog(page);
-    const field = d.getByLabel('Pocket', { exact: true });
+    const field = d.getByLabel('Paid into', { exact: true });
     await field.fill(name);
     await d.getByLabel('Amount').fill('5');
     await d.getByRole('button', { name: 'Add income', exact: true }).click();
@@ -88,9 +88,9 @@ test('a pocket that cannot be created shows its error under "Pocket", and nothin
     const err = d.locator('.ty-error');
     await expect(err).toHaveCount(1);
     // the error sits directly under the Pocket field, above Kind
-    const [f, e, k] = await Promise.all([field.boundingBox(), err.boundingBox(), d.getByLabel('Kind').boundingBox()]);
+    const [f, e, k] = await Promise.all([field.boundingBox(), err.boundingBox(), d.getByLabel('Note (optional)').boundingBox()]);
     expect(e!.y, 'error below the Pocket field').toBeGreaterThanOrEqual(f!.y + f!.height - 1);
-    expect(e!.y, 'error above Kind').toBeLessThan(k!.y);
+    expect(e!.y, 'error above Note').toBeLessThan(k!.y);
     expect(await pocketsApi(page), `name length ${name.length}`).toHaveLength(0);
     if (!name) await shot(page, 'dialog-new-pocket-error-desktop-light');
     await page.keyboard.press('Escape');
@@ -104,21 +104,21 @@ test('if the pocket is created and the income then fails, the new pocket stays c
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
-  await expect(chip(d, 'Source', 'Paycheck')).toBeChecked();
-  await d.getByLabel('Pocket', { exact: true }).fill('Wallet');
+  await expect(chip(d, 'Received from', 'Paycheck')).toBeChecked();
+  await d.getByLabel('Paid into', { exact: true }).fill('Wallet');
   await d.getByLabel('Amount').fill('50');
   // The chosen source is deleted behind the dialog's back, so the server refuses the income on `sourceId` after the pocket exists.
   expect((await page.request.delete(`/api/sources/${paycheck.id}`, { data: {} })).status()).toBe(204);
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeVisible();
-  await expect(chip(d, 'Pocket', /Wallet/)).toBeChecked();
+  await expect(chip(d, 'Paid into', /Wallet/)).toBeChecked();
   await expect(d.getByLabel('Pocket name')).toBeHidden();
   expect((await pocketsApi(page)).map((p) => p.name)).toEqual(['Wallet']);
   await shot(page, 'dialog-pocket-created-transaction-failed-desktop-light');
   // Choose a new source and save again: the pocket is used, not created a second time.
   // The deleted source leaves the list empty, so Source is the plain field again, not a lone chip.
-  await expect(group(d, 'Source')).toHaveCount(0);
-  await d.getByLabel('Source', { exact: true }).fill('Bonus');
+  await expect(group(d, 'Received from')).toHaveCount(0);
+  await d.getByLabel('Received from', { exact: true }).fill('Bonus');
   await d.getByRole('button', { name: 'Add income', exact: true }).click();
   await expect(d).toBeHidden();
   const pockets = await pocketsApi(page);
@@ -134,7 +134,7 @@ test('with pockets present the dialog shows one chip per pocket with its emoji, 
   await page.goto('/transactions');
   await page.getByRole('button', { name: 'Add transaction' }).first().click();
   const d = dialog(page);
-  const chips = group(d, 'Pocket').locator('label.ty-chip');
+  const chips = group(d, 'Paid from').locator('label.ty-chip');
   await expect(chips).toHaveCount(3);
   await expect(chips.nth(0)).toContainText(/Revolut/);
   await expect(chips.nth(0).locator('.ty-emoji')).toHaveText(em('Bank'));
@@ -145,7 +145,7 @@ test('with pockets present the dialog shows one chip per pocket with its emoji, 
   await expect(d.getByLabel('Pocket name')).toBeHidden(); // the panel is closed while pockets exist
   await shot(page, 'dialog-pocket-chips-desktop-light');
 
-  await chip(d, 'Pocket', '+ Add pocket').check();
+  await chip(d, 'Paid from', '+ Add pocket').check();
   await expect(d.getByLabel('Pocket name')).toBeVisible();
   await expect(d.getByLabel('Kind')).toBeVisible();
   await expect(d.locator('.ty-inset')).toHaveCount(0);
@@ -169,11 +169,11 @@ test('choosing an existing pocket chip and an expense still works next to the ne
   await page.goto('/transactions');
   await page.getByRole('button', { name: 'Add transaction' }).first().click();
   const d = dialog(page);
-  await chip(d, 'Pocket', '+ Add pocket').check();
+  await chip(d, 'Paid from', '+ Add pocket').check();
   await expect(d.getByLabel('Pocket name')).toBeVisible();
-  await chip(d, 'Pocket', /Revolut/).check();
-  await expect(chip(d, 'Pocket', /Revolut/)).toBeChecked();
-  await expect(chip(d, 'Pocket', '+ Add pocket')).not.toBeChecked();
+  await chip(d, 'Paid from', /Revolut/).check();
+  await expect(chip(d, 'Paid from', /Revolut/)).toBeChecked();
+  await expect(chip(d, 'Paid from', '+ Add pocket')).not.toBeChecked();
   await fillExpense(d, { amount: '3', payee: 'Existing pocket', subsection: 'Food' });
   await d.getByRole('button', { name: 'Add expense', exact: true }).click();
   await expect(d).toBeHidden();

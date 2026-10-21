@@ -289,7 +289,7 @@ test('an imported transaction\'s Type, Date, Amount and Pocket are disabled, Pay
   const d = dialog(page);
   await expect(d.getByLabel('Date')).toBeDisabled();
   await expect(d.getByLabel('Amount')).toBeDisabled();
-  for (const legend of ['Type', 'Pocket']) {
+  for (const legend of ['Type', 'Paid from']) {
     const radios = group(d, legend).getByRole('radio');
     expect(await radios.count(), legend).toBeGreaterThan(0);
     for (let i = 0; i < (await radios.count()); i++) await expect(radios.nth(i), `${legend} ${i}`).toBeDisabled();

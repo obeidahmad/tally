@@ -65,7 +65,7 @@ test('the income dialog still has the chip "+ Add source" and the field "Source 
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).click();
   const d = dialog(page);
-  const c = chip(d, 'Source', '+ Add source');
+  const c = chip(d, 'Received from', '+ Add source');
   await expect(c).toBeVisible();
   await c.check();
   await expect(d.getByLabel('Source name')).toBeVisible();

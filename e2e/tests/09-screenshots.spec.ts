@@ -82,7 +82,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
         await page.getByRole('button', { name: 'Add income', exact: true }).click();
         await expect(dialog(page).getByRole('heading', { name: 'Add income' })).toBeVisible();
         await shot(page, `dialog-add-income-${tag}`);
-        await chip(dialog(page), 'Pocket', '+ Add pocket').check();
+        await chip(dialog(page), 'Paid into', '+ Add pocket').check();
         await expect(dialog(page).getByLabel('Pocket name')).toBeVisible();
         await shot(page, `dialog-new-pocket-panel-${tag}`);
         await page.keyboard.press('Escape');
@@ -113,7 +113,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
         await me.seed.subsection(s.id, 'Food', 10000);
         await page.goto('/budget');
         await page.getByRole('button', { name: 'Add income', exact: true }).click();
-        await expect(dialog(page).getByLabel('Pocket', { exact: true })).toBeVisible();
+        await expect(dialog(page).getByLabel('Paid into', { exact: true })).toBeVisible();
         await shot(page, `dialog-no-pocket-${tag}`);
       });
 

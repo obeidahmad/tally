@@ -175,7 +175,7 @@ export async function fillExpense(d: Locator, o: { amount: string; payee: string
   await d.getByLabel('Amount').fill(o.amount);
   await d.getByLabel('Payee').fill(o.payee);
   if (o.subsection) await d.getByLabel('Subsection').selectOption({ label: o.subsection });
-  if (o.pocket) await chip(d, 'Pocket', o.pocket).check();
+  if (o.pocket) await chip(d, 'Paid from', o.pocket).check();
 }
 export const pocketsApi = async (page: Page) =>
   (await (await page.request.get('/api/pockets')).json()).pockets as

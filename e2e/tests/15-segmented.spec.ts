@@ -63,9 +63,9 @@ test('transaction dialog: "Type" is a ty-segmented of "Expense" and "Income"; ti
   await chip(d, 'Type', 'Expense').check();
   await expect(d.getByRole('heading', { name: 'Add expense' })).toBeVisible();
 
-  const pocketChips = group(d, 'Pocket').locator('label.ty-chip');
+  const pocketChips = group(d, 'Paid from').locator('label.ty-chip');
   await expect(pocketChips).toHaveCount(2); // Revolut and "+ Add pocket"
-  await expect(group(d, 'Pocket').locator('.ty-segmented')).toHaveCount(0);
+  await expect(group(d, 'Paid from').locator('.ty-segmented')).toHaveCount(0);
 
   await page.keyboard.press('Escape');
   await expect(d).toBeHidden();
@@ -203,12 +203,12 @@ for (const [size, viewport] of Object.entries(sizes)) {
     await page.goto('/budget');
     let d = await openAddTransaction(page);
     const dateLeft = await textLeft(label(d, 'Date'));
-    for (const legend of ['Type', 'Pocket']) {
+    for (const legend of ['Type', 'Paid from']) {
       const l = d.locator('legend', { hasText: new RegExp(`^${legend}$`) });
       expect(Math.abs((await textLeft(l)) - dateLeft), legend).toBeLessThanOrEqual(0.5);
     }
     await chip(d, 'Type', 'Income').check();
-    expect(Math.abs((await textLeft(d.locator('legend', { hasText: /^Source$/ }))) - dateLeft), 'Source').toBeLessThanOrEqual(0.5);
+    expect(Math.abs((await textLeft(d.locator('legend', { hasText: /^Received from$/ }))) - dateLeft), 'Source').toBeLessThanOrEqual(0.5);
     await page.keyboard.press('Escape');
     await expect(d).toBeHidden();
 

@@ -83,7 +83,7 @@ test('the transaction dialog has no emoji picker; a pocket made there gets the d
   await expect(group(d, 'Emoji')).toHaveCount(0);
   await d.getByLabel('Kind').selectOption({ label: 'Fund' });
   await expect(group(d, 'Emoji')).toHaveCount(0);
-  await d.getByLabel('Pocket', { exact: true }).fill('Rainy day');
+  await d.getByLabel('Paid from', { exact: true }).fill('Rainy day');
   await d.getByLabel('Amount').fill('9');
   await d.getByLabel('Payee').fill('Umbrella shop');
   await d.getByLabel('Subsection').selectOption({ label: 'Food' });
@@ -188,7 +188,7 @@ for (const [size, viewport] of Object.entries(sizes)) {
       await page.getByRole('button', { name: 'Add transaction' }).first().click();
       const d = dialog(page);
       for (const [name, e] of shown) {
-        const label = group(d, 'Pocket').locator('label.ty-chip', { hasText: name });
+        const label = group(d, 'Paid from').locator('label.ty-chip', { hasText: name });
         await expect(label.locator('.ty-emoji')).toHaveText(e);
         expect((await label.innerText()).replace(/\s+/g, ' ').trim(), `chip ${name}`).toBe(`${e} ${name}`);
       }

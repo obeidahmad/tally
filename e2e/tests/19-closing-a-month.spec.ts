@@ -497,10 +497,10 @@ test('the leftovers source is not offered as a chip in the income dialog', async
   await page.goto('/budget');
   await page.getByRole('button', { name: 'Add income', exact: true }).first().click();
   const d = dialog(page);
-  await expect(group(d, 'Source')).toBeVisible();
-  await expect(chip(d, 'Source', 'Paycheck')).toBeVisible();
-  await expect(chip(d, 'Source', 'Fund payout')).toBeVisible();
-  await expect(group(d, 'Source').getByRole('radio', { name: /leftovers/i })).toHaveCount(0);
+  await expect(group(d, 'Received from')).toBeVisible();
+  await expect(chip(d, 'Received from', 'Paycheck')).toBeVisible();
+  await expect(chip(d, 'Received from', 'Fund payout')).toBeVisible();
+  await expect(group(d, 'Received from').getByRole('radio', { name: /leftovers/i })).toHaveCount(0);
   await expect(d.getByText(LEFTOVERS)).toHaveCount(0);
 });
 
