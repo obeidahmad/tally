@@ -355,6 +355,14 @@ a.ty-btn { text-decoration: none; }
 .ty-trow .ty-avatar .ty-emoji { font-size: 0.9375rem; }
 .ty-rows__empty { padding: 0 var(--space-5); }
 .ty-warn { color: var(--warning); font-weight: 600; }
+.ty-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ty-moves { display: grid; margin: 0; padding: 0; list-style: none; }
+.ty-move { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-3); align-items: center; min-height: 2.75rem; }
+.ty-move + .ty-move { border-top: 1px solid var(--line); }
+.ty-move__path { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-width: 0; }
+.ty-table .ty-plan__pocket td { font-weight: 600; }
+.ty-table .ty-plan__sub td { border-top: 0; height: 2.25rem; }
+.ty-table .ty-plan__sub td:first-child { padding-left: var(--space-7); }
 .ty-inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .ty-viewall { margin-left: auto; font-size: 0.8125rem; font-weight: 500; color: var(--link); text-decoration: none; }
 .ty-viewall:hover { text-decoration: underline; }

@@ -82,7 +82,7 @@ The pipeline is what makes Tally different: money moves through steps in an orde
 
 - Entered by hand. Each one records a pocket and a subsection, and both can be edited.
 - Transfers between pockets, including currency conversions recorded at the rate the user actually got.
-- Where each subsection's money sits is calculated from the transactions, for example Car 6,000 = 4,000 in Bank A + 2,000 in the fund.
+- **The plan.** Each subsection's money is kept in a pocket the person picks (or "Any pocket"). Tally compares what each pocket should hold with what it holds and lists the transfers to make, directly from the pocket with money to spare to the pocket that is short, so it tells the person what to do with their money, not only what happened to it. There is no "Main" pocket; that is only a name a person may use. Comes before any bank-connection work (`specs/29-the-plan.md`).
 
 **Rollover**
 
@@ -152,6 +152,7 @@ The pipeline stays Tally's main distinction, but Tally also offers what Monarch,
 - `specs/27-monarch-look.md`: the look rebuilt to Monarch's feel from the user's screen recording: light by default with an Appearance choice, warm light page, colour, small radii, page tabs, stat cards, a readable Sankey, a donut and an area chart.
 - `specs/28-first-run-dialog.md`: the transaction dialog on a first run: no lone "+ Add source" or "+ Add pocket" chips, plain fields instead, no emoji grid in the dialog, a transfer that needs two pockets, and the labels "Received from", "Paid into" and "Paid from" so a source and a pocket read as two separate things.
 - `specs/26-home-flow-age-of-money.md`: a Home page, a Sankey of where the month's money went through the pipeline, top payees, and age of money.
+- `specs/29-the-plan.md`: the plan: each subsection kept in a pocket, "Transfers to make" with Done, and "Where your money should be"; replaces where money sits, the home pocket and a transfer's subsection.
 
 ## Not planned
 
