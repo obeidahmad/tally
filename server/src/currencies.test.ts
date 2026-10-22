@@ -216,8 +216,8 @@ describe('transfers', () => {
 
   it('converts across two currencies at the amount that arrived and moves both balances', async () => {
     const { a, food, eur, usd } = await world();
-    const t = (await post(a, '/api/transactions', transfer(eur.id, usd.id, { toAmountMinor: 9231, subsectionId: food.id }))).transaction;
-    expect(t).toMatchObject({ amountMinor: 8500, toAmountMinor: 9231, baseAmountMinor: 8500, subsectionId: food.id });
+    const t = (await post(a, '/api/transactions', transfer(eur.id, usd.id, { toAmountMinor: 9231 }))).transaction;
+    expect(t).toMatchObject({ amountMinor: 8500, toAmountMinor: 9231, baseAmountMinor: 8500, subsectionId: null });
     const back = (await post(a, '/api/transactions', transfer(usd.id, eur.id, { toAmountMinor: 1000, amountMinor: 1086 }))).transaction;
     expect(back.baseAmountMinor).toBe(1000);
     const [p1, p2] = (await get(a, '/api/pockets')).pockets;
@@ -271,7 +271,7 @@ describe('transfers', () => {
     await post(a, '/api/transactions', transfer(eur.id, bank2.id, { toAmountMinor: 8500 }));
     await post(a, '/api/transactions', transfer(eur.id, bank2.id, { toAmountMinor: null, subsectionId: null }));
     expect(await fields(transfer(eur.id, bank2.id, { sourceId: job.id }))).toEqual({ sourceId: 'A transfer has no source.' });
-    expect(await fields(transfer(eur.id, bank2.id, { subsectionId: 99999 }))).toEqual({ subsectionId: 'Choose a subsection.' });
+    expect(await fields(transfer(eur.id, bank2.id, { subsectionId: food.id }))).toEqual({ subsectionId: 'A transfer has no subsection.' });
     expect(await fields(transfer(eur.id, bank2.id, { amountMinor: 0 }))).toHaveProperty('amountMinor');
     expect((await post(a, '/api/transactions', transfer(eur.id, bank2.id, { payee: 'ignored', sourceId: null }))).transaction.payee).toBe('');
 

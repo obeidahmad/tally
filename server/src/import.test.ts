@@ -340,11 +340,9 @@ describe('where specs 11-15 meet', () => {
     const a = await owner();
     const { pocket, food } = await setup(a);
     const before = await get(a, `/api/budget?month=${OCT}`);
-    const whereBefore = await get(a, `/api/where?month=${OCT}`);
     await imp(a, pocket.id, SEMI).expect(201);
     const after = await get(a, `/api/budget?month=${OCT}`);
     expect({ ...after, unsortedCount: 0 }).toEqual(before);
-    expect(await get(a, `/api/where?month=${OCT}`)).toEqual(whereBefore);
     expect((await get(a, '/api/pockets')).pockets[0].balanceMinor).toBe(150000 - 1250);
     await json(a.post(`/api/months/${OCT}/close`)).send({}).expect(409);
     void food;

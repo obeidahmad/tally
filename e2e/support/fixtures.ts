@@ -9,7 +9,9 @@ export type Person = { username: string; displayName: string; password: string }
 let counter = 0;
 const unique = () => `p${Date.now().toString(36)}${(counter++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-export const todayIso = () => new Date().toISOString().slice(0, 10);
+/** The server dates things by its own local day, so this is the local date, not the UTC one. */
+export const localIso = (offsetDays = 0) => { const d = new Date(Date.now() + offsetDays * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+export const todayIso = () => localIso();
 export const thisMonth = () => todayIso().slice(0, 7);
 export const monthTitle = (d = new Date()) => d.toLocaleString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 export const dayHeading = () => `${new Date().getUTCDate()} ${new Date().toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' })}`;
@@ -316,3 +318,12 @@ export const stickyBar = (page: Page) => page.evaluate(() => {
   }
   return null;
 });
+
+/** Spec 29: "Kept in" is required once a plan pocket exists; picks the first real option of the dialog's select, if it has one. */
+export async function pickKeptIn(d: Locator) {
+  const s = d.getByLabel('Kept in', { exact: true });
+  if (!(await s.count())) return;
+  const first = s.locator('option:not([disabled])').first();
+  if (await s.locator('option:checked:not([disabled])').count()) return;
+  await s.selectOption({ label: ((await first.textContent()) ?? '').trim() });
+}

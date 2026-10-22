@@ -21,7 +21,7 @@ const POCKET = `SELECT p.id, p.name, p.kind, p.emoji, p.currency, p.opening_bala
   FROM pockets p`;
 const SUB = `SELECT id, section_id AS sectionId, name, position, kind, budget_kind AS budgetKind,
   CASE WHEN budget_kind = 'amount' THEN budget_minor END AS budgetMinor, budget_basis_points AS budgetBasisPoints,
-  keep, cap_minor AS capMinor, emoji, target_month AS targetMonth FROM subsections`;
+  keep, cap_minor AS capMinor, emoji, target_month AS targetMonth, pocket_id AS pocketId FROM subsections`;
 const TX = `SELECT id, date, kind, amount_minor AS amountMinor, pocket_id AS pocketId, subsection_id AS subsectionId, source_id AS sourceId,
   base_amount_minor AS baseAmountMinor, to_pocket_id AS toPocketId, to_amount_minor AS toAmountMinor,
   payee, note, source, COALESCE(created_by, user_id) AS createdBy,
@@ -73,6 +73,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
   // A property pocket's balance on a day is its latest value on or before that day, or 0.
   const valueOn = (pocketId: number, day: string): number =>
     one('SELECT value_minor AS v FROM pocket_values WHERE pocket_id = ? AND date <= ? ORDER BY date DESC LIMIT 1', pocketId, day)?.v ?? 0;
+  const PLAN_KINDS = ['bank', 'cash', 'fund', 'broker'];
   const GROUPS: Record<string, string> = { bank: 'cash', cash: 'cash', fund: 'investments', broker: 'investments', property: 'property', credit: 'debts', loan: 'debts' };
   const withBase = (raw: any, base: string) => {
     const p = raw.kind === 'property' ? { ...raw, balanceMinor: valueOn(raw.id, today()) } : raw;
@@ -156,6 +157,10 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
     db.prepare('UPDATE pockets SET name = ?, kind = ?, emoji = ?, currency = ?, opening_balance_minor = ? WHERE id = ? AND user_id = ?').run(
       b.name, b.kind, b.emoji, b.currency, b.openingBalanceMinor, cur.id, req.user.id,
     );
+    if (!PLAN_KINDS.includes(b.kind)) {
+      db.prepare('UPDATE subsections SET pocket_id = NULL WHERE pocket_id = ?').run(cur.id);
+      db.prepare('UPDATE users SET home_pocket_id = NULL WHERE id = ? AND home_pocket_id = ?').run(req.user.id, cur.id);
+    }
     res.json({ pocket: pocketOf(req.user, cur.id) });
   });
   r.delete('/pockets/:id', (req, res) => {
@@ -378,15 +383,18 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
       throw fieldError('budgetBasisPoints', 'The percentages in one section can add up to at most 100.');
     const before = id === null ? null : (one('SELECT target_month AS t FROM subsections WHERE id = ?', id).t as string | null);
     if (b.targetMonth && b.targetMonth !== before && b.targetMonth < today().slice(0, 7)) throw fieldError('targetMonth', 'Choose this month or later.');
+    const pocketId: unknown = input.pocketId ?? null;
+    if (pocketId !== null && !(Number.isSafeInteger(pocketId) && PLAN_KINDS.includes(one('SELECT kind FROM pockets WHERE id = ? AND user_id = ?', pocketId, uid)?.kind)))
+      throw fieldError('pocketId', 'Choose a pocket.');
     const pos = input.position ?? keepPosition ?? others.length + 1;
     if (!s.subsectionPosition.safeParse(pos).success || pos < 1 || pos > others.length + 1) throw fieldError('position', 'Choose a position.');
     return db.transaction(() => {
-      const cols = [b.name, b.kind, b.budgetKind, b.budgetMinor, b.budgetBasisPoints, b.keep, b.capMinor, b.emoji, b.targetMonth];
+      const cols = [b.name, b.kind, b.budgetKind, b.budgetMinor, b.budgetBasisPoints, b.keep, b.capMinor, b.emoji, b.targetMonth, pocketId];
       if (id === null)
-        id = Number(db.prepare(`INSERT INTO subsections (user_id, section_id, name, kind, budget_kind, budget_minor, budget_basis_points, keep, cap_minor, emoji, target_month, position)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`).run(uid, sectionId, ...cols).lastInsertRowid);
+        id = Number(db.prepare(`INSERT INTO subsections (user_id, section_id, name, kind, budget_kind, budget_minor, budget_basis_points, keep, cap_minor, emoji, target_month, pocket_id, position)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`).run(uid, sectionId, ...cols).lastInsertRowid);
       else
-        db.prepare('UPDATE subsections SET name = ?, kind = ?, budget_kind = ?, budget_minor = ?, budget_basis_points = ?, keep = ?, cap_minor = ?, emoji = ?, target_month = ? WHERE id = ? AND user_id = ?')
+        db.prepare('UPDATE subsections SET name = ?, kind = ?, budget_kind = ?, budget_minor = ?, budget_basis_points = ?, keep = ?, cap_minor = ?, emoji = ?, target_month = ?, pocket_id = ? WHERE id = ? AND user_id = ?')
           .run(...cols, id, uid);
       const order = others.map((x) => x.id);
       order.splice(pos - 1, 0, id);
@@ -1194,47 +1202,75 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
     res.json(monthsOf(uid));
   });
 
-  // Where each subsection's money sits
-  r.get('/where', (req, res) => {
+  // The plan: where each plan pocket's money should be, and the transfers that get it there.
+  r.get('/plan', (req, res) => {
     const user = req.user;
     const uid = user.id;
     const base = user.baseCurrency;
-    const month = parse(s.whereQuery, req.query).month ?? today().slice(0, 7);
-    const until = `${month}-31`;
-    const pockets = all<{ id: number; name: string; currency: string }>('SELECT id, name, currency FROM pockets WHERE user_id = ? ORDER BY id', uid);
-    const home = pockets.find((p) => p.id === user.homePocketId) ?? pockets[0];
-    const currencyOfPocket = new Map(pockets.map((p) => [p.id, p.currency]));
-    // What each subsection has in each pocket, apart from the home pocket.
-    const cells = new Map<number, Map<number, number>>();
-    const add = (sub: number, pocket: number, v: number) => {
-      if (pocket === home?.id) return;
-      const m = cells.get(sub) ?? cells.set(sub, new Map()).get(sub)!;
-      m.set(pocket, (m.get(pocket) ?? 0) + v);
+    const to = (v: number, from: string, into: string) => {
+      const x = v === 0 ? 0 : rates.convert(v, from, into, today());
+      if (x === null) throw noRate(from === base ? into : from);
+      return x;
     };
-    for (const x of all<{ sub: number; pid: number; v: number }>(
-      `SELECT subsection_id AS sub, to_pocket_id AS pid, SUM(to_amount_minor) AS v FROM transactions
-       WHERE user_id = ? AND kind = 'transfer' AND subsection_id IS NOT NULL AND date <= ? GROUP BY 1, 2`, uid, until)) add(x.sub, x.pid, x.v);
-    for (const x of all<{ sub: number; pid: number; v: number }>(
-      `SELECT subsection_id AS sub, pocket_id AS pid, SUM(amount_minor) AS v FROM tx_parts
-       WHERE user_id = ? AND kind IN ('transfer', 'expense') AND subsection_id IS NOT NULL AND date <= ? GROUP BY 1, 2`, uid, until)) add(x.sub, x.pid, -x.v);
-    // A held holding counts as its worth minus what it cost; a sold one has paid back into the cash and is gone.
-    for (const h of all<any>(`${HOLD} WHERE user_id = ? AND sold_date IS NULL`, uid))
-      add(h.subsectionId, h.pocketId, worthIn(h, currencyOfPocket.get(h.pocketId)!) - h.paidMinor);
+    const pockets = all<any>(`${POCKET} WHERE p.user_id = ? AND p.kind IN ('bank', 'cash', 'fund', 'broker') ORDER BY p.id`, uid).map((p) => {
+      const holds = p.balanceMinor + (one('SELECT COALESCE(SUM(paid_minor), 0) AS v FROM holdings WHERE pocket_id = ? AND sold_date IS NULL', p.id).v as number);
+      return { id: p.id as number, currency: p.currency as string, opening: p.openingBalanceMinor as number, holds, subs: [] as { id: number; availableMinor: number }[], should: 0 };
+    });
+    const byId = new Map(pockets.map((p) => [p.id, p]));
+    const keptIn = new Map(all<{ id: number; p: number | null }>('SELECT id, pocket_id AS p FROM subsections WHERE user_id = ?', uid).map((x) => [x.id, x.p]));
 
-    const sections: any[] = answer(user, month, 'budget').sections;
-    const rows: { subsectionId: number; totalMinor: number; cells: { pocketId: number; amountMinor: number }[] }[] = [];
-    for (const sub of sections.flatMap((x) => x.subsections)) {
-      const out = new Map(cells.get(sub.id));
-      const total: number = sub.availableMinor;
-      if (home) {
-        const others = [...out].reduce((a, [pid, v]) => a + (rates.convert(v, currencyOfPocket.get(pid)!, base, today()) ?? 0), 0);
-        out.set(home.id, rates.convert(total - others, base, home.currency, today()) ?? 0);
+    // Every open month, oldest first, through this one: each subsection's available (signed), and what no subsection claims.
+    const current = today().slice(0, 7);
+    const lastClosed = lastClosedOf(uid);
+    const first: string | null = lastClosed ? nextMonth(lastClosed) : one(`SELECT MIN(substr(date, 1, 7)) AS m FROM transactions WHERE user_id = ? AND kind != 'transfer'`, uid).m;
+    const amounts = new Map<number, number>();
+    let nextMonthMinor = 0;
+    const order: number[] = [];
+    // A current month that is already closed has been carried on: nothing is open.
+    for (let m = lastClosed && lastClosed >= current ? nextMonth(current) : first && first < current ? first : current; m <= current; m = nextMonth(m)) {
+      const b = live(user, m).budget;
+      const carried = one('SELECT COALESCE(SUM(amount_minor), 0) AS v FROM carries WHERE user_id = ? AND month = ? AND (section_id IS NOT NULL OR subsection_id IS NOT NULL)', uid, m).v as number;
+      let claimed = 0;
+      for (const sub of b.sections.flatMap((x: any) => x.subsections)) {
+        if (!amounts.has(sub.id)) order.push(sub.id);
+        amounts.set(sub.id, (amounts.get(sub.id) ?? 0) + sub.availableMinor);
+        claimed += sub.availableMinor;
       }
-      const list = [...out].filter(([, v]) => v !== 0).sort(([a], [b]) => a - b).map(([pocketId, amountMinor]) => ({ pocketId, amountMinor }));
-      if (total !== 0 || list.length) rows.push({ subsectionId: sub.id, totalMinor: total, cells: list });
+      nextMonthMinor += b.totals.incomeMinor + carried - b.totals.spentMinor - claimed;
     }
-    const used = new Set(rows.flatMap((x) => x.cells.map((c) => c.pocketId)));
-    res.json({ currency: base, pockets: pockets.filter((p) => used.has(p.id)), rows });
+    for (const p of pockets) nextMonthMinor += to(p.opening, p.currency, base);
+    const unplaced: number[] = [];
+    for (const id of order) {
+      const p = byId.get(keptIn.get(id) ?? 0);
+      if (!p) { unplaced.push(id); continue; }
+      p.subs.push({ id, availableMinor: amounts.get(id)! });
+      p.should += amounts.get(id)!;
+    }
+    const chosen = byId.get(user.nextMonthPocketId ?? 0) ?? pockets[0];
+    if (chosen) chosen.should += nextMonthMinor;
+
+    // Spare (+) or short (-) in base; transfers go from the most spare to the most short, the older pocket first on a tie.
+    const diff = pockets.map((p) => to(p.holds, p.currency, base) - p.should);
+    const transfers: { fromPocketId: number; toPocketId: number; amountMinor: number; toAmountMinor: number; baseAmountMinor: number }[] = [];
+    for (;;) {
+      let hi = 0, lo = 0;
+      diff.forEach((d, i) => { if (d > diff[hi]!) hi = i; if (d < diff[lo]!) lo = i; });
+      const amount = Math.min(diff[hi]!, -diff[lo]!);
+      if (!(amount >= 100)) break; // no pair can make a transfer of 1.00 or more (NaN: no plan pockets)
+      const [from, dest] = [pockets[hi]!, pockets[lo]!];
+      transfers.push({ fromPocketId: from.id, toPocketId: dest.id, amountMinor: to(amount, base, from.currency), toAmountMinor: to(amount, base, dest.currency), baseAmountMinor: amount });
+      diff[hi]! -= amount;
+      diff[lo]! += amount;
+    }
+    const short = diff.reduce((a, d) => a + Math.max(0, -d), 0);
+    res.json({
+      currency: base,
+      pockets: pockets.map((p) => ({ id: p.id, shouldMinor: to(p.should, base, p.currency), holdsMinor: p.holds, subsections: p.subs })),
+      transfers,
+      nextMonth: { pocketId: chosen?.id ?? null, amountMinor: nextMonthMinor },
+      unplacedSubsectionIds: unplaced,
+      shortMinor: short < 100 ? 0 : short,
+    });
   });
 
   // Holdings

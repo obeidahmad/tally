@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, shot, pocketRow, seedBudget, todayIso, type Seed } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, pocketRow, seedBudget, todayIso, localIso, type Seed } from '../support/fixtures';
 import type { Page, Locator } from '@playwright/test';
 
 // Spec 23: credit cards, loans, property and reconciling on the Pockets page.
@@ -99,11 +99,11 @@ test('a property pocket holds values: create it, add an older value, replace tod
   await expect(d.getByText('250,000.00').first()).toBeVisible();
   await expect(d.getByRole('button', { name: 'Reconcile' })).toHaveCount(0); // no balance to reconcile
   await d.getByRole('button', { name: 'Update value' }).click();
-  const old = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const old = localIso(-30);
   await d.getByLabel('Amount').or(d.getByLabel('Value', { exact: true })).last().fill('240000.00');
   await d.getByLabel('Date').last().fill(old);
   await d.getByRole('button', { name: 'Update value' }).last().click();
-  await expect(d.getByText('240,000.00')).toBeVisible();
+  await expect(d.getByText('240,000.00').first()).toBeVisible();
   // today's value is still the latest
   await page.keyboard.press('Escape');
   await expect(pocketRow(page, 'Flat')).toContainText('250,000.00');
@@ -260,7 +260,7 @@ test('reconciling a property pocket, or a date in the future, is refused', async
   const p = await page.request.post(`/api/pockets/${home.id}/reconcile`, { data: { balanceMinor: 100, date: todayIso() } });
   expect(p.status()).toBe(400);
   expect(JSON.stringify(await p.json())).toContain('A property pocket has no balance to reconcile.');
-  const future = new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10);
+  const future = localIso(5);
   const f = await page.request.post(`/api/pockets/${bank.id}/reconcile`, { data: { balanceMinor: 100, date: future } });
   expect(f.status()).toBe(400);
 });

@@ -57,40 +57,13 @@ async function world(a: Agent) {
   await post(a, '/api/transactions', { date: '2026-10-02', kind: 'income', amountMinor: 600000, pocketId: bank.id, subsectionId: null, sourceId: job.id });
   return { sec, car, other, job, bank, fund, broker };
 }
-const transfer = (from: number, to: number, subsectionId: number, amountMinor: number, toAmountMinor?: number) =>
-  ({ date: '2026-10-05', kind: 'transfer', amountMinor, pocketId: from, toPocketId: to, subsectionId, ...(toAmountMinor && { toAmountMinor }) });
-const where = async (a: Agent, month = '2026-10') => get(a, `/api/where?month=${month}`);
-const row = (w: any, id: number) => w.rows.find((x: any) => x.subsectionId === id);
-
-describe('where money sits', () => {
-  it('splits a subsection between its home pocket and the pockets it was moved to', async () => {
-    const a = await person();
-    const { car, bank, fund } = await world(a);
-    await post(a, '/api/transactions', transfer(bank.id, fund.id, car.id, 200000));
-    let w = await where(a);
-    expect(w.currency).toBe('EUR');
-    expect(w.pockets.map((p: any) => p.id)).toEqual([bank.id, fund.id]);
-    expect(w.rows).toEqual([{ subsectionId: car.id, totalMinor: 600000, cells: [{ pocketId: bank.id, amountMinor: 400000 }, { pocketId: fund.id, amountMinor: 200000 }] }]);
-
-    await post(a, '/api/transactions', { date: '2026-10-06', kind: 'expense', amountMinor: 10000, pocketId: fund.id, subsectionId: car.id, payee: 'Garage' });
-    w = await where(a);
-    expect(w.rows).toEqual([{ subsectionId: car.id, totalMinor: 590000, cells: [{ pocketId: bank.id, amountMinor: 400000 }, { pocketId: fund.id, amountMinor: 190000 }] }]);
-    // The default month is the current one, and a month before the transfer shows everything at home.
-    expect(await get(a, '/api/where')).toEqual(w);
-    // Before the transfer everything is still at home.
-    expect(row(await where(a, '2026-09'), car.id).cells).toEqual([{ pocketId: bank.id, amountMinor: 600000 }]);
-  });
-
+describe('holdings', () => {
   it("counts a holding's worth in another currency", async () => {
     const a = await person();
-    const { car, broker, bank } = await world(a);
+    const { car, broker } = await world(a);
     const { holding } = await post(a, '/api/holdings', { name: 'ETF', pocketId: broker.id, subsectionId: car.id, paidMinor: 210000 });
     expect(holding).toMatchObject({ paidMinor: 210000, worthMinor: 210000, worthCurrency: 'USD', worthDate: '2026-10-14', soldDate: null });
     await json(a.patch(`/api/holdings/${holding.id}`)).send({ worthMinor: 231000 }).expect(200);
-    // 2,310.00 USD worth minus 2,100.00 paid = 210.00 USD = 193.37 EUR; the rest of Car's 6,000.00 is at home.
-    const w = await where(a);
-    expect(row(w, car.id).cells).toEqual([{ pocketId: bank.id, amountMinor: 600000 - 19337 }, { pocketId: broker.id, amountMinor: 21000 }]);
-    expect(row(w, car.id).totalMinor).toBe(600000);
 
     const p = (await get(a, '/api/pockets')).pockets.find((x: any) => x.id === broker.id);
     expect(p).toMatchObject({ balanceMinor: 0, valueMinor: 231000, baseValueMinor: 212707 });
@@ -101,23 +74,6 @@ describe('where money sits', () => {
       { currency: 'EUR', amountMinor: 600000, baseMinor: 600000, rate: null },
       { currency: 'USD', amountMinor: 231000, baseMinor: 212707, rate: '0.9208' },
     ]);
-  });
-
-  it('moves the untransferred money when the home pocket changes', async () => {
-    const a = await person();
-    const { car, bank, fund } = await world(a);
-    await post(a, '/api/transactions', transfer(bank.id, fund.id, car.id, 200000));
-    expect((await get(a, '/api/me')).user.homePocketId).toBeNull();
-    const me = (await json(a.patch('/api/me')).send({ homePocketId: fund.id }).expect(200)).body.user;
-    expect(me.homePocketId).toBe(fund.id);
-    expect((await get(a, '/api/auth/state')).user.homePocketId).toBe(fund.id);
-    // Fund is home now: Bank holds what the transfer took out, Fund the rest.
-    expect(row(await where(a), car.id).cells).toEqual([{ pocketId: bank.id, amountMinor: -200000 }, { pocketId: fund.id, amountMinor: 800000 }]);
-
-    expect(await fields(json(a.patch('/api/me')).send({ homePocketId: 9999 }))).toEqual({ homePocketId: 'Choose a pocket.' });
-    expect(await fields(json(a.patch('/api/me')).send({ homePocketId: 'x' }))).toEqual({ homePocketId: 'Choose a pocket.' });
-    db.prepare('DELETE FROM holdings').run();
-    await json(a.delete(`/api/pockets/${fund.id}`)).expect(409); // it has a transfer
   });
 });
 
@@ -237,7 +193,7 @@ describe('holding fields', () => {
 });
 
 describe('isolation', () => {
-  it("keeps one person's holdings, where table and home pocket from another", async () => {
+  it("keeps one person's holdings from another", async () => {
     const a = await person();
     const { car, broker, bank } = await world(a);
     const { holding } = await post(a, '/api/holdings', { name: 'ETF', pocketId: broker.id, subsectionId: car.id, paidMinor: 100 });
@@ -248,8 +204,6 @@ describe('isolation', () => {
     await json(b.post(`/api/holdings/${holding.id}/sell`)).send({ date: '2026-10-10', receivedMinor: 1 }).expect(404);
     await fields(json(b.post('/api/holdings')).send({ name: 'x', pocketId: broker.id, subsectionId: mine.car.id, paidMinor: 1 }));
     await fields(json(b.post('/api/holdings')).send({ name: 'x', pocketId: mine.broker.id, subsectionId: car.id, paidMinor: 1 }));
-    expect(await fields(json(b.patch('/api/me')).send({ homePocketId: bank.id }))).toEqual({ homePocketId: 'Choose a pocket.' });
-    expect(row(await where(b), car.id)).toBeUndefined();
     expect((await get(a, '/api/holdings')).holdings).toHaveLength(1);
   });
 });

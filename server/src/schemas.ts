@@ -123,6 +123,7 @@ export const transaction = z
   .superRefine((t, ctx) => {
     const bad = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
     if (t.kind === 'transfer') {
+      if (t.subsectionId != null) bad('subsectionId', 'A transfer has no subsection.');
       if (!Number.isInteger(t.toPocketId) || t.toPocketId === t.pocketId) bad('toPocketId', DIFFERENT);
       if (t.toAmountMinor != null && !(Number.isInteger(t.toAmountMinor) && (t.toAmountMinor as number) >= 1 && (t.toAmountMinor as number) <= MAX))
         bad('toAmountMinor', 'Enter the amount that arrived.');
@@ -247,8 +248,6 @@ export const move = z.object({
   reason: text(1, 200, 'Say why you are moving this money.'),
 });
 
-export const whereQuery = z.object({ month: month.optional() });
-export const homePocket = z.object({ homePocketId: z.number({ error: 'Choose a pocket.' }).int('Choose a pocket.') });
 const ref = (msg: string) => z.number({ error: msg }).int(msg);
 export const holding = z.object({
   name,
@@ -263,3 +262,4 @@ export const sale = z.object({
   receivedMinor: minor(0, 'Enter an amount, 0 or more.'),
   sourceId: z.number({ error: 'Choose a source.' }).int('Choose a source.').nullable().optional(),
 });
+export const nextMonthPocket = z.object({ nextMonthPocketId: z.number({ error: 'Choose a pocket.' }).int('Choose a pocket.').nullable().optional() });

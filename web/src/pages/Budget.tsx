@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { EndingNotice, loadConnections } from '../bank';
-import { api, ApiError, useLoad, type Budget, type Holding, type Rates, type BudgetSection, type BudgetSubsection, type End, type Move, type Months, type Pocket, type RestRule, type Section, type Source } from '../api';
+import { api, ApiError, loadPlan, useLoad, type Budget, type Holding, type Rates, type BudgetSection, type BudgetSubsection, type End, type Move, type Months, type Pocket, type RestRule, type Section, type Source } from '../api';
 import { currentMonth, isMonth, monthName, monthTitle, shiftMonth } from '../dates';
+import { TransfersToMake, planShows } from '../plan';
 import { CloseDialog, endKey, MoveDialog, SectionDialog, SubsectionDialog, TransactionDialog } from '../dialogs';
 import { formatMinor, percentText } from '../money';
 import { baseCurrency, useAuth } from '../auth';
@@ -113,7 +114,7 @@ export default function BudgetPage() {
 
   const state = useLoad(
     async () => {
-      const [budget, months, p, s, src, mv, h, r, connections] = await Promise.all([
+      const [budget, months, p, s, src, mv, h, r, connections, plan] = await Promise.all([
         api<Budget>('GET', `/budget?month=${month}`),
         api<Months>('GET', '/months'),
         api<{ pockets: Pocket[] }>('GET', '/pockets'),
@@ -123,8 +124,9 @@ export default function BudgetPage() {
         api<{ holdings: Holding[] }>('GET', '/holdings'),
         api<Rates>('GET', '/rates'),
         loadConnections(),
+        loadPlan(),
       ]);
-      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources, moves: mv.moves, holdings: h.holdings.filter((x) => !x.soldDate), rates: r, connections };
+      return { budget, months, pockets: p.pockets, sections: s.sections, sources: src.sources, moves: mv.moves, holdings: h.holdings.filter((x) => !x.soldDate), rates: r, connections, plan };
     },
     [month],
   );
@@ -190,7 +192,7 @@ export default function BudgetPage() {
         {open && <div className="app-phone-block"><button className="ty-btn app-full" onClick={() => setDialog({ t: 'tx', kind: 'income' })}>Add income</button></div>}
       </>)}
       <Load state={state}>
-        {({ budget, months, pockets, sections, sources, moves, holdings, rates }) => {
+        {({ budget, months, pockets, sections, sources, moves, holdings, rates, plan }) => {
           // in the base currency at today's rate (the rates are units per 1 base)
           const perBase = (c: string) => (c === baseCurrency(user) ? 1 : Number(rates.currencies.find((x) => x.currency === c)?.rate));
           const heldNote = (id: number) => {
@@ -217,7 +219,8 @@ export default function BudgetPage() {
               <Link className="ty-link" to={month === now ? '/pipeline' : `/pipeline?month=${month}`}>Open the pipeline</Link>
             </div>
           );
-          const hasAside = leftOver || goalsNote || movedCard;
+          const toMake = month === now && typeof plan !== 'string' && planShows(plan);
+          const hasAside = toMake || leftOver || goalsNote || movedCard;
           return (
           <>
             <div className={hasAside ? 'ty-budget' : undefined}>
@@ -271,6 +274,7 @@ export default function BudgetPage() {
               </div>
               {hasAside && (
                 <aside className="ty-budget__aside">
+                  {toMake && typeof plan !== 'string' && <TransfersToMake plan={plan} pockets={pockets} sections={sections} sources={sources} />}
                   {(leftOver || goalsNote) && <section className="ty-card ty-stack" aria-label="Month summary">{leftOver}{goalsNote}</section>}
                   {movedCard}
                 </aside>
@@ -284,7 +288,7 @@ export default function BudgetPage() {
         }}
       </Load>
       {dialog?.t === 'section' && <SectionDialog section={dialog.section} onMove={() => setDialog({ t: 'move', from: { sectionId: dialog.section!.id } })} onClose={close} />}
-      {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub} position={dialog.position} count={dialog.count} held={dialog.held} currency={baseCurrency(user)} onMove={() => setDialog({ t: 'move', from: { subsectionId: dialog.sub!.id } })} onClose={close} />}
+      {dialog?.t === 'sub' && <SubsectionDialog sectionId={dialog.sectionId} sub={dialog.sub && { ...dialog.sub, pocketId: state.data?.sections.flatMap((s) => s.subsections).find((x) => x.id === dialog.sub!.id)?.pocketId ?? null }} position={dialog.position} count={dialog.count} held={dialog.held} currency={baseCurrency(user)} pockets={state.data?.pockets ?? []} onMove={() => setDialog({ t: 'move', from: { subsectionId: dialog.sub!.id } })} onClose={close} />}
     </>
   );
 }

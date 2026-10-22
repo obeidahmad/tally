@@ -1,5 +1,5 @@
 import type { Browser, BrowserContext, Page, Locator } from '@playwright/test';
-import { test as base, expect, createPerson, signInByApi, seed, shot, dialog, toast, row, chip, fillExpense, type Person, type Seed, pocketRow, bsection, openTab, darkWhenSystemIsDark } from '../support/fixtures';
+import { test as base, expect, createPerson, signInByApi, seed, shot, todayIso, dialog, toast, row, chip, fillExpense, type Person, type Seed, pocketRow, bsection, openTab, darkWhenSystemIsDark } from '../support/fixtures';
 
 // Spec 20: sharing one budget between partners. Sam (EUR) owns the budget; Alex (USD) is a member and signs in with his own account.
 // Two people, two browser contexts. Every test makes its own two (or three) fresh people, so nothing is shared between tests.
@@ -273,7 +273,7 @@ test('createdBy and createdByName: Sam\'s transaction names Sam, Alex\'s names A
   const alexId = (await sharingApi(sam.page)).members[0].id;
   expect((await viewApi(alex.page, samId)).status()).toBe(200);
   const made = await alex.page.request.post('/api/transactions', {
-    data: { date: new Date().toISOString().slice(0, 10), kind: 'expense', amountMinor: 500, pocketId: w.pocket.id, subsectionId: w.food.id, payee: 'Kiosk' },
+    data: { date: todayIso(), kind: 'expense', amountMinor: 500, pocketId: w.pocket.id, subsectionId: w.food.id, payee: 'Kiosk' },
   });
   expect(made.status()).toBe(201);
   for (const p of [sam.page, alex.page]) {

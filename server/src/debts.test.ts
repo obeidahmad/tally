@@ -271,14 +271,12 @@ describe('reconcile', () => {
       budget: await get(a, `/api/budget?month=${MONTH}`),
       pipeline: await get(a, `/api/pipeline?month=${MONTH}`),
       reports: await get(a, '/api/reports?months=3'),
-      where: await get(a, `/api/where?month=${MONTH}`),
     };
     const up = await post(a, `/api/pockets/${bank.id}/reconcile`, { balanceMinor: 7000, date: TODAY }, 200);
     await post(a, `/api/pockets/${bank.id}/reconcile`, { balanceMinor: 6000, date: ago(0) }, 200);
     expect(await balanceOf(a, bank.id)).toBe(6000);
     expect(await get(a, `/api/budget?month=${MONTH}`)).toEqual(before.budget);
     expect(await get(a, `/api/pipeline?month=${MONTH}`)).toEqual(before.pipeline);
-    expect(await get(a, `/api/where?month=${MONTH}`)).toEqual(before.where);
     const rep = await get(a, '/api/reports?months=3');
     expect(rep.spending).toEqual(before.reports.spending);
     expect(rep.cashflow).toEqual(before.reports.cashflow);

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
-export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; homePocketId: number | null; viewing: { ownerId: number; displayName: string; baseCurrency: string } | null };
+export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; nextMonthPocketId: number | null; viewing: { ownerId: number; displayName: string; baseCurrency: string } | null };
 export type PocketKind = 'bank' | 'cash' | 'fund' | 'broker' | 'credit' | 'loan' | 'property';
 export type Pocket = { id: number; name: string; kind: PocketKind; emoji: string; currency: string; openingBalanceMinor: number; balanceMinor: number; valueMinor: number; baseValueMinor: number | null; hasTransactions: boolean; syncedBalanceMinor: number | null; syncedAt: string | null; group: 'cash' | 'investments' | 'property' | 'debts'; reconciledAt: string | null; reconciledBalanceMinor: number | null };
 export type SubsectionRules = {
   kind: 'spending' | 'goal'; budgetKind: 'amount' | 'percent'; budgetBasisPoints: number | null;
-  keep: 'all' | 'cap' | 'none'; capMinor: number | null;
+  keep: 'all' | 'cap' | 'none'; capMinor: number | null; pocketId?: number | null;
 };
 export type Subsection = { id: number; sectionId: number; name: string; emoji: string | null; targetMonth: string | null; budgetMinor: number | null; position: number } & SubsectionRules;
 export type Source = { id: number; name: string; boxId: number; isLeftovers: boolean };
@@ -29,9 +29,11 @@ export type Holding = {
   worthMinor: number; worthCurrency: string; worthDate: string; soldDate: string | null;
   source: 'manual' | 'trading212';
 };
-export type Where = {
-  currency: string; pockets: { id: number; name: string; currency: string }[];
-  rows: { subsectionId: number; totalMinor: number; cells: { pocketId: number; amountMinor: number }[] }[];
+export type Plan = {
+  currency: string; shortMinor: number;
+  pockets: { id: number; shouldMinor: number; holdsMinor: number; subsections: { id: number; availableMinor: number }[] }[];
+  nextMonth: { pocketId: number | null; amountMinor: number }; unplacedSubsectionIds: number[];
+  transfers: { fromPocketId: number; toPocketId: number; amountMinor: number; toAmountMinor: number; baseAmountMinor: number }[];
 };
 export type Rule = { id: number; match: string; subsectionId: number | null; sourceId: number | null };
 export type Rates = { date: string; base: string; currencies: { currency: string; rate: string }[] };
@@ -87,6 +89,9 @@ export const DEFAULT_EMOJI: Record<PocketKind, string> = {
 };
 
 export const KIND_WORDS: Record<PocketKind, string> = { bank: 'Bank account', cash: 'Cash', fund: 'Fund', broker: 'Broker', credit: 'Credit card', loan: 'Loan', property: 'Property' };
+
+/** The plan, or the server's message when it cannot be made (for example a missing exchange rate): a page must not break over it. */
+export const loadPlan = (): Promise<Plan | string> => api<Plan>('GET', '/plan').catch((e) => (e instanceof ApiError ? e.message : 'Something went wrong. Try again.'));
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public fields?: Record<string, string>) {

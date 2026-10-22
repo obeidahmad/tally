@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError, DEFAULT_EMOJI, fieldError, useForm, useLoad, type Attachment, type Rates, type BudgetSection, type CloseSummary, type End, type SubsectionRules, type Pipeline, type PipelineBox, type Pocket, type PocketKind, type Section, type Source, type StepBody, type Transaction } from './api';
-import { useAuth } from './auth';
 import { currentMonth, dayHeading, dayLabel, monthName, monthTitle, shiftMonth, today } from './dates';
 import { AMOUNT_ERROR, formatMinor, minorToInput, parseAmount, parsePercent, percentText, PERCENT_ERROR } from './money';
 import { AmountField, EmojiPicker, Field, FormError, KindField, Modal, PocketCurrencyField, SubsectionOptions, subLabel, TextField, useToast } from './ui';
@@ -42,8 +41,8 @@ const TRANSFER_ERROR = 'Enter the amount that arrived.';
 
 const sizeText = (n: number) => (n < 1e6 ? `${Math.max(1, Math.round(n / 1000))} KB` : `${(n / 1e6).toFixed(1)} MB`);
 
-export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, sections, sources: allSources, tags: known = [], currency, onClose }: {
-  tx?: Transaction; kind?: Transaction['kind']; pockets: Pocket[]; sections: Section[]; sources: Source[]; tags?: string[]; currency: string; onClose: () => void;
+export function TransactionDialog({ tx, kind: startKind, fill, pockets: allPockets, sections, sources: allSources, tags: known = [], currency, onClose }: {
+  tx?: Transaction; kind?: Transaction['kind']; fill?: { pocketId: number; toPocketId: number; amountMinor: number; toAmountMinor: number | null }; pockets: Pocket[]; sections: Section[]; sources: Source[]; tags?: string[]; currency: string; onClose: () => void;
 }) {
   const toast = useToast();
   const [madePocket, setMadePocket] = useState<Pocket[]>([]); // created here before a later request failed: they stay in the list
@@ -53,10 +52,10 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
   const sources = [...allSources, ...madeSource.filter((m) => !allSources.some((x) => x.id === m.id))].filter((x) => !x.isLeftovers); // money carried from last month is not entered by hand
   const f = useForm();
   const [kind, setKind] = useState<Transaction['kind']>(tx?.kind ?? startKind ?? 'expense');
-  const [toId, setToId] = useState(tx?.toPocketId?.toString() ?? '');
-  const [received, setReceived] = useState(tx?.toAmountMinor ? minorToInput(tx.toAmountMinor) : '');
+  const [toId, setToId] = useState(tx?.toPocketId?.toString() ?? fill?.toPocketId.toString() ?? '');
+  const [received, setReceived] = useState(tx?.toAmountMinor ? minorToInput(tx.toAmountMinor) : fill?.toAmountMinor ? minorToInput(fill.toAmountMinor) : '');
   const [date, setDate] = useState(tx?.date ?? today());
-  const [amount, setAmount] = useState(tx ? minorToInput(tx.amountMinor) : '');
+  const [amount, setAmount] = useState(tx ? minorToInput(tx.amountMinor) : fill ? minorToInput(fill.amountMinor) : '');
   const [payee, setPayee] = useState(tx?.payee ?? '');
   // 'new' is the "+ Add source" chip
   const imported = !!tx && tx.source !== 'manual';
@@ -65,7 +64,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
   const [newSource, setNewSource] = useState('');
   const [subsectionId, setSubsectionId] = useState(tx?.subsectionId?.toString() ?? '');
   // 'new' is the "+ Add pocket" chip
-  const [pocketId, setPocketId] = useState(tx?.pocketId?.toString() ?? pockets[0]?.id.toString() ?? 'new');
+  const [pocketId, setPocketId] = useState(tx?.pocketId?.toString() ?? fill?.pocketId.toString() ?? pockets[0]?.id.toString() ?? 'new');
   const [newName, setNewName] = useState('');
   const [newKind, setNewKind] = useState<PocketKind>('bank');
   const [newEmoji] = useEmoji(undefined, newKind); // the kind's default; the Pockets page changes it
@@ -179,7 +178,7 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
       if (crossing && toAmountMinor === null) throw fieldError('toAmountMinor', TRANSFER_ERROR);
       const b = {
         date, kind, amountMinor, note, pocketId: pocketId && pocketId !== 'new' ? Number(pocketId) : null, toPocketId: toId ? Number(toId) : null,
-        ...(crossing ? { toAmountMinor } : {}), subsectionId: subsectionId ? Number(subsectionId) : null, tags,
+        ...(crossing ? { toAmountMinor } : {}), tags,
       };
       if (tx) await api('PATCH', `/transactions/${tx.id}`, b);
       else await api('POST', '/transactions', b);
@@ -359,14 +358,6 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
             </fieldset>
             <AmountField label="Amount" value={amount} onChange={setAmount} error={f.errors.amountMinor} currency={fromCode} />
             {crossing && <AmountField label="Amount received" value={received} onChange={setReceived} error={f.errors.toAmountMinor} currency={toCode} hint={rateHint} />}
-            <Field label="Subsection (optional)" error={f.errors.subsectionId}>
-              {(p) => (
-                <select {...p} value={subsectionId} onChange={(e) => setSubsectionId(e.target.value)}>
-                  <option value="">None</option>
-                  <SubsectionOptions sections={sections} />
-                </select>
-              )}
-            </Field>
             <TextField label="Note (optional)" value={note} onChange={setNote} error={f.errors.note} />
             {tagField}
             {receiptField}
@@ -462,9 +453,8 @@ export function TransactionDialog({ tx, kind: startKind, pockets: allPockets, se
 
 /* ---------- Pocket ---------- */
 
-export function PocketDialog({ pocket, pockets = [], currency, onReconcile, onClose }: { pocket?: Pocket; pockets?: Pocket[]; currency: string; onReconcile?: () => void; onClose: () => void }) {
+export function PocketDialog({ pocket, currency, onReconcile, onClose }: { pocket?: Pocket; currency: string; onReconcile?: () => void; onClose: () => void }) {
   const toast = useToast();
-  const { user } = useAuth();
   const f = useForm();
   const g = useForm(); // the "Update value" row has its own errors
   const [name, setName] = useState(pocket?.name ?? '');
@@ -476,7 +466,7 @@ export function PocketDialog({ pocket, pockets = [], currency, onReconcile, onCl
   const [value, setValue] = useState('');
   const [valueDate, setValueDate] = useState(today());
   const [picked, setPicked] = useState(pocket?.currency);
-  const curr = picked ?? (property ? pockets.find((p) => p.id === user.homePocketId)?.currency : undefined) ?? currency;
+  const curr = picked ?? currency;
   const locked = !!pocket?.hasTransactions;
   const offered = useLoad(() => api<Rates>('GET', '/rates'), []).data?.currencies.map((c) => c.currency) ?? [];
   const values = useLoad(() => (pocket?.kind === 'property' ? api<{ values: { id: number; valueMinor: number; date: string }[] }>('GET', `/pockets/${pocket.id}/values`) : Promise.reject()), [pocket?.id]).data?.values;
@@ -625,16 +615,19 @@ export function SectionDialog({ section, onMove, onClose }: {
   );
 }
 
-type SubRules = SubsectionRules & { name: string; budgetMinor: number | null; emoji?: string | null; targetMonth?: string | null };
+type SubRules = SubsectionRules & { name: string; budgetMinor: number | null; emoji?: string | null; targetMonth?: string | null; pocketId?: number | null };
 
 /** The body that recreates a subsection: only the budget and cap fields that apply. */
 const subBody = (x: SubRules, position?: number) => ({
-  name: x.name, kind: x.kind, budgetKind: x.budgetKind, keep: x.keep, emoji: x.emoji ?? null,
+  name: x.name, kind: x.kind, budgetKind: x.budgetKind, keep: x.keep, emoji: x.emoji ?? null, pocketId: x.pocketId ?? null,
   ...(x.kind === 'goal' && x.targetMonth && x.targetMonth >= currentMonth() ? { targetMonth: x.targetMonth } : {}),
   ...(x.budgetKind === 'percent' ? { budgetBasisPoints: x.budgetBasisPoints } : { budgetMinor: x.budgetMinor }),
   ...(x.keep === 'cap' ? { capMinor: x.capMinor } : {}),
   ...(position ? { position } : {}),
 });
+
+/** Plan pockets: where a subsection's money can be kept (spec 29). */
+export const inPlan = (p: Pocket) => ['bank', 'cash', 'fund', 'broker'].includes(p.kind);
 
 const Seg = ({ legend, name, value, options, onChange }: { legend: string; name: string; value: string; options: [string, string][]; onChange: (v: string) => void }) => (
   <fieldset className="ty-fieldset">
@@ -645,8 +638,8 @@ const Seg = ({ legend, name, value, options, onChange }: { legend: string; name:
   </fieldset>
 );
 
-export function SubsectionDialog({ sectionId, sub, position, count, held, currency, onMove, onClose }: {
-  sectionId: number; sub?: SubRules & { id: number }; position?: number; count: number; held?: string; currency: string; onMove?: () => void; onClose: () => void;
+export function SubsectionDialog({ sectionId, sub, position, count, held, currency, pockets, onMove, onClose }: {
+  pockets: Pocket[]; sectionId: number; sub?: SubRules & { id: number }; position?: number; count: number; held?: string; currency: string; onMove?: () => void; onClose: () => void;
 }) {
   const toast = useToast();
   const f = useForm();
@@ -660,10 +653,12 @@ export function SubsectionDialog({ sectionId, sub, position, count, held, curren
   const [pos, setPos] = useState(String(position ?? count + 1));
   const [emoji, setEmoji] = useState(sub?.emoji ?? '');
   const [by, setBy] = useState(sub?.targetMonth ?? '');
+  const [keptIn, setKeptIn] = useState(sub?.pocketId?.toString() ?? '');
 
   const save = f.on(async () => {
     const goal = kind === 'goal';
-    const b: Record<string, unknown> = { name, kind, budgetKind, keep: goal ? 'cap' : keep, emoji: emoji || null };
+    if (!keptIn && pockets.some(inPlan)) throw fieldError('pocketId', 'Choose a pocket.');
+    const b: Record<string, unknown> = { name, kind, budgetKind, keep: goal ? 'cap' : keep, emoji: emoji || null, pocketId: keptIn ? Number(keptIn) : null };
     if (goal) b.targetMonth = by || null;
     if (budgetKind === 'amount') {
       const budgetMinor = parseAmount(budget, { allowZero: true });
@@ -728,6 +723,14 @@ export function SubsectionDialog({ sectionId, sub, position, count, held, curren
           <span className="ty-cap">What is not kept joins the section's rest.</span>
           {keep === 'cap' && <AmountField label="Keep up to" value={cap} onChange={setCap} error={f.errors.capMinor} currency={currency} />}
         </>)}
+        <Field label="Kept in" error={f.errors.pocketId} hint="Tally lists the transfers that keep this money here.">
+          {(p) => (
+            <select {...p} value={keptIn} onChange={(e) => setKeptIn(e.target.value)}>
+              {!keptIn && pockets.some(inPlan) && <option value="" disabled>Choose a pocket</option>}
+              {pockets.filter(inPlan).map((x) => <option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
+            </select>
+          )}
+        </Field>
         {sub && count > 1 && (
           <Field label="Position" error={f.errors.position}>
             {(p) => (

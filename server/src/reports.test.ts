@@ -50,7 +50,7 @@ async function fixture(a: Agent) {
   await tx('2026-08-10', 'income', 300000, { pocketId: bank.id, subsectionId: null, sourceId: job.id });
   await tx('2026-08-12', 'expense', 20000, { pocketId: bank.id, subsectionId: food.id });
   await tx('2026-09-05', 'expense', 5500, { pocketId: broker.id, subsectionId: games.id }); // 5,000 EUR
-  await tx('2026-09-06', 'transfer', 10000, { pocketId: bank.id, toPocketId: broker.id, toAmountMinor: 11000, subsectionId: food.id });
+  await tx('2026-09-06', 'transfer', 10000, { pocketId: bank.id, toPocketId: broker.id, toAmountMinor: 11000 });
   await tx('2026-09-20', 'expense', 3000, { pocketId: bank.id, subsectionId: food.id });
   await tx('2026-10-02', 'income', 50000, { pocketId: bank.id, subsectionId: null, sourceId: job.id });
   await json(a.post('/api/imports')).send({ pocketId: bank.id, text: CSV, mapping: MAP }).expect(201);

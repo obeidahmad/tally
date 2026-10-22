@@ -13,27 +13,6 @@ const heroNum = async (page: Page) => {
   const t = (await page.locator('.num-hero').first().innerText()).replace(/[^0-9.]/g, '');
   return Math.round(parseFloat(t) * 100);
 };
-const whereTable = (page: Page): Locator =>
-  page.locator('section', { has: page.getByRole('heading', { name: "Where each subsection's money sits" }) }).locator('table');
-/** The text of the cell in `sub`'s row under the column headed with `pocket` ("Total in EUR" for the total). */
-async function cellText(page: Page, sub: string, pocket: string) {
-  const t = whereTable(page);
-  await expect(t.locator('th').first()).toBeVisible();
-  const heads = await t.locator('th').allInnerTexts();
-  const i = heads.findIndex((h) => h.toLowerCase().includes(pocket.toLowerCase()));
-  expect(i, `column ${pocket} in ${JSON.stringify(heads)}`).toBeGreaterThanOrEqual(0);
-  const r = t.getByRole('row').filter({ hasText: sub });
-  return (await r.locator('td').nth(i).innerText()).replace(/\s+/g, ' ').trim();
-}
-
-/** Car with 6,000.00 available (budget, nothing spent), "Bank" (oldest, 10,000.00 EUR, the home pocket) and "Fund" (0). */
-async function seedWhere(page: Page, me: { seed: ReturnType<typeof import('../support/fixtures').seed> }) {
-  const sec = await me.seed.section('Savings');
-  const car = await me.seed.subsection(sec.id, 'Car', 600000);
-  const bank = await me.seed.pocket('Bank', 1000000);
-  const fund = await me.seed.pocket('Fund', 0, 'fund');
-  return { car, bank, fund };
-}
 const transfer = (page: Page, data: object) =>
   page.request.post('/api/transactions', { data: { date: todayIso(), kind: 'transfer', ...data } });
 
@@ -54,62 +33,6 @@ const addHolding = async (page: Page, data: object) => {
 };
 const txs = async (page: Page) => (await (await page.request.get(`/api/transactions?month=${thisMonth()}`)).json()).transactions as
   { kind: string; amountMinor: number; note: string; sourceId: number | null; subsectionId: number | null; pocketId: number }[];
-
-// ============ criterion 2: the where table ============
-test('Car 6,000.00: after a 2,000.00 transfer tagged Car, Bank shows 4,000.00 and Fund 2,000.00; after a 100.00 expense from Fund, Fund shows 1,900.00; the total matches Available', async ({ page, me }) => {
-  const { car, bank, fund } = await seedWhere(page, me);
-  await page.goto('/pockets');
-  await expect(page.getByRole('heading', { name: "Where each subsection's money sits" })).toBeVisible();
-  expect(await cellText(page, 'Car', 'Bank')).toBe('6,000.00');
-  expect(await cellText(page, 'Car', 'Total in EUR')).toBe('6,000.00');
-
-  expect((await transfer(page, { pocketId: bank.id, toPocketId: fund.id, amountMinor: 200000, toAmountMinor: 200000, subsectionId: car.id })).status()).toBe(201);
-  await page.reload();
-  expect(await cellText(page, 'Car', 'Bank')).toBe('4,000.00');
-  expect(await cellText(page, 'Car', 'Fund')).toBe('2,000.00');
-  expect(await cellText(page, 'Car', 'Total in EUR')).toBe('6,000.00');
-
-  await me.seed.expense(fund.id, car.id, 10000, 'Garage');
-  await page.reload();
-  expect(await cellText(page, 'Car', 'Bank')).toBe('4,000.00');
-  expect(await cellText(page, 'Car', 'Fund')).toBe('1,900.00');
-  expect(await cellText(page, 'Car', 'Total in EUR')).toBe('5,900.00');
-
-  await page.goto('/budget');
-  await expect(srow(page, /Car/).locator('.ty-pill')).toContainText('5,900.00');
-});
-
-test('a cell with no money reads "–", a pocket nobody uses is not a column, and a row has its section dot', async ({ page, me }) => {
-  const { car, bank, fund } = await seedWhere(page, me);
-  await me.seed.pocket('Unused', 5000);
-  const sec2 = await me.seed.section('Wants');
-  await me.seed.subsection(sec2.id, 'Gifts', 0);
-  await page.goto('/pockets');
-  await expect(whereTable(page).locator('th').first()).toBeVisible();
-  const heads = await whereTable(page).locator('th').allInnerTexts();
-  expect(heads[0]).toMatch(/subsection/i);
-  expect(heads.some((h) => /unused/i.test(h)), JSON.stringify(heads)).toBe(false);
-  expect(heads.some((h) => /fund/i.test(h)), 'Fund has no money of any subsection').toBe(false);
-  await expect(whereTable(page).getByRole('row').filter({ hasText: 'Gifts' })).toHaveCount(0); // nothing available, no cell
-  await expect(whereTable(page).getByRole('row').filter({ hasText: 'Car' }).locator('.ty-dot')).toHaveCount(1);
-  void car; void bank; void fund;
-  // once a transfer moves 2,000.00 to Fund, Fund appears and Bank keeps 4,000.00
-  await transfer(page, { pocketId: bank.id, toPocketId: fund.id, amountMinor: 200000, toAmountMinor: 200000, subsectionId: car.id });
-  await page.reload();
-  expect(await cellText(page, 'Car', 'Fund')).toBe('2,000.00');
-});
-
-test('a cell in another currency shows the code, and the total is in EUR', async ({ page, me }) => {
-  const { bank, broker } = await seedBroker(page, me, 0);
-  const sec = await me.seed.section('Goals');
-  const inv = await me.seed.subsection(sec.id, 'Nest egg', 212707); // available 2,127.07
-  // 1,933.70 EUR moved to the broker as 2,100.00 USD, tagged Nest egg, then spent on a holding worth 2,310.00 USD
-  expect((await transfer(page, { pocketId: bank.id, toPocketId: broker.id, amountMinor: 193370, toAmountMinor: 210000, subsectionId: inv.id })).status()).toBe(201);
-  await addHolding(page, { name: 'Index fund', pocketId: broker.id, subsectionId: inv.id, paidMinor: 210000, worthMinor: 231000, worthCurrency: 'USD' });
-  await page.goto('/pockets');
-  expect((await cellText(page, 'Nest egg', 'Trading212')).replace(/[  \n]/g, '')).toBe('2,310.00USD');
-  expect(await cellText(page, 'Nest egg', 'Total in EUR')).toMatch(/^2,127\.0[6-8]$/);
-});
 
 // ============ criterion 3: a holding ============
 test('adding a holding of 2,100.00 USD and updating its worth to 2,310.00 USD shows +10.0%, the card line and net worth rising by the difference', async ({ page, me }) => {
@@ -286,39 +209,6 @@ test('the dialog of a subsection with a held holding reads "paid 1,200.00 · wor
   expect(title).toContain('paid 1,200.00 · worth 1,260.00');
 });
 
-// ============ criterion 6: home pocket ============
-test('changing the home pocket in Settings moves the untransferred money to that pocket\'s column', async ({ page, me }) => {
-  const { bank, fund } = await seedWhere(page, me);
-  await page.goto('/pockets');
-  expect(await cellText(page, 'Car', 'Bank')).toBe('6,000.00');
-
-  await openTab(page, '/settings', 'Account');
-  const sel = page.getByLabel('Home pocket');
-  await expect(sel).toBeVisible();
-  await expect(page.getByText('Money sits here unless you move it with a transfer.')).toBeVisible();
-  const saved = page.waitForResponse((r) => r.url().includes('/api/me') && r.request().method() === 'PATCH');
-  await selectLike(sel, 'Fund');
-  await saved;
-
-  await page.goto('/pockets');
-  expect(await cellText(page, 'Car', 'Fund')).toBe('6,000.00');
-  await expect(whereTable(page).locator('th').first()).toBeVisible();
-  const heads = await whereTable(page).locator('th').allInnerTexts();
-  expect(heads.some((h) => /bank/i.test(h)), 'Bank no longer holds any of Car').toBe(false);
-  void bank; void fund;
-});
-
-test('the home pocket defaults to the oldest pocket and is a select of the person\'s pockets', async ({ page, me }) => {
-  await seedWhere(page, me);
-  await openTab(page, '/settings', 'Account');
-  const sel = page.getByLabel('Home pocket');
-  await expect(sel.locator('option')).toHaveCount(2);
-  const opts = await sel.locator('option').allTextContents();
-  expect(opts.some((o) => o.includes('Bank'))).toBe(true);
-  expect(opts.some((o) => o.includes('Fund'))).toBe(true);
-  await expect(sel.locator('option:checked')).toContainText('Bank');
-});
-
 // ============ navigation on phones ============
 test.describe('phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -359,19 +249,10 @@ for (const [size, viewport] of Object.entries(sizes)) {
         const fund = await me.seed.pocket('Daily income fund', 0, 'fund');
         const broker = await currencyPocket(page, 'Trading212', 'USD', 210000, 'broker');
         await me.seed.source('Trading profit');
-        await transfer(page, { pocketId: bank.id, toPocketId: fund.id, amountMinor: 200000, toAmountMinor: 200000, subsectionId: car.id });
         await addHolding(page, { name: 'Index fund', pocketId: broker.id, subsectionId: inv.id, paidMinor: 210000, worthMinor: 231000, worthCurrency: 'USD' });
         await addHolding(page, { name: 'Dip', pocketId: bank.id, subsectionId: inv.id, paidMinor: 50000, worthMinor: 47900, worthCurrency: 'EUR' });
         const sold = await addHolding(page, { name: 'Old bond', pocketId: bank.id, subsectionId: inv.id, paidMinor: 10000 });
         expect((await page.request.post(`/api/holdings/${sold.id}/sell`, { data: { date: todayIso(), receivedMinor: 10000 } })).status()).toBe(200);
-
-        await page.goto('/pockets');
-        const where = size === 'phone' ? page.getByText('4,000.00 in Bank of Cyprus · 2,000.00 in Daily income fund') : whereTable(page);
-        await expect(where).toBeVisible();
-        if (size === 'phone') await expect(whereTable(page)).toBeHidden();
-        await shot(page, `where-pockets-${tag}`);
-        await where.scrollIntoViewIfNeeded();
-        await shot(page, `where-table-${tag}`);
 
         await page.goto('/investments');
         await expect(page.getByText('Index fund')).toBeVisible();
@@ -395,8 +276,6 @@ for (const [size, viewport] of Object.entries(sizes)) {
         await shot(page, `investments-dialog-sell-loss-${tag}`);
         await page.keyboard.press('Escape');
 
-        await openTab(page, '/settings', 'Account');
-        await shot(page, `settings-home-pocket-${tag}`);
         void group;
       });
     });

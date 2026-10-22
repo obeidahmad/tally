@@ -78,3 +78,13 @@
   .ty-tabbar button[aria-current] { font-weight: 600; }
   .ty-tabbar button[aria-current] svg { stroke: var(--primary); }
 }
+
+/* Done keeps the design height and does not stretch with the row */
+.ty-move .ty-btn { align-self: center; }
+/* the plan table fits a 390px phone: tighter cells, headers and pocket names on one line */
+@media (max-width: 640px) {
+  .app-plan th, .app-plan td { padding: 0 var(--space-1); white-space: nowrap; }
+  .app-plan th:first-child, .app-plan td:first-child { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; padding-left: var(--space-2); }
+  .app-plan th:last-child, .app-plan td:last-child { padding-right: var(--space-2); }
+  .app-plan th { letter-spacing: 0; }
+}

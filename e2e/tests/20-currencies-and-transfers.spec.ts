@@ -153,13 +153,12 @@ test('Type has Expense, Income, Transfer in that order and the transfer fields c
   await chip(d, 'To', /Revolut USD/).check();
   const after = (await d.locator('label.ty-label, legend').allInnerTexts()).map((t) => t.trim().toLowerCase());
   const at2 = (s: string) => after.findIndex((l) => l.startsWith(s));
-  const order = ['type', 'date', 'from', 'to', 'amount', 'amount received', 'subsection (optional)', 'note (optional)'].map(at2);
+  const order = ['type', 'date', 'from', 'to', 'amount', 'amount received', 'note (optional)'].map(at2);
   expect(order.every((i) => i >= 0), JSON.stringify(after)).toBe(true);
   expect([...order].sort((a, b) => a - b), JSON.stringify(after)).toEqual(order);
   void at;
   await expect(d.getByLabel('Payee')).toHaveCount(0);
-  const sub = d.getByLabel('Subsection (optional)');
-  expect((await sub.locator('option').first().textContent())?.trim()).toBe('None');
+  await expect(d.getByLabel('Subsection')).toHaveCount(0); // spec 29: a transfer has no subsection
 });
 
 test('To leaves out the From pocket', async ({ page, me }) => {
@@ -187,7 +186,6 @@ test('85.00 EUR becoming 92.31 USD: the dialog says "Rate 1.0860", balances move
   await expect(d.getByText('USD', { exact: true }).first()).toBeVisible();
   await received(d).fill('92.31');
   await expect(d.getByText("Rate 1.0860. Today's reference rate is 1.0860.")).toBeVisible();
-  await d.getByLabel('Subsection (optional)').selectOption({ label: 'Food' });
   await submit(d).click();
   await expect(d).toBeHidden();
 
@@ -196,7 +194,7 @@ test('85.00 EUR becoming 92.31 USD: the dialog says "Rate 1.0860", balances move
   await expect(r).toBeVisible();
   await expect(r.locator('b')).toHaveText('Moved to Revolut USD');
   await expect(r).toContainText('Transfer · 85.00 EUR became 92.31 USD at 1.0860');
-  await expect(r).toContainText('Food');
+  await expect(r).not.toContainText('Food'); // spec 29: no subsection on a transfer
   await expect(r).toContainText('Bank of Cyprus');
   const amt = r.locator('.ty-num');
   await expect(amt).toHaveText(/^\s*−85\.00\s*$/); // money out of the From pocket, in plain ink as TransactionRow shows

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useNavigate } from "react-router-dom";
-import { api, KIND_WORDS, useLoad, type Holding, type NetWorth, type Pocket, type Section, type Source, type Where } from '../api';
+import { api, KIND_WORDS, loadPlan, useLoad, type Holding, type NetWorth, type Pocket, type Plan, type Section, type Source } from '../api';
 import { bankByPocket, countsLine, loadConnections, syncedLine, useAutoSync } from '../bank';
 import { loadT212Pocket, useT212Sync } from '../trading212';
 import { PocketDialog, ReconcileDialog, TransactionDialog } from '../dialogs';
@@ -78,46 +78,48 @@ function NetWorthCard({ net, currency }: { net?: NetWorth; currency: string }) {
 }
 const short = (date: string) => dayLabel(date).slice(4); // "16 Oct"
 
-function WhereTable({ where, sections }: { where: Where; sections: Section[] }) {
+function PlanTable({ plan, pockets, sections, base }: { plan: Plan | string; pockets: Pocket[]; sections: Section[]; base: string }) {
   const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, { name: x.name, emoji: x.emoji, slot: s.colorSlot }] as const)));
-  if (where.rows.length === 0) return null;
+  const byId = new Map(pockets.map((p) => [p.id, p]));
+  if (typeof plan === 'string') return <section className="ty-stack"><h2 className="text-title" style={{ margin: 0 }}>Where your money should be</h2><div className="ty-cap">{plan}</div></section>;
+  if (plan.pockets.length === 0) return null;
+  const code = (c: string) => c !== base && <span className="ty-cur">{c}</span>;
   return (
-    <section className="ty-stack" aria-labelledby="where-h">
-      <h2 className="text-title" id="where-h" style={{ margin: 0 }}>Where each subsection's money sits</h2>
-      <div className="ty-section ty-wide"><table className="ty-table">
-        <thead><tr><th>Subsection</th>{where.pockets.map((p) => <th key={p.id}>{p.name}</th>)}<th>Total in {where.currency}</th></tr></thead>
-        <tbody>{where.rows.map((r) => {
-          const s = subs.get(r.subsectionId);
+    <section className="ty-stack" aria-labelledby="plan-h">
+      <h2 className="text-title" id="plan-h" style={{ margin: 0 }}>Where your money should be</h2>
+      <div className="ty-section"><table className="ty-table app-plan">
+        <thead><tr><th>Pocket</th><th>Should hold</th><th>Holds</th><th>Difference</th></tr></thead>
+        <tbody>{plan.pockets.map((pp) => {
+          const p = byId.get(pp.id);
+          if (!p) return null;
+          const diff = pp.holdsMinor - pp.shouldMinor;
           return (
-            <tr key={r.subsectionId}>
-              <td><span className="ty-tag"><span className={dot(s?.slot ?? 0)} /><SubEmoji emoji={s?.emoji} />{s?.name}</span></td>
-              {where.pockets.map((p) => {
-                const c = r.cells.find((x) => x.pocketId === p.id);
-                return c
-                  ? <td key={p.id} className="ty-num">{formatMinor(c.amountMinor)}{p.currency !== where.currency && <span className="ty-cur">{p.currency}</span>}</td>
-                  : <td key={p.id} className="ty-muted">–</td>;
+            <Fragment key={pp.id}>
+              <tr className="ty-plan__pocket">
+                <td><span className="ty-tag"><span className="ty-emoji">{p.emoji}</span>{p.name}</span></td>
+                <td className="ty-num">{formatMinor(pp.shouldMinor)}{code(p.currency)}</td>
+                <td className="ty-num">{formatMinor(pp.holdsMinor)}{code(p.currency)}</td>
+                {diff === 0 ? <td className="ty-muted">–</td> : <td className={diff < 0 ? 'ty-num ty-num--neg' : 'ty-num'}>{diff > 0 ? '+' : ''}{formatMinor(diff)}{code(p.currency)}</td>}
+              </tr>
+              {pp.subsections.map((x) => {
+                const s = subs.get(x.id);
+                return (
+                  <tr key={x.id} className="ty-plan__sub ty-wide">
+                    <td><span className="ty-tag"><span className={dot(s?.slot ?? 0)} /><SubEmoji emoji={s?.emoji} />{s?.name}</span></td>
+                    <td className={x.availableMinor < 0 ? 'ty-num ty-num--neg' : 'ty-num'}>{formatMinor(x.availableMinor)}{code(plan.currency)}</td><td /><td />
+                  </tr>
+                );
               })}
-              <td className="ty-num">{formatMinor(r.totalMinor)}</td>
-            </tr>
+              {plan.nextMonth.pocketId === pp.id && (
+                <tr className="ty-plan__sub ty-wide">
+                  <td>Next month's money</td>
+                  <td className={plan.nextMonth.amountMinor < 0 ? 'ty-num ty-num--neg' : 'ty-num'}>{formatMinor(plan.nextMonth.amountMinor)}{code(plan.currency)}</td><td /><td />
+                </tr>
+              )}
+            </Fragment>
           );
         })}</tbody>
       </table></div>
-      <div className="ty-section app-phone-card">{where.rows.map((r) => {
-        const s = subs.get(r.subsectionId);
-        const cells = r.cells.map((c) => {
-          const p = where.pockets.find((x) => x.id === c.pocketId);
-          return `${formatMinor(c.amountMinor)}${p && p.currency !== where.currency ? ` ${p.currency}` : ''} in ${p?.name}`;
-        }).join(' · ');
-        return (
-          <div key={r.subsectionId} className="ty-brow">
-            <div className="ty-brow__name">
-              <span className="ty-tag"><span className={dot(s?.slot ?? 0)} /><SubEmoji emoji={s?.emoji} /><b>{s?.name}</b></span>
-              {cells && <span className="ty-cap">{cells}</span>}
-            </div>
-            <div className="ty-num ty-right">{formatMinor(r.totalMinor)}</div>
-          </div>
-        );
-      })}</div>
     </section>
   );
 }
@@ -135,14 +137,14 @@ export default function PocketsPage() {
       api<NetWorth>('GET', '/networth'),
       api<{ sections: Section[] }>('GET', '/sections'),
       api<{ sources: Source[] }>('GET', '/sources'),
-      api<Where>('GET', '/where'),
+      loadPlan(),
       api<{ holdings: Holding[] }>('GET', '/holdings'),
       loadConnections(),
       loadT212Pocket(),
     ]);
     const names = bankByPocket(banks);
     if (t212 !== null) names.set(t212, 'Trading212');
-    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources, where: w, held: h.holdings.filter((x) => !x.soldDate), banks: names };
+    return { pockets: p.pockets, net: n, sections: s.sections, sources: src.sources, plan: w, held: h.holdings.filter((x) => !x.soldDate), banks: names };
   }, []);
 
   useRescueFocus(state.data ? state.data.pockets.length === 0 : undefined);
@@ -163,7 +165,7 @@ export default function PocketsPage() {
       </div>
       <NetWorthCard net={state.data?.net} currency={cur} />
       <Load state={state}>
-        {({ pockets, sections, sources, where, held, banks, net }) => {
+        {({ pockets, sections, sources, plan, held, banks, net }) => {
           const groups = GROUPS.map(([group, title]) => ({ group, title, list: pockets.filter((p) => p.group === group) })).filter((g) => g.list.length > 0);
           const assets = groups.filter((g) => g.group !== 'debts').map((g) => ({ name: g.title, slot: SLOT[g.group], minor: groupTotal(g.list) })).filter((x) => x.minor > 0);
           const debts = pockets.filter((p) => p.group === 'debts' && (p.baseValueMinor ?? 0) !== 0).map((p, i) => ({ name: p.name, slot: DEBT_SLOTS[i % 8]!, minor: p.baseValueMinor ?? 0 }));
@@ -211,9 +213,9 @@ export default function PocketsPage() {
                   </div>
                 </div>
               )}
-              <WhereTable where={where} sections={sections} />
+              <PlanTable plan={plan} pockets={pockets} sections={sections} base={cur} />
               {dialog?.transfer && <TransactionDialog kind="transfer" pockets={pockets} sections={sections} sources={sources} currency={cur} onClose={close} />}
-              {dialog && !dialog.transfer && !dialog.reconcile && <PocketDialog pocket={dialog.pocket} pockets={pockets} currency={cur} onReconcile={() => setDialog({ pocket: dialog.pocket, reconcile: true })} onClose={close} />}
+              {dialog && !dialog.transfer && !dialog.reconcile && <PocketDialog pocket={dialog.pocket} currency={cur} onReconcile={() => setDialog({ pocket: dialog.pocket, reconcile: true })} onClose={close} />}
               {dialog?.reconcile && dialog.pocket && <ReconcileDialog pocket={dialog.pocket} onClose={close} />}
             </>
           );

@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { api, useLoad, type GoalStatus, type Pocket, type Section, type Source, type Transaction } from '../api';
+import { api, loadPlan, useLoad, type GoalStatus, type Pocket, type Section, type Source, type Transaction } from '../api';
 import { baseCurrency, useAuth } from '../auth';
 import { dayHeading, monthName, monthTitle, shiftMonth } from '../dates';
 import { formatMinor } from '../money';
 import { Load, SubEmoji, Topbar, TxAvatar } from '../ui';
+import { TransfersToMake } from '../plan';
 import { rowState } from './Budget';
 
 type Home = {
@@ -87,20 +88,21 @@ export default function HomePage() {
   const { user } = useAuth();
   const [asTable, setAsTable] = useState(false);
   const state = useLoad(async () => {
-    const [home, s, p, src] = await Promise.all([
+    const [home, s, p, src, plan] = await Promise.all([
       api<Home>('GET', '/home'),
       api<{ sections: Section[] }>('GET', '/sections'),
       api<{ pockets: Pocket[] }>('GET', '/pockets'),
       api<{ sources: Source[] }>('GET', '/sources'),
+      loadPlan(),
     ]);
-    return { home, sections: s.sections, pockets: p.pockets, sources: src.sources };
+    return { home, sections: s.sections, pockets: p.pockets, sources: src.sources, plan };
   }, []);
 
   return (
     <>
       <Topbar title="Home" />
       <Load state={state}>
-        {({ home: h, sections, pockets, sources }) => {
+        {({ home: h, sections, pockets, sources, plan }) => {
           const subs = new Map(sections.flatMap((s) => s.subsections.map((x) => [x.id, x] as const)));
           const pocketById = new Map(pockets.map((p) => [p.id, p]));
           const sourceName = new Map(sources.map((x) => [x.id, x.name]));
@@ -119,6 +121,7 @@ export default function HomePage() {
                   <div><Link className="ty-link" to="/transactions?unsorted=1">Sort them</Link></div>
                 </div>
               )}
+              {typeof plan !== 'string' && <TransfersToMake plan={plan} pockets={pockets} sections={sections} sources={sources} />}
               <div className="ty-home">
                 <HomeCard title={`${monthName(h.month)} so far`}>
                   <div className="ty-sumrow"><span className="num-lg">{formatMinor(b.spentMinor)} <span className="ty-cap">of {formatMinor(b.budgetedMinor)}</span></span></div>

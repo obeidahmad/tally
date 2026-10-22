@@ -45,6 +45,7 @@ This replaces spec 14's "where each subsection's money sits".
 - The person's `home_pocket_id` column is reused as the pocket that keeps next month's money. `User` carries `nextMonthPocketId: number | null`, and `PATCH /api/me` accepts `{ nextMonthPocketId }`.
 - It must be one of the person's plan pockets, otherwise 400 on `nextMonthPocketId`, "Choose a pocket.".
 - **Null means the default:** the person's oldest plan pocket.
+- **Migration:** it clears an existing `home_pocket_id` that points at a pocket outside the plan.
 
 ### The plan
 
@@ -174,3 +175,10 @@ Screenshots light and dark, desktop and phone, of Home with the card and the Poc
 4. Spending from the pocket a subsection is kept in creates no transfer. Spending from another pocket creates a transfer that covers it.
 5. Every dollar has a place: with every transaction recorded, every subsection given a pocket and no opening balances, what the plan pockets should hold adds up to what they hold.
 6. The backend tests cover every rule in the contract.
+
+## Decisions after review
+
+- **Position.** "Kept in" sits after the money fields and before "Position" in the subsection dialog. That is accepted as built.
+- **Failed plan.** A plan that fails to load (409 `no_rate`) never breaks a page. Pockets shows the server's message in place of the table; Home and Budget leave the card out.
+- **Done button size.** "Done" keeps the design system's touch height on phones (44px) and its small height on desktop (28px). It never stretches with the row.
+- **Phones.** The plan table fits a 390px screen with no clipped cells.

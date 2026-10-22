@@ -1,4 +1,4 @@
-import { test, expect, dialog, shot, row, srow, shownHeads, allHeads, pillOf, chip, group, seedBudget, ruleCell, cell, titleOf, subNames, addSubBtn, restRow, type Seed } from '../support/fixtures';
+import { test, expect, dialog, shot, row, srow, shownHeads, allHeads, pillOf, chip, group, seedBudget, ruleCell, cell, titleOf, subNames, addSubBtn, restRow, pickKeptIn, type Seed } from '../support/fixtures';
 import { MINUS, octName, sepName, norm, octIso, seedExample, closeApi, openCloseDialog, CLOSE_BTN, bsection, stat, getJson } from '../support/closing';
 import type { Page, Locator } from '@playwright/test';
 
@@ -135,6 +135,7 @@ test('adding a percentage subsection that keeps up to 50.00 shows both notes and
   await field(d, 'Percentage').fill('25');
   await chip(d, 'At month end, keep', 'Up to').check();
   await field(d, 'Keep up to').fill('50');
+  await pickKeptIn(d);
   await d.getByRole('button', { name: 'Add subsection', exact: true }).click();
   await expect(d).toBeHidden();
   const r = srow(page, /Bravo/);
@@ -154,6 +155,7 @@ test('adding a savings goal and a "Nothing" subsection shows "Goal 15,000.00" an
   await chip(d, 'Kind', 'Savings goal').check();
   await field(d, 'Monthly budget').fill('300');
   await field(d, 'Target').fill('15000');
+  await pickKeptIn(d);
   await d.getByRole('button', { name: 'Add subsection', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(await ruleCell(page, /Car/)).toContainText('Goal 15,000.00');
@@ -162,6 +164,7 @@ test('adding a savings goal and a "Nothing" subsection shows "Goal 15,000.00" an
   await d.getByLabel('Name', { exact: true }).fill('Fun');
   await field(d, 'Monthly budget').fill('50');
   await chip(d, 'At month end, keep', 'Nothing').check();
+  await pickKeptIn(d);
   await d.getByRole('button', { name: 'Add subsection', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(await ruleCell(page, /Fun/)).toContainText('Fixed');
@@ -185,6 +188,7 @@ test('editing opens with the saved choices and switching them changes the row', 
   await chip(d, 'Budget', 'Percentage').check();
   await field(d, 'Percentage').fill('10');
   await chip(d, 'At month end, keep', 'Everything').check();
+  await pickKeptIn(d);
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(await ruleCell(page, /Gym/)).toContainText('10%');
@@ -345,6 +349,7 @@ test('Food at "Up to 30.00": the note, then the close dialog with 42.00 and 28.0
   const d0 = await openEdit(page, /Food/);
   await chip(d0, 'At month end, keep', 'Up to').check();
   await field(d0, 'Keep up to').fill('30');
+  await pickKeptIn(d0);
   await d0.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d0).toBeHidden();
   expect(await titleOf(await ruleCell(page, /Food/))).toContain('rolls over up to 30.00');
@@ -391,6 +396,7 @@ test('a subsection made the old way keeps its budget and shows Fixed as its rule
   await expect(field(d, 'Monthly budget')).toHaveValue(/^300(\.00)?$/);
   await expect(d.getByLabel('Position', { exact: true }).locator('option')).toHaveText(['1', '2', '3']);
   await d.getByLabel('Name', { exact: true }).fill('Groceries');
+  await pickKeptIn(d);
   await d.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(d).toBeHidden();
   await expect(srow(page, /Groceries/)).toContainText('300.00');

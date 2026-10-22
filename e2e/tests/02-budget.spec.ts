@@ -1,4 +1,4 @@
-import { test, expect, dialog, toast, shot, row, srow, pillOf, seedBudget, monthTitle, bsection, summary, cell } from '../support/fixtures';
+import { test, expect, dialog, toast, shot, row, srow, pillOf, seedBudget, monthTitle, bsection, summary, cell, pickKeptIn } from '../support/fixtures';
 
 const POSITIVE_OR_WARNING_OR_NEGATIVE = /ty-pill--(positive|warning|negative)/;
 
@@ -139,6 +139,7 @@ test('edit a subsection: rename and change the budget, figures update and Saved 
   await row(page, /Gifts/).click();
   await dialog(page).getByLabel('Name').fill('Presents');
   await dialog(page).getByLabel('Monthly budget').fill('50');
+  await pickKeptIn(dialog(page));
   await dialog(page).getByRole('button', { name: 'Save' }).click();
   await expect(dialog(page)).toBeHidden();
   await expect(toast(page)).toContainText('Saved');

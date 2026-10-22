@@ -102,9 +102,6 @@ describe('splits', () => {
     expect(db.prepare('SELECT SUM(base_amount_minor) AS v FROM transaction_splits').get()).toEqual({ v: 1000 });
     expect((await get(a, `/api/budget?month=${MONTH}`)).unsortedCount).toBe(0);
     expect((await get(a, '/api/reports?months=3')).spending.at(-1).totalMinor).toBe(1000);
-    // where the money sits: Fun has its budget less its part
-    const where = await get(a, `/api/where?month=${MONTH}`);
-    expect(where.rows.find((r: any) => r.subsectionId === s.fun.id).totalMinor).toBe(30000 - 334);
     // the pocket loses the whole amount
     expect((await get(a, '/api/pockets')).pockets.find((x: any) => x.id === s.bank.id).balanceMinor).toBe(99000);
   });

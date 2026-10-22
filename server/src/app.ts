@@ -99,9 +99,12 @@ export function createApp({ db, cookieSecure = false, webDist = path.join(__dirn
 
   api.get('/me', (req, res) => { res.json({ user: { ...req.me, viewing: req.viewing }, viewing: req.viewing }); });
   api.patch('/me', (req, res) => {
-    const b = parse(s.homePocket, req.body);
-    if (!db.prepare('SELECT 1 FROM pockets WHERE id = ? AND user_id = ?').get(b.homePocketId, req.me.id)) throw fieldError('homePocketId', 'Choose a pocket.');
-    db.prepare('UPDATE users SET home_pocket_id = ? WHERE id = ?').run(b.homePocketId, req.me.id);
+    const { nextMonthPocketId: id } = parse(s.nextMonthPocket, req.body ?? {});
+    if (id !== undefined) {
+      if (id !== null && !['bank', 'cash', 'fund', 'broker'].includes((db.prepare('SELECT kind FROM pockets WHERE id = ? AND user_id = ?').get(id, req.me.id) as any)?.kind))
+        throw fieldError('nextMonthPocketId', 'Choose a pocket.');
+      db.prepare('UPDATE users SET home_pocket_id = ? WHERE id = ?').run(id, req.me.id);
+    }
     res.json({ user: { ...userById(req.me.id), viewing: req.viewing }, viewing: req.viewing });
   });
   api.post('/me/password', async (req, res) => {

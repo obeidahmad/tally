@@ -4,6 +4,7 @@ import { BankConnections } from '../bank';
 import { TabPanel, Tabs, useTab } from '../tabs';
 import { setTheme, useTheme, type Theme } from '../theme';
 import { api, fieldError, useForm, useLoad, type Pocket, type Rule, type Section, type Source, type User } from '../api';
+import { inPlan } from '../dialogs';
 import { useAuth } from '../auth';
 import { BudgetSwitcher, OwnerOnly, SharingCard } from '../sharing';
 import { Trading212 } from '../trading212';
@@ -49,21 +50,21 @@ function ChangePassword() {
   );
 }
 
-function HomePocket({ pockets }: { pockets: Pocket[] }) {
+function NextMonthPocket({ list }: { list: Pocket[] }) {
   const { user, setUser } = useAuth();
   const toast = useToast();
   const f = useForm();
-  if (pockets.length === 0) return null;
+  if (list.length === 0) return null;
   const change = (id: string) => f.on(async () => {
-    const r = await api<{ user: User }>('PATCH', '/me', { homePocketId: Number(id) });
+    const r = await api<{ user: User }>('PATCH', '/me', { nextMonthPocketId: Number(id) });
     setUser(r.user);
     toast('Saved');
   })();
   return (
-    <Field label="Home pocket" error={f.errors.homePocketId ?? f.formError} hint="Money sits here unless you move it with a transfer.">
+    <Field label="Next month's money" error={f.errors.nextMonthPocketId ?? f.formError} hint="Left over and sections' rests are kept here until next month.">
       {(p) => (
-        <select {...p} value={user.homePocketId ?? pockets[0].id} disabled={f.busy} onChange={(e) => change(e.target.value)}>
-          {pockets.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+        <select {...p} value={user.nextMonthPocketId ?? list[0]!.id} disabled={f.busy} onChange={(e) => change(e.target.value)}>
+          {list.map((x) => <option key={x.id} value={x.id}>{x.emoji} {x.name}</option>)}
         </select>
       )}
     </Field>
@@ -239,7 +240,7 @@ export default function SettingsPage() {
           <dt className="ty-label">Username</dt><dd>{user.username}</dd>
           <dt className="ty-label">Base currency</dt><dd>{user.baseCurrency}</dd>
         </dl>
-        {!user.viewing && <HomePocket pockets={list} />}
+        {!user.viewing && <NextMonthPocket list={list.filter(inPlan)} />}
       </section>
       <ChangePassword />
       <div><button className="ty-btn app-phone-only" onClick={signOut}>Sign out</button></div>

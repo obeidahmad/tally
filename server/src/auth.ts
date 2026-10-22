@@ -30,8 +30,8 @@ export async function burnTime(pw: string) {
   await verifyPassword(pw, await dummy);
 }
 
-export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; homePocketId: number | null };
-export const USER_COLS = 'id, username, display_name AS displayName, is_owner AS isOwner, base_currency AS baseCurrency, home_pocket_id AS homePocketId';
+export type User = { id: number; username: string; displayName: string; isOwner: boolean; baseCurrency: string; nextMonthPocketId: number | null };
+export const USER_COLS = 'id, username, display_name AS displayName, is_owner AS isOwner, base_currency AS baseCurrency, home_pocket_id AS nextMonthPocketId';
 export const toUser = (row: any): User => ({ ...row, isOwner: !!row.isOwner });
 
 export type Viewing = { ownerId: number; displayName: string; baseCurrency: string };
@@ -39,16 +39,16 @@ export type Viewing = { ownerId: number; displayName: string; baseCurrency: stri
 // Resolves whose budget a request acts on, once. A viewing owner who no longer lists the person is dropped.
 export function actingBudget(db: Db, me: User): { user: User; viewing: Viewing | null } {
   const v = db
-    .prepare(`SELECT o.id AS ownerId, o.display_name AS displayName, o.base_currency AS baseCurrency, o.home_pocket_id AS homePocketId
+    .prepare(`SELECT o.id AS ownerId, o.display_name AS displayName, o.base_currency AS baseCurrency, o.home_pocket_id AS nextMonthPocketId
               FROM users u JOIN budget_members m ON m.owner_id = u.viewing_owner_id AND m.member_id = u.id
               JOIN users o ON o.id = m.owner_id WHERE u.id = ?`)
-    .get(me.id) as (Viewing & { homePocketId: number | null }) | undefined;
+    .get(me.id) as (Viewing & { nextMonthPocketId: number | null }) | undefined;
   if (!v) {
     db.prepare('UPDATE users SET viewing_owner_id = NULL WHERE id = ? AND viewing_owner_id IS NOT NULL').run(me.id);
     return { user: me, viewing: null };
   }
-  const { homePocketId, ...viewing } = v;
-  return { user: { ...me, id: v.ownerId, baseCurrency: v.baseCurrency, homePocketId }, viewing };
+  const { nextMonthPocketId, ...viewing } = v;
+  return { user: { ...me, id: v.ownerId, baseCurrency: v.baseCurrency, nextMonthPocketId }, viewing };
 }
 
 // Bank, Trading212 and sharing settings belong to the budget's owner.
@@ -58,7 +58,7 @@ export const ownerOnlyBudget: RequestHandler = (req, _res, next) =>
 declare global {
   namespace Express {
     interface Request {
-      /** The acting budget: id, base currency and home pocket are the budget owner's. Every data route reads this. */
+      /** The acting budget: id, base currency and next-month pocket are the budget owner's. Every data route reads this. */
       user: User;
       /** The signed-in person. Only /me, passwords, accounts and sharing use this. */
       me: User;
@@ -92,7 +92,7 @@ export function currentSession(db: Db, token: unknown): { user: User; hash: stri
   const hash = sha256(token);
   const row = db
     .prepare(`SELECT s.expires_at AS exp, u.id, u.username, u.display_name AS displayName,
-                     u.is_owner AS isOwner, u.base_currency AS baseCurrency, u.home_pocket_id AS homePocketId
+                     u.is_owner AS isOwner, u.base_currency AS baseCurrency, u.home_pocket_id AS nextMonthPocketId
               FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?`)
     .get(hash) as any;
   if (!row) return null;
