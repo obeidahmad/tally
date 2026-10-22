@@ -82,7 +82,7 @@ The pipeline is what makes Tally different: money moves through steps in an orde
 
 - Entered by hand. Each one records a pocket and a subsection, and both can be edited.
 - Transfers between pockets, including currency conversions recorded at the rate the user actually got.
-- **Zero-based, with pockets as the envelopes.** Every dollar has a job and a place; nothing just sits around. Money that belongs nowhere yet is next month's money (left over and sections' rests), and its job is to be kept for next month, in a pocket of its own. Overspending is money that really left the subsection's pocket.
+- **Zero-based, with pockets as the envelopes.** Every dollar has a job and a place; nothing just sits around. Money that belongs nowhere yet is next month's money (left over and sections' rests), and its job is to be kept for next month, in a pocket of its own. Overspending is money that really left the subsection's pocket. A pocket only counts the money in an account or envelope: its balance is never a rest, and what it started with stays in it.
 - **The plan.** Each subsection's money is kept in a pocket the person picks. Tally compares what each pocket should hold with what it holds and lists the transfers to make, directly from the pocket with money to spare to the pocket that is short, so it tells the person what to do with their money, not only what happened to it. There is no "Main" pocket; that is only a name a person may use. Comes before any bank-connection work (`specs/29-the-plan.md`).
 
 **Rollover**

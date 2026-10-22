@@ -1238,7 +1238,6 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
       }
       nextMonthMinor += b.totals.incomeMinor + carried - b.totals.spentMinor - claimed;
     }
-    for (const p of pockets) nextMonthMinor += to(p.opening, p.currency, base);
     const unplaced: number[] = [];
     for (const id of order) {
       const p = byId.get(keptIn.get(id) ?? 0);
@@ -1250,7 +1249,8 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
     if (chosen) chosen.should += nextMonthMinor;
 
     // Spare (+) or short (-) in base; transfers go from the most spare to the most short, the older pocket first on a tie.
-    const diff = pockets.map((p) => to(p.holds, p.currency, base) - p.should);
+    // An opening balance stays in its own pocket: it is part of that pocket's "should" and never a rest.
+    const diff = pockets.map((p) => to(p.holds, p.currency, base) - p.should - to(p.opening, p.currency, base));
     const transfers: { fromPocketId: number; toPocketId: number; amountMinor: number; toAmountMinor: number; baseAmountMinor: number }[] = [];
     for (;;) {
       let hi = 0, lo = 0;
@@ -1265,7 +1265,7 @@ export function dataRouter(db: Db, rates: Rates, now: () => number, bank: BankCo
     const short = diff.reduce((a, d) => a + Math.max(0, -d), 0);
     res.json({
       currency: base,
-      pockets: pockets.map((p) => ({ id: p.id, shouldMinor: to(p.should, base, p.currency), holdsMinor: p.holds, subsections: p.subs })),
+      pockets: pockets.map((p) => ({ id: p.id, shouldMinor: to(p.should, base, p.currency) + p.opening, holdsMinor: p.holds, subsections: p.subs })),
       transfers,
       nextMonth: { pocketId: chosen?.id ?? null, amountMinor: nextMonthMinor },
       unplacedSubsectionIds: unplaced,

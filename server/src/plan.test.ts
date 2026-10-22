@@ -82,7 +82,9 @@ describe('the plan', () => {
 
   it('spending from the pocket a subsection is kept in makes no transfer; from another pocket it does', async () => {
     const a = await owner();
-    const boc = await pocket(a, 'BOC', 20000), rev = await pocket(a, 'Revolut', 20000);
+    const boc = await pocket(a, 'BOC'), rev = await pocket(a, 'Revolut');
+    await earn(a, boc.id, 20000);
+    await earn(a, rev.id, 20000);
     const s = await budget(a, [['Rent', 20000, boc.id], ['Groceries', 20000, rev.id]]);
     const spend = (pocketId: number, subsectionId: number) => post(a, '/api/transactions', { date: D, kind: 'expense', amountMinor: 5000, pocketId, subsectionId, payee: 'Shop' });
     await spend(rev.id, s.Groceries.id);
@@ -111,7 +113,8 @@ describe('the plan', () => {
 
   it('lowers the pocket it is kept in by an overspent subsection', async () => {
     const a = await owner();
-    const boc = await pocket(a, 'BOC', 50000), rev = await pocket(a, 'Revolut');
+    const boc = await pocket(a, 'BOC'), rev = await pocket(a, 'Revolut');
+    await earn(a, boc.id, 50000);
     const s = await budget(a, [['Fun', 5000, rev.id]]);
     await post(a, '/api/transactions', { date: D, kind: 'expense', amountMinor: 8000, pocketId: boc.id, subsectionId: s.Fun.id, payee: 'Bar' });
     const p = await plan(a);
@@ -132,7 +135,9 @@ describe('the plan', () => {
 
   it('leaves the money of subsections with no pocket out of every pocket', async () => {
     const a = await owner();
-    const loose = await pocket(a, 'Loose', 30000), other = await pocket(a, 'Other', 20000), rev = await pocket(a, 'Revolut');
+    const loose = await pocket(a, 'Loose'), other = await pocket(a, 'Other'), rev = await pocket(a, 'Revolut');
+    await earn(a, loose.id, 30000);
+    await earn(a, other.id, 20000);
     const s = await budget(a, [['Nowhere', 20000, null], ['Groceries', 40000, rev.id]]);
     const p = await plan(a);
     expect(p.unplacedSubsectionIds).toEqual([s.Nowhere.id]);
@@ -170,7 +175,9 @@ describe('the plan', () => {
 
   it('takes the older pocket first on a tie', async () => {
     const a = await owner();
-    const x = await pocket(a, 'X', 5000), y = await pocket(a, 'Y', 5000), z = await pocket(a, 'Z');
+    const x = await pocket(a, 'X'), y = await pocket(a, 'Y'), z = await pocket(a, 'Z');
+    await earn(a, x.id, 5000);
+    await earn(a, y.id, 5000);
     await budget(a, [['One', 10000, z.id]]);
     expect(moves(await plan(a))).toEqual([[x.id, z.id, 5000], [y.id, z.id, 5000]]);
   });
@@ -188,14 +195,23 @@ describe('the plan', () => {
     await earn(a, boc.id, 100000);
     await budget(a, [['Food', 30000, rev.id]]);
     let p = await plan(a);
-    expect(p.nextMonth).toEqual({ pocketId: boc.id, amountMinor: 70500 }); // income and opening balance, less what Food claims
-    expect(moves(p)).toEqual([[boc.id, rev.id, 29500]]);
-    expect(p.pockets[0].shouldMinor).toBe(70500);
+    expect(p.nextMonth).toEqual({ pocketId: boc.id, amountMinor: 70000 }); // income less what Food claims; opening balances are not a rest
+    expect(moves(p)).toEqual([[boc.id, rev.id, 30000]]);
+    expect(p.pockets[0].shouldMinor).toBe(70000);
     expect((await json(a.patch('/api/me')).send({ nextMonthPocketId: rev.id }).expect(200)).body.user.nextMonthPocketId).toBe(rev.id);
     p = await plan(a);
     expect(p.nextMonth.pocketId).toBe(rev.id);
-    expect(p.pockets[1].shouldMinor).toBe(100500);
+    expect(p.pockets[1].shouldMinor).toBe(100500); // next month's money plus its own opening balance
     expect(moves(p)).toEqual([[boc.id, rev.id, 100000]]);
+  });
+
+  it('keeps an opening balance in its own pocket, in another currency, with no transfer', async () => {
+    const a = await owner();
+    const usd = await pocket(a, 'Dollars', 10860, { currency: 'USD' });
+    const p = await plan(a);
+    expect(p.pockets[0]).toMatchObject({ shouldMinor: 10860, holdsMinor: 10860 });
+    expect(p.nextMonth).toEqual({ pocketId: usd.id, amountMinor: 0 });
+    expect(p).toMatchObject({ transfers: [], shortMinor: 0 });
   });
 
   it('counts two open months once each, and a closed month through its carry only', async () => {
@@ -255,7 +271,7 @@ describe('kept in', () => {
 
   it('puts every dollar in a place: what pockets should hold adds up to what they hold', async () => {
     const a = await owner();
-    const boc = await pocket(a, 'BOC'), rev = await pocket(a, 'Revolut');
+    const boc = await pocket(a, 'BOC', 7000), rev = await pocket(a, 'Revolut', 3000);
     const sec = (await post(a, '/api/sections', { name: 'Needs' })).section;
     const sub = async (body: object) => (await post(a, `/api/sections/${sec.id}/subsections`, body)).subsection;
     const food = await sub({ name: 'Food', budgetMinor: 20000, pocketId: rev.id });
@@ -275,7 +291,7 @@ describe('kept in', () => {
     const p = await plan(a);
     const sum = (k: string) => p.pockets.reduce((x: number, y: any) => x + y[k], 0);
     expect(sum('shouldMinor')).toBe(sum('holdsMinor'));
-    expect(sum('holdsMinor')).toBe(100000 + 50000 - 4000 - 2500 - 3000 - 1000); // income less spending, the rest only moved
+    expect(sum('holdsMinor')).toBe(10000 + 100000 + 50000- 4000 - 2500 - 3000 - 1000); // income less spending, the rest only moved
     expect(p.unplacedSubsectionIds).toEqual([]);
   });
 

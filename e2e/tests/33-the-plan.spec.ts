@@ -537,3 +537,43 @@ test('with everything recorded, every subsection placed and no opening balances,
   };
   expect(await col(1)).toBe(await col(2));
 });
+
+// ============ opening balances stay in their own pocket ============
+test('a pocket with an opening balance and no subsection shows an "Opening balance" row, a Difference of "–" and no transfer', async ({ page, me }) => {
+  await me.seed.pocket('Cash jar', 25000);
+  await me.seed.pocket('Revolut', 0);
+  await me.seed.section('Plan');
+  await page.goto('/pockets');
+  await expect(pocketPlanRow(page, 'Cash jar')).toBeVisible();
+  const row = planTable(page).locator('.ty-plan__sub').filter({ hasText: 'Opening balance' });
+  await expect(row).toHaveCount(1); // only the pocket with a balance gets one
+  expect(norm(await row.locator('td').nth(1).innerText())).toBe('250.00');
+  // the spec puts it after the subsections and after "Next month's money" (the oldest pocket's row, here 0.00)
+  await expect(pocketPlanRow(page, 'Cash jar').locator('xpath=following-sibling::tr[2]')).toContainText('Opening balance');
+  const cells = (await pocketPlanRow(page, 'Cash jar').locator('td').allInnerTexts()).map(norm);
+  expect([cells[1], cells[2], cells[3]]).toEqual(['250.00', '250.00', '–']);
+  // it is not next month's money
+  expect(norm(await planTable(page).locator('.ty-plan__sub').filter({ hasText: "Next month's money" }).locator('td').nth(1).innerText())).toBe('0.00');
+  expect((await planApi(page)).transfers).toEqual([]);
+  await goHome(page);
+  await expect(card(page)).toHaveCount(0);
+  await page.goto('/pockets');
+  await planTable(page).scrollIntoViewIfNeeded();
+  await shot(page, 'plan-opening-balance-desktop-light');
+});
+
+test('with opening balances, everything recorded and every subsection placed, the Should hold column still adds up to the Holds column', async ({ page, me }) => {
+  const w = await workedExample(page, me);
+  await me.seed.pocket('Cash jar', 25000);
+  await me.seed.income(w.boc.id, 30000, 'Gift');
+  await page.goto('/pockets');
+  await expect(pocketPlanRow(page, 'Cash jar')).toBeVisible();
+  const n = (t: string) => Math.round(parseFloat(t.replace(/[^0-9.−-]/g, '').replace('−', '-')) * 100);
+  const sum = async (i: number) => {
+    let s = 0;
+    const rows = planTable(page).locator('.ty-plan__pocket');
+    for (let r = 0; r < await rows.count(); r++) s += n(await rows.nth(r).locator('td').nth(i).innerText());
+    return s;
+  };
+  expect(await sum(1)).toBe(await sum(2));
+});

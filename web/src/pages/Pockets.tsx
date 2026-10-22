@@ -116,6 +116,12 @@ function PlanTable({ plan, pockets, sections, base }: { plan: Plan | string; poc
                   <td className={plan.nextMonth.amountMinor < 0 ? 'ty-num ty-num--neg' : 'ty-num'}>{formatMinor(plan.nextMonth.amountMinor)}{code(plan.currency)}</td><td /><td />
                 </tr>
               )}
+              {p.openingBalanceMinor !== 0 && (
+                <tr className="ty-plan__sub ty-wide">
+                  <td>Opening balance</td>
+                  <td className={p.openingBalanceMinor < 0 ? 'ty-num ty-num--neg' : 'ty-num'}>{formatMinor(p.openingBalanceMinor)}{code(p.currency)}</td><td /><td />
+                </tr>
+              )}
             </Fragment>
           );
         })}</tbody>

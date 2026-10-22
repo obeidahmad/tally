@@ -26,7 +26,7 @@ This replaces spec 14's "where each subsection's money sits".
 - Bank connections matching the two sides of a transfer (later, after this works).
 - Routing transfers through one pocket. Transfers go directly from the pocket with money to spare to the pocket that is short.
 - Credit card payments in the plan. Spending on a card shows as money to spare in the subsection's pocket until the card is paid.
-- Pocket opening balances entering the budget. For now the plan counts them as next month's money.
+- Pocket opening balances entering the budget or the pipeline. A pocket only counts money, so its opening balance stays in it (rule 4).
 - A "Kept in" column on the Budget page.
 - Several pockets for one subsection.
 - Plans for past months.
@@ -69,8 +69,8 @@ Rules:
    - Rates are today's (spec 12). Base-currency figures are in the person's base currency.
 2. **A subsection's amount** is the sum of its `availableMinor` (spec 09: budget + carried − spent) over those months, **with its sign**. An overspent subsection lowers what its pocket should hold, because that money really left the pocket.
 3. **Next month's money** is everything else in those months: for each month, its income (including the carry into its income) + the carry into its sections and subsections − its spending − the sum of its subsections' `availableMinor`. That is the left over and the sections' rests, overspending included.
-   - Add the opening balances of the plan pockets in base. They are money with no job yet (see Out of scope).
-4. **What a pocket should hold.** For each plan pocket P: the amounts of the subsections kept in P, plus next month's money when P is the next-month pocket, in base. `shouldMinor` is that converted to P's currency. It can be below 0.
+4. **What a pocket should hold.** For each plan pocket P: the amounts of the subsections kept in P, plus next month's money when P is the next-month pocket, in base, converted to P's currency, plus P's own `openingBalanceMinor`. That is `shouldMinor`. It can be below 0. For rule 6, the opening balance counts in base at today's rate.
+   - **An opening balance stays in its pocket.** A pocket only counts the money in an account or envelope; it is never a rest. The money a pocket started with is where its count starts, so it is part of what that pocket should hold and never makes a transfer.
 5. **What it holds.** P's cash `balanceMinor` (spec 14) plus what its held holdings cost (`paidMinor`). `holdsMinor` is in P's currency.
    - Buying a holding therefore changes nothing.
    - Price changes are left out.
@@ -107,7 +107,8 @@ Owner: `backend-dev`. Paths: `server/**`. Tests:
 - the worked example;
 - a pocket in another currency (should, holds, the transfer's three amounts);
 - an overspent subsection lowering its pocket's "should";
-- next month's money (left over, a section's rest, an opening balance) in the next-month pocket, the default and a chosen one;
+- next month's money (left over, a section's rest) in the next-month pocket, the default and a chosen one;
+- an opening balance staying in its own pocket: a pocket in another currency with one, and no transfer made for it;
 - two open months counted once each, and a closed month counted through its carry only;
 - unplaced subsections;
 - the `nextMonthPocketId` rules;
@@ -173,7 +174,7 @@ Screenshots light and dark, desktop and phone, of Home with the card and the Poc
 2. The worked example gives exactly the two transfers, 2,063.75 from BOC to Revolut, then 50.00 from BOC to EUR savings.
 3. After recording them with Done, nothing is left to transfer.
 4. Spending from the pocket a subsection is kept in creates no transfer. Spending from another pocket creates a transfer that covers it.
-5. Every dollar has a place: with every transaction recorded, every subsection given a pocket and no opening balances, what the plan pockets should hold adds up to what they hold.
+5. Every dollar has a place: with every transaction recorded and every subsection given a pocket, what the plan pockets should hold adds up to what they hold, with or without opening balances.
 6. The backend tests cover every rule in the contract.
 
 ## Decisions after review
@@ -182,3 +183,15 @@ Screenshots light and dark, desktop and phone, of Home with the card and the Poc
 - **Failed plan.** A plan that fails to load (409 `no_rate`) never breaks a page. Pockets shows the server's message in place of the table; Home and Budget leave the card out.
 - **Done button size.** "Done" keeps the design system's touch height on phones (44px) and its small height on desktop (28px). It never stretches with the row.
 - **Phones.** The plan table fits a 390px screen with no clipped cells.
+
+## Decisions after the user's answer on opening balances
+
+The user: "pockets don't matter as rest or not, a pocket contains the money of subsections", "what goes through the pipeline is money not used", "a pocket is only made to help the user count his money in each account or envelope".
+
+- **The rest is unchanged (spec 09).** A section that received 2,000 with subsection budgets of 1,200 has a rest of 800, whether or not some of those subsections keep what they do not spend. The 800 is next month's money until the close, when the section's rest rule sends it to next month's income or into a section (the same one then receives 2,000 + 800 = 2,800).
+- **A subsection's rollover is never a rest.** It stays in the subsection, and so in its pocket.
+- **A pocket's opening balance is never a rest either.** Rule 3 no longer adds opening balances to next month's money; rule 4 keeps each one in its own pocket.
+- **The API does not change.** The web already has each pocket's `openingBalanceMinor`.
+- **Pockets table:** under a pocket whose opening balance is not 0, one more `ty-plan__sub` row "Opening balance" with that amount (in the pocket's currency, its code when not the base currency) under "Should hold", after its subsections and after "Next month's money". `PocketsScreen` shows it on EUR savings.
+- **Browser test:** a pocket with an opening balance and no subsection shows that row, a Difference of "–", and no transfer.
+
